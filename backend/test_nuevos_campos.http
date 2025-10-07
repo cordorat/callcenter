@@ -1,0 +1,94 @@
+### ============================================
+### Pruebas de documento_id y foto_perfil
+### ============================================
+
+@baseUrl = http://localhost:8000/api
+
+### 1. Login como Admin
+# @name loginAdmin
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+  "email": "admin@callcenter.com",
+  "password": "admin123"
+}
+
+###
+
+### 2. Ver mi perfil actual (Admin)
+# Copiar el access token de arriba y reemplazar en la siguiente línea
+GET {{baseUrl}}/users/me/
+Authorization: Bearer REEMPLAZAR_CON_TOKEN
+
+###
+
+### 3. Actualizar mi perfil con documento_id y foto_perfil
+PATCH {{baseUrl}}/users/1/
+Content-Type: application/json
+Authorization: Bearer REEMPLAZAR_CON_TOKEN
+
+{
+  "documento_id": "DNI-12345678",
+  "foto_perfil": "https://ejemplo.com/fotos/admin.jpg"
+}
+
+###
+
+### 4. Crear nuevo agente con todos los campos incluyendo documento_id y foto_perfil
+POST {{baseUrl}}/users/
+Content-Type: application/json
+Authorization: Bearer REEMPLAZAR_CON_TOKEN
+
+{
+  "email": "agente.nuevo@callcenter.com",
+  "first_name": "Carlos",
+  "last_name": "Ramírez",
+  "phone": "+57 301 234 5678",
+  "documento_id": "CC-987654321",
+  "foto_perfil": "https://ejemplo.com/fotos/carlos.jpg",
+  "role": "AGENT",
+  "password": "AgentPassword123!",
+  "password_confirm": "AgentPassword123!",
+  "is_active": true
+}
+
+###
+
+### 5. Listar todos los usuarios (debería mostrar documento_id y foto_perfil)
+GET {{baseUrl}}/users/
+Authorization: Bearer REEMPLAZAR_CON_TOKEN
+
+###
+
+### 6. Crear agente SIN documento_id ni foto_perfil (campos opcionales)
+POST {{baseUrl}}/users/
+Content-Type: application/json
+Authorization: Bearer REEMPLAZAR_CON_TOKEN
+
+{
+  "email": "agente.basico@callcenter.com",
+  "first_name": "María",
+  "last_name": "González",
+  "phone": "+57 301 999 8888",
+  "role": "AGENT",
+  "password": "BasicAgent123!",
+  "password_confirm": "BasicAgent123!"
+}
+
+###
+
+### 7. Intentar crear agente con documento_id duplicado (debería fallar)
+POST {{baseUrl}}/users/
+Content-Type: application/json
+Authorization: Bearer REEMPLAZAR_CON_TOKEN
+
+{
+  "email": "agente.duplicado@callcenter.com",
+  "first_name": "Pedro",
+  "last_name": "López",
+  "documento_id": "CC-987654321",
+  "role": "AGENT",
+  "password": "DuplicateDoc123!",
+  "password_confirm": "DuplicateDoc123!"
+}
