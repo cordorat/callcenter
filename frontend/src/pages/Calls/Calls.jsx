@@ -31,6 +31,7 @@ const Calls = () => {
     }
 
     const handleMute = () => {
+        setIsMuted((prev) => !prev);
         // Aquí puedes agregar la lógica para silenciar el micrófono
     }
 
@@ -44,9 +45,9 @@ const Calls = () => {
             }}>
                 {/* Columna izquierda: teclado */}
                 <Box sx={{
-                    flex: '0 0 20%', // 20% del ancho total
-                    minWidth: '300px', // Ancho mínimo para que no se achique demasiado
-                    maxWidth: '400px', // Ancho máximo para pantallas grandes
+                    flex: '0 0 20%', 
+                    minWidth: '300px', 
+                    maxWidth: '400px', 
                     display: 'flex',
                     flexDirection: 'column',
                 }}>
@@ -56,7 +57,7 @@ const Calls = () => {
                         alignItems="center" 
                         p={2} 
                         border="1.5px solid #0C155A" 
-                        borderRadius={2} 
+                        borderRadius={4} 
                         backgroundColor="#EBF5FE"
                         height="100%"
                     >
@@ -78,7 +79,7 @@ const Calls = () => {
                                     <Button 
                                         key={num} 
                                         variant="outlined" 
-                                        sx={{ height: 60, fontSize: '1.2rem' }}
+                                        sx={{ height: 60, fontSize: '1.2rem', borderRadius: 8 }}
                                         onClick={() => handleKeyPress(num)}
                                         disabled={isInCall}
                                     >
@@ -88,44 +89,70 @@ const Calls = () => {
                             </Box>
 
                             {/* Botones de acción */}
-                            <Box display="flex" gap={1} width="100%">
+                            <Box display="flex" gap={1} width="100%" justifyContent={'center'}> 
                                 {!isInCall ? (
                                     <>
                                         <Button
-                                            fullWidth
                                             variant="contained"
                                             color="success"
-                                            startIcon={<CallIcon />}
                                             onClick={handleCall}
                                             disabled={!phoneNumber.trim()}
-                                            sx={{ height: 50 }}
-                                        />
+                                            sx={{ 
+                                                height: 60, 
+                                                width: 60,
+                                                minWidth: 60,
+                                                borderRadius: '50%',
+                                                padding: 0,
+                                            }}
+                                        >
+                                            <CallIcon sx={{ fontSize: 30 }} />
+                                        </Button>
                                         <Button
-                                            variant="contained"
+                                            variant="none"
                                             color="secondary"
-                                            startIcon={<BackspaceIcon />}
                                             onClick={handleBackspace}
                                             disabled={!phoneNumber.trim()}
-                                            sx={{ height: 50 }}
-                                        />   
+                                            sx={{ 
+                                                height: 60, 
+                                                width: 60,
+                                                minWidth: 60,
+                                                borderRadius: '50%',
+                                                padding: 0,
+                                            }}
+                                        >
+                                            <BackspaceIcon sx={{ fontSize: 24 }} />
+                                        </Button>   
                                     </>
                                 ) : (
                                     <>
                                         <Button
-                                            fullWidth
                                             variant="contained"
                                             color="error"
-                                            startIcon={<CallEndIcon />}
                                             onClick={handleEndCall}
-                                            sx={{ height: 50 }}
-                                        />
+                                            sx={{ 
+                                                height: 60, 
+                                                width: 60,
+                                                minWidth: 60,
+                                                borderRadius: '50%',
+                                                padding: 0,
+                                            }}
+                                        >
+                                            <CallEndIcon sx={{ fontSize: 30 }} />
+                                        </Button>
                                         <Button
                                             variant="contained"
                                             color="secondary"
-                                            startIcon={<MicOffIcon />}
                                             onClick={handleMute}
-                                            sx={{ height: 50 }}
-                                        />  
+                                            sx={{ 
+                                                height: 60, 
+                                                width: 60,
+                                                minWidth: 60,
+                                                borderRadius: '50%',
+                                                padding: 0,
+                                            }}
+                                        >
+                                            <MicOffIcon sx={{ fontSize: 24 }} />
+                                        </Button>  
                                     </> 
                                 )}
                             </Box>
@@ -134,14 +161,14 @@ const Calls = () => {
 
                 {/* Columna derecha: información */}
                 <Box sx={{
-                    flex: '1', // Toma el 70% restante del espacio
-                    minWidth: 0, // Permite que flex funcione correctamente
+                    flex: '1', 
+                    minWidth: 0, 
                     display: 'flex',
                     flexDirection: 'column',
                 }}>
                     <Box 
                             border="1.5px solid #0C155A" 
-                            borderRadius={2} 
+                            borderRadius={4} 
                             p={2} 
                             width="100%"
                             height="100%"
