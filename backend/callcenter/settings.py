@@ -104,16 +104,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
+        # Validador personalizado: 8-16 caracteres, números, letras y caracteres especiales
+        "NAME": "apps.users.validators.CustomPasswordValidator",
+    },
+    {
+        # Evita contraseñas similares a atributos del usuario (email, nombre, etc.)
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
+        # Rechaza contraseñas comunes ("password", "12345678", etc.)
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
