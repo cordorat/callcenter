@@ -16,14 +16,14 @@ class CargarBaseDatosView(APIView):
     Permite subir un archivo CSV y registrar los clientes en la tabla Cliente.
     """
     
-    def cargarbd(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         campaña_id = request.data.get("campaña_id")
         base_datos_id = request.data.get("base_datos_id")
         file = request.FILES.get("file")
 
         if not file:
             return Response({"error": "Debe subir un archivo CSV"}, status=status.HTTP_400_BAD_REQUEST)
-
+        print("📁 Archivo recibido:", file.name)
         decoded_file = file.read().decode('utf-8').splitlines()
         reader = csv.DictReader(decoded_file)
 
