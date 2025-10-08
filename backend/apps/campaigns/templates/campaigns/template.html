@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Subir Base de Datos</title>
+</head>
+<body>
+  <h1>Subir Base de Datos (CSV)</h1>
+
+  <!-- Campo para seleccionar archivo -->
+  <input type="file" id="inputFile" accept=".csv" style="display: none;">
+  
+  <!-- Botón visible -->
+  <button id="btnSubir">Seleccionar archivo CSV</button>
+
+  <script>
+    const btnSubir = document.getElementById("btnSubir");
+    const inputFile = document.getElementById("inputFile");
+
+    // Token JWT que obtuviste al autenticarte
+    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5OTI2ODkyLCJpYXQiOjE3NTk4OTgwOTIsImp0aSI6IjE4MjFmMTM1ZjczYzRkYmM5NDJkOWEyNTEyZWM0MGI0IiwidXNlcl9pZCI6IjEifQ.UZq63CleD2bM4V1SbcJyU7Aw4SRNWTcysZiO6YiX0ic"; // 👈 reemplázalo
+
+    // Cuando haces clic en el botón → abre el selector de archivos
+    btnSubir.addEventListener("click", () => {
+      inputFile.click();
+    });
+
+    // Cuando seleccionas el archivo, se envía al backend
+    inputFile.addEventListener("change", () => {
+      const file = inputFile.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("campaña_id", 1);   // 🔹 Puedes cambiarlo dinámicamente
+      formData.append("base_datos_id", 1); // 🔹 O dejarlo configurable
+
+      fetch("http://127.0.0.1:8000/api/campaigns/cargar-base-datos/", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => alert("Respuesta: " + JSON.stringify(data)))
+      .catch(err => alert("Error: " + err));
+    });
+  </script>
+</body>
+</html>
