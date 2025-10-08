@@ -21,4 +21,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include('apps.authn.urls')),
     path("api/users/", include('apps.users.urls')),
+
+    #Endpoint para autenticación con JWT
+    path("api/token/", include('apps.authn.jwt_urls')),
+    path("api/token/refresh/", include('apps.authn.jwt_urls')),
 ]

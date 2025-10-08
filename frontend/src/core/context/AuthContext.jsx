@@ -2,35 +2,46 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import apiClient from "@/core/api/apiClient";
+import { ENDPOINTS } from "@/core/api/endpoints";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
-  // Iniciar sesión
-  const login = async (username, password) => {
-    const res = await apiClient.post("/bff/login", { username, password }); // Ajustar la URL
-    const data = res.data;
+  // Login con JWT
+  const login = async (email, password) => {
+    try {
+      // Obtener tokens
+      const tokenRes = await apiClient.post(ENDPOINTS.LOGIN, { email, password });
+      const tokens = tokenRes.data;
 
-    // Guarda el usuario con rol
-    setUser(data);
-    localStorage.setItem("user", JSON.stringify(data));
+      // Obtener info del usuario autenticado
+      const userRes = await apiClient.get(ENDPOINTS.USER_ME, {
+        headers: { Authorization: `Bearer ${tokens.access}` },
+      });
+
+      const userData = { ...userRes.data, ...tokens };
+
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+    } catch (err) {
+      console.error("Error al iniciar sesión:", err);
+      throw err;
+    }
   };
 
-  // Cerrar sesión
-  const logout = async () => {
-    await apiClient.post("/bff/logout");
+  // Logout
+  const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
+    window.location.href = "/login";
   };
 
-  // Mantener sesión si hay datos guardados
+  // Cargar sesión guardada
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    const stored = localStorage.getItem("user");
+    if (stored) setUser(JSON.parse(stored));
   }, []);
 
   const isAuthenticated = !!user;
