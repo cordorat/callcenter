@@ -32,7 +32,7 @@ export const menuItems = [
     label: 'Campañas',
     path: '/campañas',
     icon: CampaignIcon,
-    roles: ['ADMIN', 'AGENT']
+    roles: ['ADMIN']
   },
   {
     label: 'Llamadas',

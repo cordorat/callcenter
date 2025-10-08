@@ -14,10 +14,10 @@ export function ThemeModeProvider({ children }) {
         palette: {
           mode,
           primary: {
-            main: "#2196F3", // Color principal para botones, links, etc.
+            main: "#0C155A", // Color principal para botones, links, etc.
           },
           secondary: {
-            main: "#4FC3F7", // Color secundario
+            main: "#BDBCC2", // Color secundario
           },
           background: {
             default: mode === "light" ? "#D3E8FB" : "#121212", // Fondo general

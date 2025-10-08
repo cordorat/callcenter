@@ -6,7 +6,12 @@ import { useAuth } from '@/core/context/AuthContext';
  * Si el usuario no está autenticado, redirige a /login
  */
 const PrivateRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+
+  // Mostrar nada mientras carga el estado de autenticación
+  if (loading) {
+    return null; // O puedes retornar un spinner/loader
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
