@@ -8,7 +8,6 @@ import {
   Divider,
   Tooltip,
 } from "@mui/material";
-import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { useAuth } from "@/core/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -25,12 +24,6 @@ export default function UserMenuButton() {
   const handleProfile = () => {
     handleClose();
     navigate("/perfil"); // futura ruta del perfil
-  };
-
-  const handleLogout = async () => {
-    handleClose();
-    await logout();
-    navigate("/login");
   };
 
   return (
@@ -59,12 +52,6 @@ export default function UserMenuButton() {
           Editar perfil
         </MenuItem>
         <Divider />
-        {/*<MenuItem onClick={handleLogout}>
-          <ListItemIcon>
-            <LogoutIcon fontSize="small" />
-          </ListItemIcon>
-          Cerrar sesión
-        </MenuItem>*/}
       </Menu>
     </>
   );

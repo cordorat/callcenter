@@ -15,7 +15,7 @@ import {
   Divider,
   Tooltip,
 } from "@mui/material";
-import { useNavigate, Outlet } from "react-router-dom";
+import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import UserMenuButton from "./UserMenuButton";
 
 const expandedWidth = 240;
@@ -30,8 +30,9 @@ const collapsedWidth = 72;
 export default function ModuleShell({ title, items, children }) {
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation(); // obtener la ruta actual
 
-  const handleMouseEnter = () => setHovered(true);
+  const handleMouseEnter = () => setHovered(true); 
   const handleMouseLeave = () => setHovered(false);
 
   return (
@@ -41,11 +42,11 @@ export default function ModuleShell({ title, items, children }) {
         position="fixed"
         sx={{
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          backgroundColor: "primary.main",
+          backgroundColor: "#EBF5FE", 
         }}
       >
         <Toolbar>
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" fontFamily={"Poppins, sans-serif"} fontWeight={600} noWrap sx={{ flexGrow: 1, color: "#0C155A" }}>
             {title}
           </Typography>
           <UserMenuButton />
@@ -68,12 +69,14 @@ export default function ModuleShell({ title, items, children }) {
             overflowX: "hidden",
             boxSizing: "border-box",
             transition: "width 0.3s ease",
+            display: "flex", 
+            flexDirection: "column", 
           },
         }}
         open
       >
         {/* Logo / título */}
-        <Toolbar sx={{ justifyContent: hovered ? "center" : "center" }}>
+        <Toolbar sx={{ justifyContent: "center" }}>
           {hovered ? (
             <Typography variant="h6" noWrap>
               Call Center
@@ -84,38 +87,57 @@ export default function ModuleShell({ title, items, children }) {
         </Toolbar>
         <Divider />
 
-        {/* Lista de menú */}
-        <List>
-          {items.map((item) => (
-            <Tooltip
-              key={item.id}
-              title={!hovered ? item.label : ""}
-              placement="right"
-              arrow
-            >
-              <ListItem
-                button
-                onClick={() => navigate(item.path)}
-                sx={{
-                  "&:hover": { backgroundColor: "action.hover" },
-                  justifyContent: hovered ? "initial" : "center",
-                  px: 2.5,
-                }}
+        {/* Lista de menú - Centrada verticalmente */}
+        <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center" }}> 
+          <List sx={{ width: "100%" }}>
+            {items.map((item) => {
+            const isActive = location.pathname === item.path; // Detecta si la ruta actual coincide
+            
+            return (
+              <Tooltip
+                key={item.id}
+                title={!hovered ? item.label : ""}
+                placement="right"
+                arrow
               >
-                <ListItemIcon
+                <ListItem
+                  button
+                  onClick={() => navigate(item.path)}
                   sx={{
-                    minWidth: 0,
-                    mr: hovered ? 2 : "auto",
-                    justifyContent: "center",
+                    "&:hover": { backgroundColor: "action.hover" },
+                    justifyContent: hovered ? "initial" : "center",
+                    px: 2.5,
+                    backgroundColor: isActive ? "rgba(33, 150, 243, 0.12)" : "transparent", // Fondo azul claro si activo
+                    borderLeft: isActive ? "4px solid #0C155A" : "4px solid transparent", // azul lateral
                   }}
                 >
-                  <item.icon />
-                </ListItemIcon>
-                {hovered && <ListItemText primary={item.label} />}
-              </ListItem>
-            </Tooltip>
-          ))}
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: hovered ? 2 : "auto",
+                      justifyContent: "center",
+                      color: isActive ? "#0C155A" : "inherit", 
+                    }}
+                  >
+                    <item.icon />
+                  </ListItemIcon>
+                  {hovered && (
+                    <ListItemText 
+                      primary={item.label}
+                      sx={{
+                        "& .MuiListItemText-primary": {
+                          color: isActive ? "#0C155A" : "inherit", // Texto azul si activo
+                          fontWeight: isActive ? 600 : 400, 
+                        }
+                      }}
+                    />
+                  )}
+                </ListItem>
+              </Tooltip>
+            );
+          })}
         </List>
+        </Box> 
 
         {/* Pie del sidebar */}
         <Divider />

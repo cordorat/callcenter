@@ -13,7 +13,7 @@ const Dashboard = () => {
   };
 
   return (
-    <MainLayout title="Dashboard - Call Center">
+    <MainLayout title="Dashboard">
       <div className="dashboard-container">
         <h1>Panel de Control</h1>
         <p>Has iniciado sesión correctamente</p>
