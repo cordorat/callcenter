@@ -12,19 +12,15 @@ export function AuthProvider({ children }) {
   // Login con JWT
   const login = async (email, password) => {
     try {
-      // Obtener tokens
-      const tokenRes = await apiClient.post(ENDPOINTS.LOGIN, { email, password });
-      const tokens = tokenRes.data;
+      // El endpoint /api/auth/login/ devuelve {user: {...}, tokens: {access, refresh}}
+      const response = await apiClient.post(ENDPOINTS.LOGIN, { email, password });
+      const { user: userData, tokens } = response.data;
 
-      // Obtener info del usuario autenticado
-      const userRes = await apiClient.get(ENDPOINTS.USER_ME, {
-        headers: { Authorization: `Bearer ${tokens.access}` },
-      });
+      // Combinar datos del usuario con los tokens
+      const fullUserData = { ...userData, ...tokens };
 
-      const userData = { ...userRes.data, ...tokens };
-
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
+      setUser(fullUserData);
+      localStorage.setItem("user", JSON.stringify(fullUserData));
     } catch (err) {
       console.error("Error al iniciar sesión:", err);
       throw err;
@@ -32,10 +28,24 @@ export function AuthProvider({ children }) {
   };
 
   // Logout
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    window.location.href = "/login";
+  const logout = async () => {
+    try {
+      // Intentar hacer logout en el backend (blacklist del refresh token)
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const { refresh } = JSON.parse(storedUser);
+        if (refresh) {
+          await apiClient.post(ENDPOINTS.LOGOUT, { refresh });
+        }
+      }
+    } catch (err) {
+      console.error("Error al cerrar sesión en el backend:", err);
+    } finally {
+      // Limpiar estado local siempre
+      setUser(null);
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
   };
 
   // Cargar sesión guardada

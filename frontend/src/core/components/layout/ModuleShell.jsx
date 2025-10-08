@@ -23,8 +23,11 @@ const collapsedWidth = 72;
 
 /**
  * Sidebar colapsable 
+ * @param {string} title - Título del AppBar
+ * @param {Array} items - Items del menú de navegación
+ * @param {React.ReactNode} children - Contenido opcional (alternativa a Outlet)
  */
-export default function ModuleShell({ title, items }) {
+export default function ModuleShell({ title, items, children }) {
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
 
@@ -140,7 +143,7 @@ export default function ModuleShell({ title, items }) {
           transition: "width 0.3s ease",
         }}
       >
-        <Outlet />
+        {children || <Outlet />}
       </Box>
     </Box>
   );

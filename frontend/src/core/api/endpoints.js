@@ -10,8 +10,9 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 export const ENDPOINTS = {
   // --- AUTH ---
-  LOGIN: `${BASE_URL}/token/`,            // POST: obtiene tokens JWT (access + refresh)
-  REFRESH: `${BASE_URL}/token/refresh/`,  // POST: renueva el access token cuando expira
+  LOGIN: `${BASE_URL}/auth/login/`,       // POST: obtiene tokens JWT (access + refresh) + datos de usuario
+  REFRESH: `${BASE_URL}/auth/refresh/`,   // POST: renueva el access token cuando expira
+  LOGOUT: `${BASE_URL}/auth/logout/`,     // POST: cierra sesión (blacklist del refresh token)
 
   // --- USERS ---
   USERS: `${BASE_URL}/users/`,            // CRUD de usuarios (opcional más adelante)
