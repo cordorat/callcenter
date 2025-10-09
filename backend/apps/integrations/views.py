@@ -1,3 +1,526 @@
-from django.shortcuts import render
+"""
+Views para integración con Twilio.
+Incluye endpoints para generar tokens de acceso, TwiML y webhooks.
+"""
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from twilio.jwt.access_token import AccessToken
+from twilio.jwt.access_token.grants import VoiceGrant
+from twilio.request_validator import RequestValidator
+from django.conf import settings
+from django.utils import timezone
+import logging
 
-# Create your views here.
+from apps.calls.models import Llamada, Cliente, Campana
+from apps.users.models import EstadoAgenteDetalle, EstadoAgenteActual, User
+from common.twilio_client import twilio_client
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Token de Acceso para Twilio Client (WebRTC)
+# ============================================================================
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_twilio_client_token(request):
+    """
+    Genera un token JWT para que el agente use Twilio Client (WebRTC) en el navegador.
+    
+    El token permite al agente:
+    - Recibir llamadas entrantes directamente en el navegador
+    - Realizar llamadas salientes desde el navegador
+    - No requiere teléfono físico
+    
+    Request Body: {} (vacío, usa el usuario autenticado)
+    
+    Response:
+    {
+        "token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+        "identity": "agent_123",
+        "expires_in": 3600
+    }
+    """
+    user = request.user
+    
+    # Verificar configuración de Twilio
+    if not twilio_client.is_configured():
+        return Response({
+            'error': 'Twilio no está configurado. Contacta al administrador.'
+        }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    
+    # Verificar que sea un agente
+    if not user.is_agent():
+        return Response({
+            'error': 'Solo los agentes pueden generar tokens de Twilio Client.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        # Identity única del agente
+        identity = f"agent_{user.id}"
+        
+        # Crear token de acceso
+        token = AccessToken(
+            twilio_client.account_sid, 
+            twilio_client.api_key, 
+            twilio_client.api_secret, 
+            identity=identity,
+            ttl=3600  # 1 hora
+        )
+        
+        # Agregar capacidad de voz (Voice Grant)
+        voice_grant = VoiceGrant(
+            outgoing_application_sid=twilio_client.twiml_app_sid,
+            incoming_allow=True  # Permitir llamadas entrantes
+        )
+        token.add_grant(voice_grant)
+        
+        logger.info(f"Token generado para agente {user.email} (identity: {identity})")
+        
+        return Response({
+            'token': token.to_jwt(),
+            'identity': identity,
+            'expires_in': 3600,
+            'account_sid': twilio_client.account_sid,
+            'twiml_app_sid': twilio_client.twiml_app_sid
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generando token para {user.email}: {str(e)}")
+        return Response({
+            'error': f'Error al generar token: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ============================================================================
+# Endpoints TwiML para Llamadas
+# ============================================================================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def twilio_voice_request(request):
+    """
+    Endpoint que maneja las llamadas salientes desde Twilio Client (navegador).
+    
+    Cuando el agente hace una llamada desde el navegador, Twilio hace POST a este
+    endpoint para obtener las instrucciones TwiML de cómo manejar la llamada.
+    
+    Parámetros POST enviados por Twilio Client:
+    - To: Número al que se llama (enviado desde el frontend)
+    - From: Identity del cliente (agent_123)
+    - agentId: ID del agente (parámetro custom del frontend)
+    - campaignId: ID de la campaña (parámetro custom del frontend)
+    - clientId: ID del cliente (opcional, parámetro custom del frontend)
+    """
+    try:
+        # Parámetros enviados por Twilio
+        call_sid = request.POST.get('CallSid')  # ID único de Twilio
+        to_number = request.POST.get('To')
+        from_identity = request.POST.get('From')  # agent_123
+        
+        # Parámetros custom enviados desde el frontend
+        agent_id = request.POST.get('agentId')
+        campaign_id = request.POST.get('campaignId')
+        client_id = request.POST.get('clientId')
+        
+        logger.info(f"Voice request: CallSid={call_sid}, From={from_identity}, To={to_number}, Agent={agent_id}, Campaign={campaign_id}")
+        
+        # Validar parámetros
+        if not to_number or not agent_id or not campaign_id:
+            logger.error("Parámetros incompletos en voice request")
+            return HttpResponse('<Response><Say language="es-MX">Error: Parámetros incompletos</Say></Response>', content_type='text/xml')
+        
+        # Obtener agente y campaña
+        try:
+            agent = User.objects.get(id=agent_id, role=User.Role.AGENT)
+        except User.DoesNotExist:
+            logger.error(f"Agente {agent_id} no encontrado")
+            return HttpResponse('<Response><Say language="es-MX">Error: Agente no encontrado</Say></Response>', content_type='text/xml')
+        
+        try:
+            campaign = Campana.objects.get(id=campaign_id, activa=True)
+        except Campana.DoesNotExist:
+            logger.error(f"Campaña {campaign_id} no encontrada")
+            return HttpResponse('<Response><Say language="es-MX">Error: Campaña no encontrada</Say></Response>', content_type='text/xml')
+        
+        # Obtener o crear cliente
+        try:
+            if client_id:
+                cliente = Cliente.objects.get(id=client_id)
+            else:
+                cliente, created = Cliente.objects.get_or_create(
+                    telefono=to_number,
+                    defaults={
+                        'nombre': 'Cliente',
+                        'apellido': 'Nuevo',
+                        'activo': True
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Error obteniendo/creando cliente: {str(e)}")
+            return HttpResponse('<Response><Say language="es-MX">Error al procesar cliente</Say></Response>', content_type='text/xml')
+        
+        # Crear registro de llamada en la BD
+        try:
+            llamada = Llamada.objects.create(
+                agente=agent,
+                cliente=cliente,
+                campana=campaign,
+                llamada_sid=call_sid,  # Guardar el CallSid de Twilio
+                twilio_call_sid=call_sid,  # También en el campo específico de Twilio
+                telefono_origen=twilio_client.phone_number,
+                telefono_destino=to_number,
+                tipo_llamada='SALIENTE',
+                estado_llamada='TIMBRADO',
+                hora_inicio_timbrado=timezone.now()
+            )
+            
+            # Cambiar estado del agente a EN_LLAMADA
+            EstadoAgenteDetalle.objects.create(
+                agente=agent,
+                estado='EN_LLAMADA',
+                comentarios=f'Llamada saliente a {to_number}'
+            )
+            EstadoAgenteActual.objects.filter(agente=agent).update(
+                estado='EN_LLAMADA',
+                acepta_llamadas=False
+            )
+            
+            logger.info(f"Llamada {llamada.id} creada exitosamente con CallSid={call_sid}")
+        except Exception as e:
+            logger.error(f"Error creando llamada: {str(e)}")
+            return HttpResponse('<Response><Say language="es-MX">Error al crear registro de llamada</Say></Response>', content_type='text/xml')
+        
+        # Generar TwiML para realizar la llamada
+        try:
+            # URL para recibir callback después del Dial
+            status_callback_url = request.build_absolute_uri('/api/webhooks/twilio/call-status/')
+            
+            twiml = twilio_client.generate_twiml_for_browser_call(
+                to_number=to_number,
+                caller_id=twilio_client.phone_number,
+                status_callback_url=status_callback_url
+            )
+            
+            logger.info(f"TwiML generado exitosamente para llamada {llamada.id}")
+            logger.debug(f"TwiML: {twiml}")
+            return HttpResponse(twiml, content_type='text/xml')
+        except Exception as e:
+            logger.error(f"Error generando TwiML: {str(e)}")
+            return HttpResponse('<Response><Say language="es-MX">Error al generar instrucciones de llamada</Say></Response>', content_type='text/xml')
+        
+    except Exception as e:
+        # Capturar CUALQUIER error no manejado y devolver TwiML válido
+        logger.error(f"Error crítico en voice request: {str(e)}", exc_info=True)
+        return HttpResponse('<Response><Say language="es-MX">Error al procesar la llamada</Say></Response>', content_type='text/xml')
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def twilio_incoming_call(request):
+    """
+    Endpoint para manejar llamadas ENTRANTES al número de Twilio.
+    
+    Cuando un cliente llama al número de Twilio, este endpoint:
+    1. Busca un agente disponible
+    2. Crea el registro de la llamada
+    3. Conecta la llamada al agente (usando WebRTC o teléfono físico)
+    
+    Parámetros POST enviados por Twilio:
+    - CallSid: ID único de la llamada
+    - From: Número del que llama
+    - To: Número al que llamó (tu número de Twilio)
+    - CallStatus: Estado de la llamada
+    """
+    try:
+        call_sid = request.POST.get('CallSid')
+        from_number = request.POST.get('From')
+        to_number = request.POST.get('To')
+        
+        logger.info(f"Llamada entrante: SID={call_sid}, From={from_number}, To={to_number}")
+        
+        # Buscar un agente disponible
+        try:
+            estado_disponible = EstadoAgenteActual.objects.filter(
+                estado='DISPONIBLE',
+                acepta_llamadas=True,
+                tiene_audio=True,
+                conexion_activa=True
+            ).select_related('agente').first()
+            
+            if not estado_disponible:
+                logger.warning("No hay agentes disponibles para llamada entrante")
+                # Buzón de voz
+                twiml = twilio_client.generate_twiml_voicemail(
+                    recording_url=request.build_absolute_uri('/api/webhooks/twilio/recording/')
+                )
+                return HttpResponse(twiml, content_type='text/xml')
+            
+            agente = estado_disponible.agente
+        except Exception as e:
+            logger.error(f"Error buscando agente disponible: {str(e)}")
+            return HttpResponse('<Response><Say language="es-MX">No hay agentes disponibles. Por favor intente más tarde</Say></Response>', content_type='text/xml')
+        
+        # Obtener o crear cliente
+        try:
+            cliente, created = Cliente.objects.get_or_create(
+                telefono=from_number,
+                defaults={
+                    'nombre': 'Cliente',
+                    'apellido': 'Entrante',
+                    'activo': True
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error creando cliente: {str(e)}")
+            return HttpResponse('<Response><Say language="es-MX">Error al procesar datos del cliente</Say></Response>', content_type='text/xml')
+        
+        # Buscar campaña activa (usar la primera disponible)
+        try:
+            campaign = Campana.objects.filter(activa=True).first()
+            if not campaign:
+                logger.error("No hay campañas activas")
+                return HttpResponse('<Response><Say language="es-MX">Error de configuración. Contacte al administrador</Say></Response>', content_type='text/xml')
+        except Exception as e:
+            logger.error(f"Error buscando campaña: {str(e)}")
+            return HttpResponse('<Response><Say language="es-MX">Error al procesar campaña</Say></Response>', content_type='text/xml')
+        
+        # Crear registro de llamada
+        try:
+            llamada = Llamada.objects.create(
+                agente=agente,
+                cliente=cliente,
+                campana=campaign,
+                llamada_sid=call_sid,
+                twilio_call_sid=call_sid,
+                telefono_origen=from_number,
+                telefono_destino=to_number,
+                tipo_llamada='ENTRANTE',
+                estado_llamada='TIMBRADO',
+                hora_inicio_timbrado=timezone.now()
+            )
+            
+            # Cambiar estado del agente a EN_LLAMADA
+            EstadoAgenteDetalle.objects.create(
+                agente=agente,
+                estado='EN_LLAMADA',
+                comentarios=f'Llamada entrante de {from_number}'
+            )
+            EstadoAgenteActual.objects.filter(agente=agente).update(
+                estado='EN_LLAMADA',
+                acepta_llamadas=False
+            )
+            
+            logger.info(f"Llamada entrante {llamada.id} creada exitosamente")
+        except Exception as e:
+            logger.error(f"Error creando registro de llamada: {str(e)}")
+            return HttpResponse('<Response><Say language="es-MX">Error al registrar la llamada</Say></Response>', content_type='text/xml')
+        
+        # Generar TwiML para conectar con el agente usando Twilio Client (WebRTC)
+        try:
+            client_identity = f"agent_{agente.id}"
+            twiml = twilio_client.generate_twiml_connect_client(
+                client_identity=client_identity,
+                caller_id=from_number
+            )
+            
+            logger.info(f"Llamada entrante {llamada.id} asignada a agente {agente.email}")
+            return HttpResponse(twiml, content_type='text/xml')
+        except Exception as e:
+            logger.error(f"Error generando TwiML: {str(e)}")
+            return HttpResponse('<Response><Say language="es-MX">Error al conectar la llamada</Say></Response>', content_type='text/xml')
+        
+    except Exception as e:
+        # Capturar CUALQUIER error no manejado y devolver TwiML válido
+        logger.error(f"Error crítico en llamada entrante: {str(e)}", exc_info=True)
+        return HttpResponse('<Response><Say language="es-MX">Error al procesar la llamada</Say></Response>', content_type='text/xml')
+
+
+# ============================================================================
+# Webhooks de Estado de Llamadas
+# ============================================================================
+
+def validate_twilio_request(f):
+    """
+    Decorador para validar que el request viene realmente de Twilio.
+    """
+    def decorated_function(request, *args, **kwargs):
+        # En desarrollo, skip validation
+        if settings.DEBUG:
+            return f(request, *args, **kwargs)
+        
+        validator = RequestValidator(settings.TWILIO_AUTH_TOKEN)
+        
+        # Obtener URL completa
+        url = request.build_absolute_uri()
+        
+        # Obtener firma de Twilio
+        signature = request.META.get('HTTP_X_TWILIO_SIGNATURE', '')
+        
+        # Validar
+        if not validator.validate(url, request.POST, signature):
+            logger.warning(f"Request no válido de Twilio desde {request.META.get('REMOTE_ADDR')}")
+            return HttpResponse('Forbidden', status=403)
+        
+        return f(request, *args, **kwargs)
+    return decorated_function
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+@validate_twilio_request
+def twilio_call_status_webhook(request, llamada_id=None):
+    """
+    Webhook para recibir actualizaciones de estado de llamadas desde Twilio.
+    
+    Twilio envía POST con:
+    - CallSid: ID de la llamada
+    - CallStatus: queued, ringing, in-progress, completed, busy, failed, no-answer
+    - CallDuration: Duración en segundos
+    - RecordingUrl: URL de la grabación (si hay)
+    - RecordingSid: SID de la grabación
+    
+    IMPORTANTE: Este endpoint NO debe devolver TwiML, solo HTTP 200.
+    Twilio no espera respuesta XML de los webhooks de estado.
+    """
+    try:
+        # Twilio puede enviar GET o POST dependiendo de la configuración
+        params = request.GET if request.method == 'GET' else request.POST
+        
+        call_sid = params.get('CallSid')
+        call_status = params.get('CallStatus')
+        call_duration = params.get('CallDuration', 0)
+        recording_url = params.get('RecordingUrl', '')
+        recording_sid = params.get('RecordingSid', '')
+        
+        logger.info(f"Webhook estado: SID={call_sid}, Status={call_status}, Duration={call_duration}")
+        
+        if not call_sid and not llamada_id:
+            logger.error("No se proporcionó CallSid ni llamada_id")
+            return HttpResponse(status=200)  # Siempre devolver 200, aunque haya error
+        
+        try:
+            # Buscar llamada por SID o ID
+            if llamada_id:
+                llamada = Llamada.objects.get(id=llamada_id)
+            else:
+                # Intentar buscar por llamada_sid o twilio_call_sid
+                try:
+                    llamada = Llamada.objects.get(llamada_sid=call_sid)
+                except Llamada.DoesNotExist:
+                    llamada = Llamada.objects.get(twilio_call_sid=call_sid)
+            
+            # Actualizar estado de Twilio
+            llamada.twilio_status = call_status
+            
+            # Mapear estados de Twilio a nuestros estados
+            if call_status == 'ringing':
+                llamada.estado_llamada = 'TIMBRADO'
+            elif call_status == 'in-progress':
+                if llamada.estado_llamada == 'TIMBRADO':
+                    llamada.estado_llamada = 'EN_CURSO'
+                    llamada.hora_inicio_llamada = timezone.now()
+            elif call_status == 'completed':
+                llamada.estado_llamada = 'COMPLETADA'
+                if not llamada.hora_fin_llamada:
+                    llamada.hora_fin_llamada = timezone.now()
+                if call_duration:
+                    llamada.duracion_llamada_segundos = int(call_duration)
+                
+                # Cambiar estado del agente a POSTCALL
+                try:
+                    EstadoAgenteDetalle.objects.create(
+                        agente=llamada.agente,
+                        estado='POSTCALL',
+                        comentarios=f'Llamada completada - Duración: {call_duration}s'
+                    )
+                    EstadoAgenteActual.objects.filter(agente=llamada.agente).update(
+                        estado='POSTCALL',
+                        acepta_llamadas=False
+                    )
+                except Exception as e:
+                    logger.error(f"Error actualizando estado del agente: {str(e)}")
+                    
+            elif call_status in ['busy', 'failed', 'no-answer', 'canceled']:
+                llamada.estado_llamada = 'NO_CONTESTADA'
+                llamada.hora_fin_llamada = timezone.now()
+                
+                # Volver agente a DISPONIBLE
+                try:
+                    EstadoAgenteActual.objects.filter(agente=llamada.agente).update(
+                        estado='DISPONIBLE',
+                        acepta_llamadas=True
+                    )
+                except Exception as e:
+                    logger.error(f"Error actualizando estado del agente: {str(e)}")
+            
+            # Guardar URL de grabación si existe
+            if recording_url:
+                llamada.twilio_recording_url = recording_url
+                llamada.grabacion_url = recording_url
+            if recording_sid:
+                llamada.twilio_recording_sid = recording_sid
+            
+            llamada.save()
+            
+            logger.info(f"Llamada {llamada.id} actualizada a estado {call_status} (Twilio: {llamada.twilio_status})")
+            
+        except Llamada.DoesNotExist:
+            logger.error(f"Llamada no encontrada: SID={call_sid}, ID={llamada_id}. Puede que la llamada no se haya creado correctamente en voice-request.")
+        except Exception as e:
+            logger.error(f"Error procesando webhook de estado: {str(e)}", exc_info=True)
+        
+        # SIEMPRE devolver 200, nunca devolver error a Twilio
+        return HttpResponse(status=200)
+        
+    except Exception as e:
+        # Capturar CUALQUIER error no manejado y devolver 200
+        logger.error(f"Error crítico en webhook de estado: {str(e)}", exc_info=True)
+        return HttpResponse(status=200)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def twilio_recording_webhook(request):
+    """
+    Webhook para recibir notificaciones de grabaciones.
+    
+    IMPORTANTE: Este endpoint NO debe devolver TwiML, solo HTTP 200.
+    """
+    try:
+        recording_sid = request.POST.get('RecordingSid')
+        recording_url = request.POST.get('RecordingUrl')
+        call_sid = request.POST.get('CallSid')
+        
+        logger.info(f"Grabación recibida: SID={recording_sid}, CallSID={call_sid}")
+        
+        if not call_sid:
+            logger.error("No se proporcionó CallSid en webhook de grabación")
+            return HttpResponse(status=200)
+        
+        try:
+            llamada = Llamada.objects.get(llamada_sid=call_sid)
+            llamada.twilio_recording_sid = recording_sid
+            llamada.twilio_recording_url = recording_url
+            llamada.grabacion_url = recording_url
+            llamada.save()
+            
+            logger.info(f"Grabación guardada para llamada {llamada.id}")
+        except Llamada.DoesNotExist:
+            logger.error(f"Llamada no encontrada para grabación: CallSID={call_sid}")
+        except Exception as e:
+            logger.error(f"Error guardando grabación: {str(e)}", exc_info=True)
+        
+        # SIEMPRE devolver 200
+        return HttpResponse(status=200)
+        
+    except Exception as e:
+        # Capturar CUALQUIER error no manejado y devolver 200
+        logger.error(f"Error crítico en webhook de grabación: {str(e)}", exc_info=True)
+        return HttpResponse(status=200)
