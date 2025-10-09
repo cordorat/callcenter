@@ -92,7 +92,7 @@ class CustomPasswordValidatorTest(TestCase):
                 errors = context.exception.error_list
                 error_codes = [e.code for e in errors]
                 self.assertIn('password_too_short', error_codes,
-                             f"'{password}' debería ser rechazada por ser muy corta")
+                            f"'{password}' debería ser rechazada por ser muy corta")
     
     def test_password_too_long(self):
         """Rechaza contraseñas mayores a 16 caracteres."""
@@ -110,7 +110,7 @@ class CustomPasswordValidatorTest(TestCase):
                 errors = context.exception.error_list
                 error_codes = [e.code for e in errors]
                 self.assertIn('password_too_long', error_codes,
-                             f"'{password}' debería ser rechazada por ser muy larga")
+                            f"'{password}' debería ser rechazada por ser muy larga")
     
     def test_password_no_number(self):
         """Rechaza contraseñas sin números."""
@@ -130,7 +130,7 @@ class CustomPasswordValidatorTest(TestCase):
                 errors = context.exception.error_list
                 error_codes = [e.code for e in errors]
                 self.assertIn('password_no_number', error_codes,
-                             f"'{password}' debería ser rechazada por no tener números")
+                            f"'{password}' debería ser rechazada por no tener números")
     
     def test_password_no_letter(self):
         """Rechaza contraseñas sin letras."""
@@ -149,7 +149,7 @@ class CustomPasswordValidatorTest(TestCase):
                 errors = context.exception.error_list
                 error_codes = [e.code for e in errors]
                 self.assertIn('password_no_letter', error_codes,
-                             f"'{password}' debería ser rechazada por no tener letras")
+                            f"'{password}' debería ser rechazada por no tener letras")
     
     def test_password_no_special_char(self):
         """Rechaza contraseñas sin caracteres especiales."""
@@ -169,7 +169,7 @@ class CustomPasswordValidatorTest(TestCase):
                 errors = context.exception.error_list
                 error_codes = [e.code for e in errors]
                 self.assertIn('password_no_special', error_codes,
-                             f"'{password}' debería ser rechazada por no tener caracteres especiales")
+                            f"'{password}' debería ser rechazada por no tener caracteres especiales")
     
     def test_password_multiple_errors(self):
         """Contraseña que viola múltiples reglas."""
