@@ -14,8 +14,8 @@ export default function SalesSection() {
   });
 
   const [venta, setVenta] = React.useState({
-    producto: "Plan Premium",
-    valor: "$250.000",
+    producto: "",
+    valor: "",
   });
 
   const handleChange = (e) => {
@@ -36,6 +36,7 @@ export default function SalesSection() {
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
+        alignItems: 'center',
     }}>
         <Box 
             border="1.5px solid #0C155A" 
@@ -89,9 +90,9 @@ export default function SalesSection() {
             display="flex"
             flexDirection="column"
             backgroundColor="#EBF5FE"
+            sx={{ alignItems: "center" }}
         >
 
-            {/* --- Sección Venta --- */}
             <Typography
                 variant="h5"
                 align="center"
