@@ -7,7 +7,6 @@ import {
   AppBar,
   Toolbar,
   Typography,
-  IconButton,
   List,
   ListItem,
   ListItemButton,
@@ -15,33 +14,27 @@ import {
   ListItemText,
   Divider,
   Tooltip,
+  CircularProgress,
 } from "@mui/material";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import UserMenuButton from "./UserMenuButton";
+import AgentStatus from "@/components/agentStatus/AgentStatus";
 
 const expandedWidth = 240;
 const collapsedWidth = 72;
 
-/**
- * Layout con AppBar y sidebar colapsable.
- */
 export default function ModuleShell({ title, items, children }) {
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, loading } = useAuth();
 
   const handleMouseEnter = () => setHovered(true);
   const handleMouseLeave = () => setHovered(false);
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        width: "100%",
-        height: "100vh",
-        overflow: "hidden",
-      }}
-    >
+    <Box sx={{ display: "flex", width: "100%", height: "100vh", overflow: "hidden" }}>
       {/* Header */}
       <AppBar
         position="fixed"
@@ -61,6 +54,9 @@ export default function ModuleShell({ title, items, children }) {
           >
             {title}
           </Typography>
+
+          {user?.role === "AGENT" && <AgentStatus userId={user.id} />}
+
           <UserMenuButton />
         </Toolbar>
       </AppBar>
@@ -108,12 +104,8 @@ export default function ModuleShell({ title, items, children }) {
                   key={item.id}
                   disablePadding
                   sx={{
-                    backgroundColor: isActive
-                      ? "rgba(33, 150, 243, 0.12)"
-                      : "transparent",
-                    borderLeft: isActive
-                      ? "4px solid #0C155A"
-                      : "4px solid transparent",
+                    backgroundColor: isActive ? "rgba(33, 150, 243, 0.12)" : "transparent",
+                    borderLeft: isActive ? "4px solid #0C155A" : "4px solid transparent",
                   }}
                 >
                   <Tooltip
@@ -174,9 +166,9 @@ export default function ModuleShell({ title, items, children }) {
           flexGrow: 1,
           display: "flex",
           flexDirection: "column",
-          minWidth: 0, // Permite que flex funcione correctamente
+          minWidth: 0,
           height: "100vh",
-          mt: 8, // espacio para AppBar
+          mt: 8,
           p: 3,
           overflow: "auto",
           transition: "all 0.3s ease",
