@@ -1,35 +1,29 @@
 from django.shortcuts import render
 
-# Create your views here.
 import csv
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Cliente, BaseDatosCargada
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.views.generic import TemplateView
-from .serializers import BaseDatosCargadaSerializer
+from rest_framework.decorators import api_view
+from .serializers import BaseDatosCargadaSerializer, ClienteSerializer
+from django.core.paginator import Paginator
+
 class CargarBaseDatosView(APIView):
-    """
-    Permite subir un archivo CSV y registrar los clientes en la tabla Cliente.
-    """
-    
+
     def post(self, request, *args, **kwargs):
         campana_id = request.data.get("campana_id")
         file = request.FILES.get("file")
+        if not file:
+            return Response({"error": "Debe subir un archivo CSV"}, status=status.HTTP_400_BAD_REQUEST)
         base_datos = BaseDatosCargada.objects.create(
             campana_id=campana_id,
             nombre_bd=file.name
         )
         base_datos_id = base_datos.id
-        if not file:
-            return Response({"error": "Debe subir un archivo CSV"}, status=status.HTTP_400_BAD_REQUEST)
-        print("📁 Archivo recibido:", file.name)
+
         decoded_file = file.read().decode('utf-8').splitlines()
         reader = csv.DictReader(decoded_file)
-        print("📋 Encabezados CSV:", reader.fieldnames)
 
         clientes_creados = 0
         for row in reader:
@@ -59,8 +53,16 @@ class CargarBaseDatosView(APIView):
 @api_view(['GET'])
 def listar_bases_datos(request):
     bases = BaseDatosCargada.objects.all()
-    serializer = BaseDatosCargadaSerializer(bases, many=True)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    paginator = Paginator(bases, 20)
+    page = request.query_params.get("page", 1)
+    page_obj = paginator.get_page(page)
+    serializer = BaseDatosCargadaSerializer(page_obj.object_list, many=True)
+    return Response({
+        "total_pages": paginator.num_pages,
+        "current_page": page_obj.number,
+        "page_size": paginator.per_page,
+        "results": serializer.data
+    }, status=status.HTTP_200_OK)
 @api_view(['GET'])
 def detalle_base_datos(request, pk):
     try:
@@ -70,5 +72,36 @@ def detalle_base_datos(request, pk):
 
     serializer = BaseDatosCargadaSerializer(base)
     return Response(serializer.data)
-class SubirBDTemplateView(TemplateView):
-    template_name = "campaigns/template.html"
+
+
+@api_view(['GET'])
+def cargar_bd_registros(request, pk):
+    """
+    GET /api/clientes/base/<pk>/?page=2
+    """
+    # Validar existencia de la base
+    if not BaseDatosCargada.objects.filter(pk=pk).exists():
+        return Response(
+            {"error": "La base de datos indicada no existe"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # Obtener el queryset de clientes
+    queryset = Cliente.objects.filter(base_datos_id=pk).order_by("cliente_id")
+
+    # Paginación manual (20 por página)
+    paginator = Paginator(queryset, 20)
+    page = request.query_params.get("page", 1)
+    page_obj = paginator.get_page(page)
+
+    # Serializar resultados
+    serializer = ClienteSerializer(page_obj.object_list, many=True)
+
+    return Response({
+        "count": paginator.count,
+        "total_pages": paginator.num_pages,
+        "current_page": page_obj.number,
+        "page_size": paginator.per_page,
+        "results": serializer.data
+    }, status=status.HTTP_200_OK)
+
