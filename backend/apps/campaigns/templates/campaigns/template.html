@@ -17,7 +17,7 @@
     const inputFile = document.getElementById("inputFile");
 
     // Token JWT que obtuviste al autenticarte
-    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5OTcyODUzLCJpYXQiOjE3NTk5NDQwNTMsImp0aSI6ImY0MDFhOWQyNDVhNTQ2MmI4ODhjZDZiYWE0YjBjZWM5IiwidXNlcl9pZCI6IjEifQ.mxqwsvNZZWOy5ehVTpeg7a8kxvVxAw-sNiMNE4lotpI"; // 👈 reemplázalo
+    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMDA4MjYzLCJpYXQiOjE3NTk5Nzk0NjMsImp0aSI6IjI3YWIyNGJkNzVmNTQ1Yzc4Nzc0ZGJmODMwYmJhZDdlIiwidXNlcl9pZCI6IjEifQ.0CxTn2yDr3NmAFmsc_9i0BCFeeetvm8PUwgNbHBgEmc"; // 👈 reemplázalo
 
     // Cuando haces clic en el botón → abre el selector de archivos
     btnSubir.addEventListener("click", () => {
@@ -31,8 +31,7 @@
 
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("campaña_id", 1);   // 🔹 Puedes cambiarlo dinámicamente
-      formData.append("base_datos_id", 1); // 🔹 O dejarlo configurable
+      formData.append("campana_id", 2);
 
       fetch("http://127.0.0.1:8000/api/campaigns/cargar-base-datos/", {
         method: "POST",

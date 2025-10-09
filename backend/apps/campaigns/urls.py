@@ -7,4 +7,6 @@ app_name = 'campaigns'
 urlpatterns = [
     path('cargar-base-datos/', CargarBaseDatosView.as_view(), name='cargar-base-datos'),
     path('subir-bd/', views.SubirBDTemplateView.as_view(), name='subir-bd'),
+    path('listar-bases-datos/', views.listar_bases_datos, name='listar-bases-datos'),
+    path('base-datos/<int:pk>/', views.detalle_base_datos, name='detalle-base-datos')
 ]
