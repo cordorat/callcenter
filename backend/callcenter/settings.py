@@ -26,7 +26,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-gpi4-g)d3aa$91a3i8g8+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,gwenn-infundibular-irreclaimably.ngrok-free.dev,.ngrok-free.dev', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,gwenn-infundibular-irreclaimably.ngrok-free.dev, avenaceous-bunglingly-dalila.ngrok-free.dev,.ngrok-free.dev', cast=Csv())
 
 
 # Application definition

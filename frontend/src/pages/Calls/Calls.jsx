@@ -1,11 +1,12 @@
 import * as React from 'react';
 import MainLayout from '@/core/components/layout/MainLayout';
 import { useAuth } from '@/core/context/AuthContext';
-import { Box, Typography, Button, TextField} from '@mui/material';
+import { Box, Typography, Button, TextField, Snackbar, Alert, CircularProgress} from '@mui/material';
 import {
-    Call as CallIcon, CallEnd as CallEndIcon, Backspace as BackspaceIcon, MicOff as MicOffIcon, KeyboardVoice as KeyboardVoiceIcon, BackHand as BackHandIcon, CloseFullscreen as CloseFullscreenIcon, OpenInFull as OpenInFullIcon,
+    Call as CallIcon, CallEnd as CallEndIcon, Backspace as BackspaceIcon, MicOff as MicOffIcon, KeyboardVoice as KeyboardVoiceIcon, BackHand as BackHandIcon, CloseFullscreen as CloseFullscreenIcon, OpenInFull as OpenInFullIcon, PhoneInTalk as PhoneInTalkIcon
 } from '@mui/icons-material';
 import SalesSection from '@/components/sales/SalesSection';
+import useTwilioCall from '@/hooks/useTwilioCall';
 
 const Calls = () => {
     const { user } = useAuth();
@@ -68,6 +69,10 @@ const Calls = () => {
     const handleEndCall = () => {
         hangup();
         // No limpiar el número para poder rellamar fácilmente
+    }
+
+    const handleHold = () => {
+        toggleHold();
     }
 
     const handleMute = () => {
@@ -262,10 +267,10 @@ const Calls = () => {
                                 </>
                             ) : (
                                 <>
-                                    <Button
+                                    {/*<Button
                                         variant={isMuted ? "contained" : "outlined"}
                                         color={isMuted ? "warning" : "primary"}
-                                        onClick={handleMute}
+                                        {/*onClick={handleHold}
                                         sx={{ 
                                             height: 60, 
                                             width: 60,
@@ -274,8 +279,8 @@ const Calls = () => {
                                             padding: 0,
                                         }}
                                     >
-                                        {isMuted ? <MicOffIcon sx={{ fontSize: 24 }} /> : <KeyboardVoiceIcon sx={{ fontSize: 24 }} />}
-                                    </Button>
+                                        {isOnHold ? <BackHandIcon sx={{ fontSize: 24 }} /> : <BackHandIcon sx={{ fontSize: 24 }} />}
+                                    </Button>*/}
                                     <Button
                                         variant="contained"
                                         color="error"
