@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
+from datetime import date
 
 
 class UserManager(BaseUserManager):
@@ -112,78 +113,6 @@ class User(AbstractUser):
 # Modelos para gestión de agentes y sus estados
 # =============================================================================
 
-class TiposParametros(models.Model):
-    """
-    Tabla de parámetros generales del sistema.
-    Almacena tipos parametrizables como estados de agente, estados de llamada, etc.
-    """
-    
-    class Categoria(models.TextChoices):
-        ESTADO_AGENTE = 'ESTADO_AGENTE', 'Estado de Agente'
-        ESTADO_LLAMADA = 'ESTADO_LLAMADA', 'Estado de Llamada'
-        TIPO_LLAMADA = 'TIPO_LLAMADA', 'Tipo de Llamada'
-        MOTIVO_RECHAZO = 'MOTIVO_RECHAZO', 'Motivo de Rechazo'
-    
-    categoria = models.CharField(
-        'Categoría',
-        max_length=50,
-        choices=Categoria.choices,
-        help_text='Categoría del parámetro'
-    )
-    codigo = models.CharField(
-        'Código',
-        max_length=50,
-        help_text='Código único del parámetro dentro de su categoría'
-    )
-    nombre = models.CharField(
-        'Nombre',
-        max_length=100,
-        help_text='Nombre descriptivo del parámetro'
-    )
-    descripcion = models.TextField(
-        'Descripción',
-        blank=True,
-        help_text='Descripción detallada del parámetro'
-    )
-    color = models.CharField(
-        'Color',
-        max_length=20,
-        blank=True,
-        help_text='Color asociado (ej: #00FF00 para verde)'
-    )
-    icono = models.CharField(
-        'Icono',
-        max_length=50,
-        blank=True,
-        help_text='Nombre del icono (ej: check, clock, phone)'
-    )
-    orden = models.IntegerField(
-        'Orden',
-        default=0,
-        help_text='Orden de visualización'
-    )
-    activo = models.BooleanField(
-        'Activo',
-        default=True
-    )
-    
-    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
-    updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
-    
-    class Meta:
-        verbose_name = 'Tipo de Parámetro'
-        verbose_name_plural = 'Tipos de Parámetros'
-        unique_together = ['categoria', 'codigo']
-        ordering = ['categoria', 'orden', 'nombre']
-        indexes = [
-            models.Index(fields=['categoria', 'codigo']),
-            models.Index(fields=['categoria', 'activo']),
-        ]
-    
-    def __str__(self):
-        return f"{self.get_categoria_display()} - {self.nombre}"
-
-
 class Equipo(models.Model):
     """
     Equipos de trabajo para organizar agentes.
@@ -264,189 +193,111 @@ class EquipoAgenteDetalle(models.Model):
     def __str__(self):
         return f"{self.agente.full_name} en {self.equipo.nombre}"
 
+class TiposParametros(models.Model):
+    """
+    Tabla normalizada para:
+    - Roles de usuario (nombre='ROL_USUARIO')
+    - Estados de agente (nombre='ESTADO_AGENTE')
+    - Estados de campaña (nombre='ESTADO_CAMPANA')
+    """
+    parametros_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=50)  # ROL_USUARIO, ESTADO_AGENTE, ESTADO_CAMPANA
+    valor = models.CharField(max_length=100)  # Disponible, Break, Admin, etc.
+    descripcion = models.TextField(blank=True)
+    
+    class Meta:
+        db_table = 'tipos_parametros'
+        verbose_name = 'Tipo de Parámetro'
+        verbose_name_plural = 'Tipos de Parámetros'
+        unique_together = [['nombre', 'valor']]
+    
+    def __str__(self):
+        return f"{self.nombre} - {self.valor}"
 
 class EstadoAgenteDetalle(models.Model):
     """
-    Historial de estados de los agentes.
-    Registra cada cambio de estado con timestamp y detalles.
+    Registro diario de estados por agente.
+    - Se crea 1 registro por cada combinación (agente + estado + fecha)
+    - Cada día se generan 9 registros por agente (uno por cada estado)
+    - El campo 'tiempo' almacena en formato HH:MM:SS
+    - El campo 'cambios' registra el historial: "HH:MM:SS - nombre_usuario, HH:MM:SS - nombre_usuario, ..."
+    
+    NOTA: Django crea automáticamente los campos INTEGER:
+    - agente_id (PK de esta tabla)
+    - agente_id (FK → Usuario) se crea automáticamente desde el campo 'agente'
+    - estado_id (FK → TiposParametros) se crea automáticamente desde el campo 'estado'
     """
-    
-    class EstadoAgente(models.TextChoices):
-        DISPONIBLE = 'DISPONIBLE', 'Disponible'
-        OCUPADO = 'OCUPADO', 'Ocupado'
-        DESCONECTADO = 'DESCONECTADO', 'Desconectado'
-        EN_PAUSA = 'EN_PAUSA', 'En Pausa'
-        EN_LLAMADA = 'EN_LLAMADA', 'En Llamada'
-        POSTCALL = 'POSTCALL', 'Post-Llamada'
-    
+    # Django creará automáticamente el campo 'id' como PK
     agente = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='historial_estados',
-        limit_choices_to={'role': User.Role.AGENT}
+        db_column='agente_id',  # Esto crea la columna agente_id en BD
+        related_name='estados_detalle'
     )
-    estado = models.CharField(
-        'Estado',
-        max_length=20,
-        choices=EstadoAgente.choices,
-        help_text='Estado actual del agente'
+    estado = models.ForeignKey(
+        TiposParametros, 
+        on_delete=models.PROTECT,
+        db_column='estado_id',  # Esto crea la columna estado_id en BD
+        limit_choices_to={'nombre': 'ESTADO_AGENTE'},
+        related_name='estados_agente_detalle'
     )
-    estado_parametro = models.ForeignKey(
-        TiposParametros,
-        on_delete=models.SET_NULL,
-        null=True,
+    tiempo = models.CharField(max_length=8, default='00:00:00', help_text="Tiempo total acumulado en el día (HH:MM:SS)")
+    fecha = models.DateField(default=date.today)
+    cambios = models.TextField(
         blank=True,
-        related_name='estados_agente',
-        limit_choices_to={'categoria': TiposParametros.Categoria.ESTADO_AGENTE}
+        default='',
+        help_text="Historial: 'HH:MM:SS - usuario, HH:MM:SS - usuario, ...'"
     )
-    fecha = models.DateField(
-        'Fecha',
-        default=timezone.now,
-        help_text='Fecha del cambio de estado'
-    )
-    hora_inicio = models.DateTimeField(
-        'Hora de Inicio',
-        default=timezone.now,
-        help_text='Momento exacto del cambio de estado'
-    )
-    hora_fin = models.DateTimeField(
-        'Hora de Fin',
-        null=True,
-        blank=True,
-        help_text='Momento en que finaliza este estado'
-    )
-    duracion_segundos = models.IntegerField(
-        'Duración (segundos)',
-        null=True,
-        blank=True,
-        help_text='Duración total en este estado'
-    )
-    comentarios = models.TextField(
-        'Comentarios',
-        blank=True,
-        help_text='Comentarios opcionales sobre el cambio de estado'
-    )
-    ip_address = models.GenericIPAddressField(
-        'Dirección IP',
-        null=True,
-        blank=True,
-        help_text='IP desde donde se realizó el cambio'
-    )
-    user_agent = models.CharField(
-        'User Agent',
-        max_length=255,
-        blank=True,
-        help_text='Navegador/dispositivo usado'
-    )
-    
-    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
     
     class Meta:
-        verbose_name = 'Estado de Agente'
-        verbose_name_plural = 'Historial de Estados de Agentes'
-        ordering = ['-hora_inicio']
+        db_table = 'estado_agente_detalle'
+        verbose_name = 'Estado Agente Detalle'
+        verbose_name_plural = 'Estados Agente Detalle'
+        unique_together = [['agente', 'estado', 'fecha']]
         indexes = [
-            models.Index(fields=['agente', '-hora_inicio']),
-            models.Index(fields=['agente', 'estado']),
-            models.Index(fields=['fecha', 'estado']),
+            models.Index(fields=['agente', 'fecha']),
+            models.Index(fields=['estado', 'fecha']),
         ]
     
     def __str__(self):
-        return f"{self.agente.full_name} - {self.get_estado_display()} ({self.hora_inicio})"
+        return f"{self.agente.full_name} - {self.estado.valor} - {self.fecha}"
     
-    def save(self, *args, **kwargs):
+    def agregar_cambio(self, usuario_nombre):
         """
-        Calcula la duración si hora_fin está presente.
+        Agrega un registro al historial de cambios.
+        Formato: "HH:MM:SS - nombre_usuario"
         """
-        if self.hora_fin and self.hora_inicio:
-            delta = self.hora_fin - self.hora_inicio
-            self.duracion_segundos = int(delta.total_seconds())
-        super().save(*args, **kwargs)
-    
-    @property
-    def duracion_formateada(self):
-        """Devuelve la duración en formato legible."""
-        if not self.duracion_segundos:
-            return "En curso"
+        nuevo_cambio = f"{self.tiempo} - {usuario_nombre}"
         
-        horas = self.duracion_segundos // 3600
-        minutos = (self.duracion_segundos % 3600) // 60
-        segundos = self.duracion_segundos % 60
-        
-        if horas > 0:
-            return f"{horas}h {minutos}m {segundos}s"
-        elif minutos > 0:
-            return f"{minutos}m {segundos}s"
+        if self.cambios:
+            self.cambios += f", {nuevo_cambio}"
         else:
-            return f"{segundos}s"
+            self.cambios = nuevo_cambio
     
-    @property
-    def esta_activo(self):
-        """Verifica si este estado aún está activo (sin hora_fin)."""
-        return self.hora_fin is None
+    def agregar_tiempo(self, segundos):
+        """Agrega segundos al tiempo total y lo convierte a HH:MM:SS"""
+        # Convertir tiempo actual a segundos
+        partes = self.tiempo.split(':')
+        horas_actuales = int(partes[0])
+        minutos_actuales = int(partes[1])
+        segundos_actuales = int(partes[2])
+        total_segundos = (horas_actuales * 3600) + (minutos_actuales * 60) + segundos_actuales
+        
+        # Agregar nuevos segundos
+        total_segundos += segundos
+        
+        # Convertir de vuelta a HH:MM:SS
+        horas = total_segundos // 3600
+        minutos = (total_segundos % 3600) // 60
+        segs = total_segundos % 60
+        self.tiempo = f"{horas:02d}:{minutos:02d}:{segs:02d}"
+    
+    @staticmethod
+    def formatear_tiempo(segundos):
+        """Convierte segundos a formato HH:MM:SS"""
+        horas = segundos // 3600
+        minutos = (segundos % 3600) // 60
+        segs = segundos % 60
+        return f"{horas:02d}:{minutos:02d}:{segs:02d}"
 
 
-class EstadoAgenteActual(models.Model):
-    """
-    Tabla de referencia rápida para el estado actual de cada agente.
-    Se actualiza automáticamente con signals.
-    """
-    agente = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name='estado_actual',
-        primary_key=True,
-        limit_choices_to={'role': User.Role.AGENT}
-    )
-    estado = models.CharField(
-        'Estado Actual',
-        max_length=20,
-        choices=EstadoAgenteDetalle.EstadoAgente.choices,
-        default=EstadoAgenteDetalle.EstadoAgente.DESCONECTADO
-    )
-    ultima_actualizacion = models.DateTimeField(
-        'Última Actualización',
-        auto_now=True
-    )
-    detalle = models.ForeignKey(
-        EstadoAgenteDetalle,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='+',
-        help_text='Referencia al registro detallado actual'
-    )
-    
-    # Campos de configuración
-    acepta_llamadas = models.BooleanField(
-        'Acepta Llamadas',
-        default=False,
-        help_text='Indica si el agente puede recibir llamadas'
-    )
-    tiene_audio = models.BooleanField(
-        'Tiene Audio',
-        default=False,
-        help_text='Audio/micrófono configurado correctamente'
-    )
-    conexion_activa = models.BooleanField(
-        'Conexión Activa',
-        default=False,
-        help_text='Tiene conexión a internet estable'
-    )
-    
-    class Meta:
-        verbose_name = 'Estado Actual de Agente'
-        verbose_name_plural = 'Estados Actuales de Agentes'
-    
-    def __str__(self):
-        return f"{self.agente.full_name} - {self.get_estado_display()}"
-    
-    @property
-    def puede_recibir_llamadas(self):
-        """Valida si el agente cumple todos los requisitos para recibir llamadas."""
-        return (
-            self.acepta_llamadas and
-            self.tiene_audio and
-            self.conexion_activa and
-            self.estado == EstadoAgenteDetalle.EstadoAgente.DISPONIBLE
-        )
