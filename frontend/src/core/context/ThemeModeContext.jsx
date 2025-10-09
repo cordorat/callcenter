@@ -14,14 +14,14 @@ export function ThemeModeProvider({ children }) {
         palette: {
           mode,
           primary: {
-            main: "#1E88E5", // azul corporativo
+            main: "#0C155A", // Color principal para botones, links, etc.
           },
           secondary: {
-            main: "#4FC3F7",
+            main: "#BDBCC2", // Color secundario
           },
           background: {
-            default: mode === "light" ? "#F9FAFB" : "#121212",
-            paper: mode === "light" ? "#FFFFFF" : "#1E1E1E",
+            default: mode === "light" ? "#D3E8FB" : "#121212", // Fondo general
+            paper: mode === "light" ? "#EBF5FE" : "#1E1E1E",   // Fondo de componentes (cards, drawer)
           },
         },
         typography: {

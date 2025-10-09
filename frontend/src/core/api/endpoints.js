@@ -17,4 +17,10 @@ export const ENDPOINTS = {
   // --- USERS ---
   USERS: `${BASE_URL}/users/`,            // CRUD de usuarios (opcional más adelante)
   USER_ME: `${BASE_URL}/users/me/`,       // GET info del usuario autenticado
+
+  // --- CALLS ---
+  CALLS: `${BASE_URL}/calls/`,                    
+  CALLS_DETAIL: (id) => `${BASE_URL}/calls/${id}/`, 
+  CALLS_ONCALL: `${BASE_URL}/calls/oncall/`,    
+  CALLS_HANGOUT: `${BASE_URL}/calls/hangout/`,   
 };
