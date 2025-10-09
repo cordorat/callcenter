@@ -5,8 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Sum, Q
-from datetime import date, timedelta
+from datetime import date
 
 from .models import User, TiposParametros, EstadoAgenteDetalle, EstadoActualAgente
 from .serializers import (
@@ -14,10 +13,7 @@ from .serializers import (
     UserCreateSerializer,
     UserUpdateSerializer,
     ChangePasswordSerializer,
-    TiposParametrosSerializer,
-    EstadoActualAgenteSerializer,
-    CambiarEstadoSerializer,
-    EstadoAgenteDetalleSerializer
+    CambiarEstadoSerializer
 )
 from .permissions import IsAdmin, IsAdminOrOwner
 
