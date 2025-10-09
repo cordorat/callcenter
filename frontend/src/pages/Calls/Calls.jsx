@@ -10,58 +10,115 @@ import SalesSection from '@/components/sales/SalesSection';
 const Calls = () => {
     const { user } = useAuth();
     const [phoneNumber, setPhoneNumber] = React.useState('');
-    const [isInCall, setIsInCall] = React.useState(false);
-    const [isMuted, setIsMuted] = React.useState(false);
-    const [isHold, setIsHold] = React.useState(false);
-    const [callDuration, setCallDuration] = React.useState(0);
-    const [timerId, setTimerId] = React.useState(null);
+    const [showIncomingAlert, setShowIncomingAlert] = React.useState(false);
+    
+    // Hook de Twilio con toda la lógica de llamadas
+    const {
+        isReady,
+        isInCall,
+        isRinging,
+        isMuted,
+        callDuration,
+        callStatus,
+        error,
+        incomingCall,
+        makeCall,
+        hangup,
+        toggleMute,
+        acceptIncomingCall,
+        rejectIncomingCall,
+        sendDigit,
+        formatDuration,
+    } = useTwilioCall();
+
+    // Mostrar alerta cuando hay llamada entrante
+    React.useEffect(() => {
+        if (incomingCall) {
+            setShowIncomingAlert(true);
+        } else {
+            setShowIncomingAlert(false);
+        }
+    }, [incomingCall]);
 
     const handleKeyPress = (num) => {
-        setPhoneNumber((prev) => prev + num);
+        if (isInCall) {
+            // Durante la llamada, envía dígitos DTMF
+            sendDigit(num);
+        } else {
+            // Antes de la llamada, agrega al número
+            setPhoneNumber((prev) => prev + num);
+        }
     }
 
     const handleBackspace = () => {
         setPhoneNumber((prev) => prev.slice(0, -1));
     }
 
-    const handleCall = () => {
-        setIsInCall(true);
-        setCallDuration(0);
-
-        // Inicia el contador (1 segundo)
-        const id = setInterval(() => {
-            setCallDuration((prev) => prev + 1);
-        }, 1000);
-
-        setTimerId(id);
-        // Aquí puedes agregar la lógica para iniciar la llamada
+    const handleCall = async () => {
+        if (!phoneNumber.trim()) {
+            return;
+        }
+        
+        const success = await makeCall(phoneNumber);
+        if (!success) {
+            console.error('No se pudo iniciar la llamada');
+        }
     }
 
     const handleEndCall = () => {
-        setIsInCall(false);
-        clearInterval(timerId);
-        setTimerId(null);
-        // Aquí puedes agregar la lógica para finalizar la llamada
+        hangup();
+        // No limpiar el número para poder rellamar fácilmente
     }
-
-    const formatDuration = (seconds) => {
-        const mins = Math.floor(seconds / 60).toString().padStart(2, "0");
-        const secs = (seconds % 60).toString().padStart(2, "0");
-        return `${mins}:${secs}`;
-    };
 
     const handleMute = () => {
-        setIsMuted((prev) => !prev);
-        // Aquí puedes agregar la lógica para silenciar el micrófono
+        toggleMute();
     }
 
-    const handleHold = () => {
-        setIsHold((prev) => !prev);
-        // Aquí puedes agregar la lógica para poner la llamada en espera
+    const handleAcceptIncoming = () => {
+        acceptIncomingCall();
+        setShowIncomingAlert(false);
+    }
+
+    const handleRejectIncoming = () => {
+        rejectIncomingCall();
+        setShowIncomingAlert(false);
     }
 
     return (
         <MainLayout title="Llamadas">
+            {/* Alerta de llamada entrante */}
+            <Snackbar
+                open={showIncomingAlert}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+                <Alert 
+                    severity="info" 
+                    sx={{ width: '400px' }}
+                    action={
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button 
+                                color="success" 
+                                size="small" 
+                                variant="contained"
+                                onClick={handleAcceptIncoming}
+                            >
+                                Aceptar
+                            </Button>
+                            <Button 
+                                color="error" 
+                                size="small" 
+                                variant="outlined"
+                                onClick={handleRejectIncoming}
+                            >
+                                Rechazar
+                            </Button>
+                        </Box>
+                    }
+                >
+                    📞 Llamada entrante de: {incomingCall?.parameters?.From || 'Desconocido'}
+                </Alert>
+            </Snackbar>
+
             <Box sx={{
                 display: 'flex',
                 gap: 2,
@@ -87,12 +144,38 @@ const Calls = () => {
                         backgroundColor="#ebf5feff"
                         height="100%"
                     >
+                        {/* Estado de conexión */}
+                        {!isReady && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                <CircularProgress size={20} />
+                                <Typography variant="body2" color="text.secondary">
+                                    Conectando con Twilio...
+                                </Typography>
+                            </Box>
+                        )}
+
+                        {error && (
+                            <Alert severity="error" sx={{ mb: 2, width: '100%' }}>
+                                {error}
+                            </Alert>
+                        )}
+
+                        {/* Estado de llamada */}
+                        {callStatus === 'ringing' && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                <PhoneInTalkIcon color="primary" />
+                                <Typography variant="body2" color="primary">
+                                    Llamando...
+                                </Typography>
+                            </Box>
+                        )}
 
                         <TextField
                             fullWidth
                             value={phoneNumber}
-                            disabled={isInCall}
+                            disabled={isInCall || !isReady}
                             variant="outlined"
+                            placeholder="+57 300 123 4567"
                             sx={{ mb: 2,
                                  textAlign: 'center',
                                 '& input': {
@@ -124,12 +207,19 @@ const Calls = () => {
                                     variant="outlined" 
                                     sx={{ height: 60, fontSize: '1.2rem', borderRadius: 8 }}
                                     onClick={() => handleKeyPress(num)}
-                                    disabled={isInCall}
+                                    disabled={!isReady}
                                 >
                                     {num}
                                 </Button>
                             ))}
                         </Box>
+
+                        {/* Información del teclado durante llamada */}
+                        {isInCall && (
+                            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, textAlign: 'center' }}>
+                                Presiona los números para enviar tonos DTMF
+                            </Typography>
+                        )}
 
                         {/* Botones de acción */}
                         <Box display="flex" gap={1} width="100%" justifyContent={'center'}> 
@@ -139,7 +229,7 @@ const Calls = () => {
                                         variant="contained"
                                         color="success"
                                         onClick={handleCall}
-                                        disabled={!phoneNumber.trim()}
+                                        disabled={!phoneNumber.trim() || !isReady || callStatus === 'connecting'}
                                         sx={{ 
                                             height: 60, 
                                             width: 60,
@@ -148,13 +238,17 @@ const Calls = () => {
                                             padding: 0,
                                         }}
                                     >
-                                        <CallIcon sx={{ fontSize: 30 }} />
+                                        {callStatus === 'connecting' ? (
+                                            <CircularProgress size={24} color="inherit" />
+                                        ) : (
+                                            <CallIcon sx={{ fontSize: 30 }} />
+                                        )}
                                     </Button>
                                     <Button
                                         variant="none"
                                         color="secondary"
                                         onClick={handleBackspace}
-                                        disabled={!phoneNumber.trim()}
+                                        disabled={!phoneNumber.trim() || !isReady}
                                         sx={{ 
                                             height: 60, 
                                             width: 60,
@@ -169,9 +263,9 @@ const Calls = () => {
                             ) : (
                                 <>
                                     <Button
-                                        variant={isHold ? "contained" : "outlined"}
-                                        color="primary"
-                                        onClick={handleHold}
+                                        variant={isMuted ? "contained" : "outlined"}
+                                        color={isMuted ? "warning" : "primary"}
+                                        onClick={handleMute}
                                         sx={{ 
                                             height: 60, 
                                             width: 60,
@@ -180,7 +274,7 @@ const Calls = () => {
                                             padding: 0,
                                         }}
                                     >
-                                        <BackHandIcon sx={{ fontSize: 24 }} />
+                                        {isMuted ? <MicOffIcon sx={{ fontSize: 24 }} /> : <KeyboardVoiceIcon sx={{ fontSize: 24 }} />}
                                     </Button>
                                     <Button
                                         variant="contained"
