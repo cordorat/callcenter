@@ -1,0 +1,16 @@
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  font-family: 'Arial', sans-serif;
+}
+
+.dashboard-container h1 {
+  color: #1a73e8;
+  margin-bottom: 1rem;
+}
+
+.dashboard-container p {
+  color: #666;
+  font-size: 1.2rem;
+}
