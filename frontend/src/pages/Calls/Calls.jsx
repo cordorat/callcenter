@@ -1,15 +1,11 @@
 import * as React from 'react';
 import MainLayout from '@/core/components/layout/MainLayout';
 import { useAuth } from '@/core/context/AuthContext';
-import { Box, Typography, Button, TextField } from '@mui/material';
-import CallIcon from '@mui/icons-material/Call';
-import CallEndIcon from '@mui/icons-material/CallEnd';
-import BackspaceIcon from '@mui/icons-material/Backspace';
-import MicOffIcon from '@mui/icons-material/MicOff';
-import KeyboardVoiceIcon from '@mui/icons-material/KeyboardVoice';
-import BackHandIcon from '@mui/icons-material/BackHand';
-import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
-import OpenInFullIcon from '@mui/icons-material/OpenInFull';
+import { Box, Typography, Button, TextField} from '@mui/material';
+import {
+    Call as CallIcon, CallEnd as CallEndIcon, Backspace as BackspaceIcon, MicOff as MicOffIcon, KeyboardVoice as KeyboardVoiceIcon, BackHand as BackHandIcon, CloseFullscreen as CloseFullscreenIcon, OpenInFull as OpenInFullIcon,
+} from '@mui/icons-material';
+import SalesSection from '@/components/sales/SalesSection';
 
 const Calls = () => {
     const { user } = useAuth();
@@ -201,7 +197,7 @@ const Calls = () => {
                                         <CallEndIcon sx={{ fontSize: 30 }} />
                                     </Button>
                                     <Button
-                                        variant="contained"
+                                        variant={isMuted ? "contained" : "outlined"}
                                         color="primary"
                                         onClick={handleMute}
                                         sx={{ 
@@ -226,37 +222,9 @@ const Calls = () => {
                     minWidth: 0, 
                     display: 'flex',
                     flexDirection: 'column',
+                    gap: 2,
                 }}>
-                    <Box 
-                            border="1.5px solid #0C155A" 
-                            borderRadius={4} 
-                            p={2} 
-                            width="100%"
-                            height="100%"
-                            display="flex"
-                            flexDirection="column"
-                            backgroundColor="#EBF5FE"
-                        >
-                            <Typography variant="h6" mb={2}>Información de la llamada</Typography>
-                            
-                            {isInCall ? (
-                                <Box>
-                                    <Typography variant="body1" color="success.main" fontWeight="bold">
-                                        En llamada con: {phoneNumber}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary" mt={1}>
-                                        Usuario: {user?.first_name} {user?.last_name}
-                                    </Typography>
-                                </Box>
-                            ) : (
-                                <Typography variant="body2" color="text.secondary">
-                                    {phoneNumber ? 
-                                        `Número marcado: ${phoneNumber}` : 
-                                        'Marque un número para iniciar la llamada'
-                                    }
-                                </Typography>
-                            )}
-                        </Box>
+                    <SalesSection user={user} />
                 </Box>
             </Box>
         </MainLayout>
