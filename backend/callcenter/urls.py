@@ -22,6 +22,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include('apps.authn.urls')),
     path("api/users/", include('apps.users.urls')),
+    path('api/campaigns/', include('apps.campaigns.urls')),
     path("api/calls/", include('apps.calls.urls')),
     path("api/integrations/", include('apps.integrations.urls')),
     path("api/webhooks/", include('webhooks.urls')),
