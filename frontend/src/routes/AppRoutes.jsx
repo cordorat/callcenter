@@ -4,6 +4,7 @@ import { useAuth } from '@/core/context/AuthContext';
 import Login from '../pages/Login/Login';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import Calls from '../pages/Calls/Calls';
+import Kpis from '../pages/Kpis/Kpis';          
 import PrivateRoute from './PrivateRoute';
 
 const AppRoutes = () => {
@@ -36,8 +37,17 @@ const AppRoutes = () => {
             </PrivateRoute>
           } 
         />
+
+        <Route
+          path="/kpis"
+          element={
+            <PrivateRoute>
+              <Kpis />
+            </PrivateRoute>
+          }
+        />
         
-        {/* Ruta por defecto: redirige a login o dashboard según autenticación */}
+        {/* Ruta por defecto */}
         <Route 
           path="*" 
           element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} 
