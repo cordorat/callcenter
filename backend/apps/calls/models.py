@@ -276,6 +276,32 @@ class Llamada(models.Model):
         blank=True
     )
     
+    # Campos específicos de Twilio
+    twilio_call_sid = models.CharField(
+        'Twilio Call SID',
+        max_length=100,
+        blank=True,
+        help_text='ID único de la llamada en Twilio'
+    )
+    twilio_status = models.CharField(
+        'Estado Twilio',
+        max_length=50,
+        blank=True,
+        help_text='Estado de la llamada en Twilio (ringing, in-progress, completed, etc.)'
+    )
+    twilio_recording_sid = models.CharField(
+        'Twilio Recording SID',
+        max_length=100,
+        blank=True,
+        help_text='ID de la grabación en Twilio'
+    )
+    twilio_recording_url = models.URLField(
+        'URL Grabación Twilio',
+        max_length=500,
+        blank=True,
+        help_text='URL de la grabación en los servidores de Twilio'
+    )
+    
     # Resultado y notas
     motivo_rechazo = models.CharField(
         'Motivo de Rechazo',

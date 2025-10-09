@@ -16,7 +16,7 @@ from apps.users.models import (
     User
 )
 from apps.users.permissions import IsAdmin, IsAdminOrOwner
-from users.states.serializers_estado import (
+from apps.users.states.serializers_estado import (
     EstadoAgenteDetalleSerializer,
     EstadoAgenteActualSerializer,
     CambioEstadoSerializer,
