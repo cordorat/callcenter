@@ -4,7 +4,7 @@
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5OTIzNjQ2LCJpYXQiOjE3NTk4OTQ4NDYsImp0aSI6IjY0ODBkMjcwMjAyZjRmYTg5MmQ3YzYyMDI4YjlhOTRjIiwidXNlcl9pZCI6MX0._t6PIqZOZB8DBaiFq3NCz75TxRmUybIVAHu0rosatIA
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMDg2OTc5LCJpYXQiOjE3NjAwNTgxNzksImp0aSI6IjgzYmI4OWZiODk2ZjRkYWI5YWI2ZmVlZDdhY2NmMDA5IiwidXNlcl9pZCI6IjEifQ.wykuWR_pNW8qp7XEO2tPm9zvu5CXD0iS2VYuVrPXuQs
 @agentToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5ODMxNzU3LCJpYXQiOjE3NTk4MDI5NTcsImp0aSI6ImFhMDM1MGI5ZDUyZjRiYmFiYWY1Y2U2NWM2YWFlMzgzIiwidXNlcl9pZCI6Mn0.w_MZKTWUTD6aHI0Tp-FxWWJ8Hf3JZLPB5gqFUqC4TYU
 
 ### ============================================
@@ -70,8 +70,8 @@ Authorization: Bearer {{adminToken}}
   "documento_id": "1234567890",
   "foto_perfil": "https://ejemplo.com/fotos/juan.jpg",
   "role": "AGENT",
-  "password": "agente123SecurePass!",
-  "password_confirm": "agente123SecurePass!",
+  "password": "agente123!",
+  "password_confirm": "agente123!",
   "is_active": true
 }
 
