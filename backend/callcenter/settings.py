@@ -192,3 +192,51 @@ if not DEBUG:
     ]
     if not all(required_twilio_settings):
         raise ValueError("Configuración de Twilio incompleta en producción. Verifica las variables de entorno.")
+
+# Configuración de Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module} - {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'simple': {
+            'format': '[{levelname}] {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        # Logger para webhooks de Twilio
+        'apps.integrations': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Logger para llamadas
+        'apps.calls': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Logger general de Django
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Logger raíz para capturar todo lo demás
+        '': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    },
+}

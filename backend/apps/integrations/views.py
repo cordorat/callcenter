@@ -422,10 +422,14 @@ def twilio_call_status_webhook(request, llamada_id=None):
             # Mapear estados de Twilio a nuestros estados
             if call_status == 'ringing':
                 llamada.estado_llamada = 'TIMBRADO'
+                logger.info(f"Llamada {llamada.id} cambió a TIMBRADO")
             elif call_status == 'in-progress':
-                if llamada.estado_llamada == 'TIMBRADO':
-                    llamada.estado_llamada = 'EN_CURSO'
+                logger.info(f"Llamada {llamada.id} en progreso. Estado actual: {llamada.estado_llamada}")
+                # Siempre establecer hora_inicio_llamada si no está establecida
+                if not llamada.hora_inicio_llamada:
                     llamada.hora_inicio_llamada = timezone.now()
+                    logger.info(f"Llamada {llamada.id} - hora_inicio_llamada establecida: {llamada.hora_inicio_llamada}")
+                llamada.estado_llamada = 'EN_CURSO'
             elif call_status == 'completed':
                 llamada.estado_llamada = 'COMPLETADA'
                 if not llamada.hora_fin_llamada:
@@ -470,6 +474,7 @@ def twilio_call_status_webhook(request, llamada_id=None):
             llamada.save()
             
             logger.info(f"Llamada {llamada.id} actualizada a estado {call_status} (Twilio: {llamada.twilio_status})")
+            logger.info(f"Llamada {llamada.id} - hora_inicio_llamada: {llamada.hora_inicio_llamada}, duracion_timbrado_segundos: {llamada.duracion_timbrado_segundos}")
             
         except Llamada.DoesNotExist:
             logger.error(f"Llamada no encontrada: SID={call_sid}, ID={llamada_id}. Puede que la llamada no se haya creado correctamente en voice-request.")

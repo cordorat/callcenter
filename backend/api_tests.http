@@ -4,8 +4,8 @@
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5OTIzNjQ2LCJpYXQiOjE3NTk4OTQ4NDYsImp0aSI6IjY0ODBkMjcwMjAyZjRmYTg5MmQ3YzYyMDI4YjlhOTRjIiwidXNlcl9pZCI6MX0._t6PIqZOZB8DBaiFq3NCz75TxRmUybIVAHu0rosatIA
-@agentToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU5ODMxNzU3LCJpYXQiOjE3NTk4MDI5NTcsImp0aSI6ImFhMDM1MGI5ZDUyZjRiYmFiYWY1Y2U2NWM2YWFlMzgzIiwidXNlcl9pZCI6Mn0.w_MZKTWUTD6aHI0Tp-FxWWJ8Hf3JZLPB5gqFUqC4TYU
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMDk0MDQwLCJpYXQiOjE3NjAwNjUyNDAsImp0aSI6IjcyMjZjY2JkNmVlOTQ3NWViZGQ5Y2VlMTE3YTE5ZTA4IiwidXNlcl9pZCI6MX0.P47D9lZYHBi48-y898spaT_H-Mh-1RilySTGQ2xuRjs
+@agentToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMDk0MTEwLCJpYXQiOjE3NjAwNjUzMTAsImp0aSI6ImYwOGU5YWEwNzJmZDRhODFhNTNlNGY4N2ZjY2VjNjM0IiwidXNlcl9pZCI6Mn0.9PdfqN60ALXpylUaxb3vVo3qjCe_gaycYHySIbxtyiI
 
 ### ============================================
 ### 1. AUTENTICACIÓN
@@ -27,8 +27,8 @@ POST {{baseUrl}}/auth/login/
 Content-Type: application/json
 
 {
-  "email": "agente@callcenter.com",
-  "password": "agente123"
+  "email": "agente1@callcenter.com",
+  "password": "agente123!"
 }
 
 ### 1.3 Refrescar Token
@@ -63,15 +63,15 @@ Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
 {
-  "email": "agente@callcenter.com",
+  "email": "agente1@callcenter.com",
   "first_name": "Juan",
-  "last_name": "Pérez",
+  "last_name": "Manizales",
   "phone": "+1234567890",
   "documento_id": "1234567890",
   "foto_perfil": "https://ejemplo.com/fotos/juan.jpg",
   "role": "AGENT",
-  "password": "agente123SecurePass!",
-  "password_confirm": "agente123SecurePass!",
+  "password": "agente123!",
+  "password_confirm": "agente123!",
   "is_active": true
 }
 
@@ -249,6 +249,263 @@ GET {{baseUrl}}/users/?page=2
 Authorization: Bearer {{adminToken}}
 
 ### ============================================
+### 7. SISTEMA DE ESTADOS DE AGENTE
+### ============================================
+
+### 7.1 Obtener estado actual del agente autenticado
+# @name getCurrentState
+GET {{baseUrl}}/users/estados/current/
+Authorization: Bearer {{agentToken}}
+
+### 7.2 Admin obtener estado de un agente específico
+GET {{baseUrl}}/users/estados/current/?agente_id=2
+Authorization: Bearer {{adminToken}}
+
+### 7.3 Cambiar estado del agente (a DISPONIBLE)
+# @name changeStateDisponible
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "DISPONIBLE",
+  "comentarios": "Iniciando jornada laboral"
+}
+
+### 7.4 Cambiar estado del agente (a BREAK)
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "BREAK",
+  "comentarios": "Descanso de 15 minutos"
+}
+
+### 7.5 Cambiar estado del agente (a EN_LLAMADA)
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "EN_LLAMADA"
+}
+
+### 7.6 Cambiar estado del agente (a POSTCALL)
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "POSTCALL",
+  "comentarios": "Registrando resultado de llamada"
+}
+
+### 7.7 Cambiar estado del agente (a ALMUERZO)
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "ALMUERZO",
+  "comentarios": "Hora de almuerzo"
+}
+
+### 7.8 Cambiar estado del agente (a CAPACITACION) - Requiere comentario
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "CAPACITACION",
+  "comentarios": "Capacitación de nuevos productos"
+}
+
+### 7.9 Cambiar estado del agente (a REUNION) - Requiere comentario
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "REUNION",
+  "comentarios": "Reunión de equipo semanal"
+}
+
+### 7.10 Cambiar estado del agente (a AUSENTE) - Requiere comentario
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "AUSENTE",
+  "comentarios": "Cita médica"
+}
+
+### 7.11 Cambiar estado del agente (a DESCONECTADO)
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "DESCONECTADO",
+  "comentarios": "Fin de jornada"
+}
+
+### 7.12 Admin cambiar estado de otro agente
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "agente_id": 2,
+  "nuevo_estado": "DISPONIBLE",
+  "comentarios": "Reactivado por supervisor"
+}
+
+### 7.13 Ver historial de estados del agente
+GET {{baseUrl}}/users/estados/historial/
+Authorization: Bearer {{agentToken}}
+
+### 7.14 Ver historial con filtros de fecha
+GET {{baseUrl}}/users/estados/historial/?fecha_inicio=2025-10-01&fecha_fin=2025-10-09
+Authorization: Bearer {{agentToken}}
+
+### 7.15 Ver historial filtrado por estado
+GET {{baseUrl}}/users/estados/historial/?estado=DISPONIBLE
+Authorization: Bearer {{agentToken}}
+
+### 7.16 Admin ver historial de un agente específico
+GET {{baseUrl}}/users/estados/historial/?agente_id=2
+Authorization: Bearer {{adminToken}}
+
+### 7.17 Admin listar todos los agentes disponibles
+# @name listDisponibles
+GET {{baseUrl}}/users/estados/disponibles/
+Authorization: Bearer {{adminToken}}
+
+### 7.18 Admin listar estados actuales de todos los agentes
+# @name listAllStates
+GET {{baseUrl}}/users/estados/todos/
+Authorization: Bearer {{adminToken}}
+
+### 7.19 Listar registros de estados con paginación
+GET {{baseUrl}}/users/estados/?page=1
+Authorization: Bearer {{adminToken}}
+
+### 7.20 Obtener un registro específico de estado
+GET {{baseUrl}}/users/estados/1/
+Authorization: Bearer {{adminToken}}
+
+### ============================================
+### 8. EQUIPOS DE TRABAJO
+### ============================================
+
+### 8.1 Crear equipo (solo admin)
+# @name createEquipo
+POST {{baseUrl}}/users/equipos/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "nombre": "Equipo Ventas",
+  "descripcion": "Equipo de ventas outbound",
+  "supervisor": 1
+}
+
+### 8.2 Listar equipos
+GET {{baseUrl}}/users/equipos/
+Authorization: Bearer {{adminToken}}
+
+### 8.3 Obtener equipo específico
+GET {{baseUrl}}/users/equipos/1/
+Authorization: Bearer {{adminToken}}
+
+### 8.4 Listar agentes de un equipo
+GET {{baseUrl}}/users/equipos/1/agentes/
+Authorization: Bearer {{adminToken}}
+
+### 8.5 Actualizar equipo
+PATCH {{baseUrl}}/users/equipos/1/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "descripcion": "Equipo de ventas actualizado"
+}
+
+### ============================================
+### 9. TIPOS DE PARÁMETROS
+### ============================================
+
+### 9.1 Listar tipos de parámetros
+GET {{baseUrl}}/users/parametros/
+Authorization: Bearer {{adminToken}}
+
+### 9.2 Filtrar parámetros por nombre
+GET {{baseUrl}}/users/parametros/?nombre=ESTADO_AGENTE
+Authorization: Bearer {{adminToken}}
+
+### 9.3 Crear parámetro (solo admin)
+POST {{baseUrl}}/users/parametros/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "nombre": "MOTIVO_PAUSA",
+  "valor": "BREAK_CAFE",
+  "descripcion": "Break para café"
+}
+
+### ============================================
+### 10. VALIDACIONES DE ESTADOS
+### ============================================
+
+### 10.1 Intentar cambiar a CAPACITACION sin comentario (DEBE FALLAR)
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "CAPACITACION"
+}
+
+### 10.2 Intentar cambiar a REUNION sin comentario (DEBE FALLAR)
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "REUNION"
+}
+
+### 10.3 Intentar cambiar a AUSENTE sin comentario (DEBE FALLAR)
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "AUSENTE"
+}
+
+### 10.4 Intentar cambiar a estado inválido (DEBE FALLAR)
+POST {{baseUrl}}/users/estados/change_state/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "nuevo_estado": "ESTADO_INVALIDO",
+  "comentarios": "Test"
+}
+
+### 10.5 Agente intentar ver disponibles (DEBE FALLAR - solo admin)
+GET {{baseUrl}}/users/estados/disponibles/
+Authorization: Bearer {{agentToken}}
+
+### 10.6 Agente intentar ver todos los estados (DEBE FALLAR - solo admin)
+GET {{baseUrl}}/users/estados/todos/
+Authorization: Bearer {{agentToken}}
+
+### ============================================
 ### NOTAS:
 ### ============================================
 # 1. Después de hacer login, copia el token "access" de la respuesta
@@ -256,3 +513,6 @@ Authorization: Bearer {{adminToken}}
 # 3. Reemplaza {{agentToken}} con el token del agente
 # 4. Los IDs de usuario pueden variar según el orden de creación
 # 5. El servidor debe estar corriendo en http://localhost:8000
+# 6. El sistema crea automáticamente EstadoAgenteActual cuando se crea un agente
+# 7. Estados que requieren comentario: CAPACITACION, REUNION, AUSENTE
+# 8. Solo DISPONIBLE acepta llamadas automáticamente
