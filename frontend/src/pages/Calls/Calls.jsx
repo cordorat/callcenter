@@ -182,13 +182,13 @@ const Calls = () => {
                             variant="outlined"
                             placeholder="+57 300 123 4567"
                             sx={{ mb: 2,
-                                 textAlign: 'center',
+                                textAlign: 'center',
                                 '& input': {
                                 textAlign: 'center',
                                 fontSize: '0.875rem',
                                 fontWeight: 600,
                                 },
-                             }}
+                            }}
                             InputProps={{
                                 readOnly: true,
                             }}

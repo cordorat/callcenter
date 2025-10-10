@@ -12,6 +12,13 @@ export const ENDPOINTS = {
   USERS: `${BASE_URL}/users/`,
   USER_ME: `${BASE_URL}/users/me/`,
 
+  // --- AGENT STATES ---
+  AGENT_STATES_CURRENT: `${BASE_URL}/users/estados/current/`,
+  AGENT_STATES_CHANGE: `${BASE_URL}/users/estados/change_state/`,
+  AGENT_STATES_HISTORY: `${BASE_URL}/users/estados/historial/`,
+  AGENT_STATES_AVAILABLE: `${BASE_URL}/users/estados/disponibles/`,
+  AGENT_STATES_ALL: `${BASE_URL}/users/estados/todos/`,
+
   // --- CALLS ---
   CALLS: `${BASE_URL}/calls/`,
   CALLS_DETAIL: (id) => `${BASE_URL}/calls/${id}/`,

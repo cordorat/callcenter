@@ -1,10 +1,12 @@
 /**
  * Hook personalizado para manejar llamadas con Twilio
  * Encapsula toda la lógica de estado y eventos de llamadas
+ * Cambia automáticamente el estado del agente a EN_LLAMADA cuando se conecta
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import twilioClient from '@/services/twilioClient';
 import { useAuth } from '@/core/context/AuthContext';
+import { changeState } from '@/core/api/agentStates';
 
 const useTwilioCall = () => {
   const { user } = useAuth();
@@ -53,24 +55,40 @@ const useTwilioCall = () => {
           setIsRinging(true);
         });
 
-        twilioClient.onConnect((call) => {
+        twilioClient.onConnect(async (call) => {
           console.log('[useTwilioCall] Llamada conectada');
           setIsInCall(true);
           setIsRinging(false);
           setCallStatus('in-call');
           setIncomingCall(null);
           
+          // Cambiar automáticamente el estado del agente a EN_LLAMADA
+          try {
+            console.log('[useTwilioCall] Cambiando estado del agente a EN_LLAMADA');
+            await changeState('EN_LLAMADA', 'Llamada conectada automáticamente');
+          } catch (err) {
+            console.error('[useTwilioCall] Error al cambiar estado del agente:', err);
+          }
+          
           // Iniciar contador de duración
           startCallTimer();
         });
 
-        twilioClient.onDisconnect(() => {
+        twilioClient.onDisconnect(async () => {
           console.log('[useTwilioCall] Llamada desconectada');
           setIsInCall(false);
           setIsRinging(false);
           setCallStatus('idle');
           setIsMuted(false);
           setIncomingCall(null);
+          
+          // Cambiar automáticamente el estado del agente a POSTCALL (After Call)
+          try {
+            console.log('[useTwilioCall] Cambiando estado del agente a POSTCALL');
+            await changeState('POSTCALL', 'Llamada finalizada, en proceso after call');
+          } catch (err) {
+            console.error('[useTwilioCall] Error al cambiar estado del agente:', err);
+          }
           
           // Detener contador de duración
           stopCallTimer();
