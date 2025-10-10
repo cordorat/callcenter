@@ -7,9 +7,14 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
 // Estados disponibles para el agente con sus colores
 const AGENT_STATUSES = [
-  { value: 'AVAILABLE', label: 'Disponible', color: '#4caf50' },
-  { value: 'BUSY', label: 'Ocupado', color: '#ff9800' },
-  { value: 'OFFLINE', label: 'Desconectado', color: '#9e9e9e' },
+  { value: 'AVAILABLE', label: 'Disponible', color: '#4CAF50' },
+  { value: 'CALL', label: 'En llamada', color: '#198FFC' },
+  { value: 'BUSY', label: 'No disponible', color: '#C30C0C' },
+  { value: 'AFTERCALL', label: 'After Call', color: '#FCC419' },
+  { value: 'BATHROOM', label: 'Baño', color: '#895208' },
+  { value: 'LUNCH', label: 'Almuerzo', color: '#8B4513' },
+  { value: 'BREAK', label: 'Break', color: '#753a11ff' },
+  { value: 'OFFLINE', label: 'Desconectado', color: '#636363' },
 ];
 
 // Función para obtener el color según el estado
