@@ -22,7 +22,7 @@ const getStatusColor = (statusValue) => {
   return AGENT_STATUSES.find(s => s.value === statusValue)?.color || '#9e9e9e';
 };
 
-export default function AgentStatus({ userId }) {
+export default function AgentStatus({ userId, onStatusChange }) {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -32,20 +32,34 @@ export default function AgentStatus({ userId }) {
       try {
         const res = await fetch(`/api/agent/${userId}/status`);
         const data = await res.json();
-        setStatus(data.status || AGENT_STATUSES[0].value);
+        const initialStatus = data.status || AGENT_STATUSES[0].value;
+        setStatus(initialStatus);
+        // Notificar al padre del estado inicial
+        if (onStatusChange) {
+          onStatusChange(initialStatus);
+        }
       } catch (err) {
         console.error('Error al obtener el estado del agente', err);
-        setStatus(AGENT_STATUSES[0].value);
+        const defaultStatus = AGENT_STATUSES[0].value;
+        setStatus(defaultStatus);
+        if (onStatusChange) {
+          onStatusChange(defaultStatus);
+        }
       } finally {
         setLoading(false);
       }
     }
     fetchStatus();
-  }, [userId]);
+  }, [userId, onStatusChange]);
 
   const handleChange = async (event) => {
     const newStatus = event.target.value;
     setStatus(newStatus);
+
+    // Notificar al padre que el estado cambió
+    if (onStatusChange) {
+      onStatusChange(newStatus);
+    }
 
     // Enviar al backend
     try {

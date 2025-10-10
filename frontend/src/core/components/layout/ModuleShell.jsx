@@ -20,12 +20,14 @@ import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import UserMenuButton from "./UserMenuButton";
 import AgentStatus from "@/components/agentStatus/AgentStatus";
+import AgentMinutes from "@/components/agentStatus/AgentMinutes";
 
 const expandedWidth = 240;
 const collapsedWidth = 72;
 
 export default function ModuleShell({ title, items, children }) {
   const [hovered, setHovered] = useState(false);
+  const [agentStatus, setAgentStatus] = useState(''); // Estado actual del agente
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading } = useAuth();
@@ -54,14 +56,13 @@ export default function ModuleShell({ title, items, children }) {
           >
             {title}
           </Typography>
-
-          {user?.role === "AGENT" && <AgentStatus userId={user.id} />}
+          
+          {user?.role === "AGENT" && <AgentMinutes userId={user.id} currentStatus={agentStatus} />}
+          {user?.role === "AGENT" && <AgentStatus userId={user.id} onStatusChange={setAgentStatus} />}
 
           <UserMenuButton />
         </Toolbar>
-      </AppBar>
-
-      {/* Sidebar */}
+      </AppBar>      {/* Sidebar */}
       <Drawer
         variant="permanent"
         onMouseEnter={handleMouseEnter}
