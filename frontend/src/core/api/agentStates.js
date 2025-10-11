@@ -42,7 +42,7 @@ export const AGENT_STATUSES = [
     { value: 'AVAILABLE', label: 'Disponible', color: '#4CAF50', backendValue: 'DISPONIBLE' },
     { value: 'CALL', label: 'En llamada', color: '#198FFC', backendValue: 'EN_LLAMADA' },
     { value: 'AFTERCALL', label: 'After Call', color: '#FCC419', backendValue: 'POSTCALL' },
-    { value: 'BREAK', label: 'Break', color: '#753a11ff', backendValue: 'BREAK' },
+    { value: 'BREAK', label: 'Break', color: '#753a11ff', backendValue: 'BREAK' }, 
     { value: 'BATHROOM', label: 'Baño', color: '#895208', backendValue: 'BREAK' },
     { value: 'LUNCH', label: 'Almuerzo', color: '#8B4513', backendValue: 'ALMUERZO' },
     { value: 'BUSY', label: 'No disponible', color: '#C30C0C', backendValue: 'AUSENTE' },

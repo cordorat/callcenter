@@ -8,6 +8,9 @@ import twilioClient from '@/services/twilioClient';
 import { useAuth } from '@/core/context/AuthContext';
 import { changeState } from '@/core/api/agentStates';
 
+// Variable global para notificar cambios de estado
+let stateChangeListeners = [];
+
 const useTwilioCall = () => {
   const { user } = useAuth();
   const [isReady, setIsReady] = useState(false);
@@ -66,6 +69,9 @@ const useTwilioCall = () => {
           try {
             console.log('[useTwilioCall] Cambiando estado del agente a EN_LLAMADA');
             await changeState('EN_LLAMADA', 'Llamada conectada automáticamente');
+            
+            // Notificar a los listeners que hubo un cambio de estado
+            stateChangeListeners.forEach(listener => listener());
           } catch (err) {
             console.error('[useTwilioCall] Error al cambiar estado del agente:', err);
           }
@@ -86,6 +92,9 @@ const useTwilioCall = () => {
           try {
             console.log('[useTwilioCall] Cambiando estado del agente a POSTCALL');
             await changeState('POSTCALL', 'Llamada finalizada, en proceso after call');
+            
+            // Notificar a los listeners que hubo un cambio de estado
+            stateChangeListeners.forEach(listener => listener());
           } catch (err) {
             console.error('[useTwilioCall] Error al cambiar estado del agente:', err);
           }
@@ -238,6 +247,16 @@ const useTwilioCall = () => {
     return `${mins}:${secs}`;
   }, []);
 
+  /**
+   * Suscribe un listener para recibir notificaciones de cambios de estado
+   */
+  const subscribeToStateChanges = useCallback((listener) => {
+    stateChangeListeners.push(listener);
+    return () => {
+      stateChangeListeners = stateChangeListeners.filter(l => l !== listener);
+    };
+  }, []);
+
   return {
     // Estado
     isReady,
@@ -256,6 +275,7 @@ const useTwilioCall = () => {
     acceptIncomingCall,
     rejectIncomingCall,
     sendDigit,
+    subscribeToStateChanges,
     
     // Utilidades
     formatDuration,
@@ -263,3 +283,11 @@ const useTwilioCall = () => {
 };
 
 export default useTwilioCall;
+
+// Exportar también la función para suscribirse desde fuera del hook
+export const subscribeToAgentStateChanges = (listener) => {
+  stateChangeListeners.push(listener);
+  return () => {
+    stateChangeListeners = stateChangeListeners.filter(l => l !== listener);
+  };
+};

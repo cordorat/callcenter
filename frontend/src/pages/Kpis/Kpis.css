@@ -190,11 +190,55 @@
   text-align: center;
   color:#132051;
   font-weight: 800;
+  pointer-events: none; /* ⬅️ Permite que el cursor pase a través del texto */
+  z-index: 1; /* ⬅️ Mantiene el texto visible pero debajo del tooltip */
+  animation: fadeInScale 0.8s ease-out;
 }
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.donut-center div {
+  font-size: 32px;
+  line-height: 1.2;
+  background: linear-gradient(135deg, #132051 0%, #2f76e6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 4px;
+}
+
 .donut-center small { 
   display:block;
   font-weight:600;
   color:#4a5a82;
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+/* Asegurar que el tooltip de recharts aparezca por encima */
+.recharts-tooltip-wrapper {
+  z-index: 1000 !important; /* ⬅️ Tooltip siempre encima */
+}
+
+/* Estilos mejorados para el gráfico de donut */
+.recharts-pie-sector {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.recharts-pie-sector:hover {
+  opacity: 0.9;
+  filter: brightness(1.1) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+  transform-origin: center;
 }
 
 
@@ -207,7 +251,34 @@
 }
 
 .kpi-bars .recharts-bar-rectangle:hover path {
-  filter: brightness(1.08);
+  filter: brightness(1.15);
+  transition: filter 0.2s ease;
+}
+
+/* Estilos mejorados para la gráfica de barras */
+.recharts-bar-rectangle {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.recharts-bar-rectangle:hover {
+  filter: drop-shadow(0 4px 8px rgba(47, 118, 230, 0.3));
+}
+
+/* Estilo para los ejes */
+.recharts-cartesian-axis-line {
+  stroke: #cad4dd;
+  stroke-width: 1.5;
+}
+
+.recharts-cartesian-axis-tick-line {
+  stroke: #cad4dd;
+}
+
+/* Grid lines sutiles */
+.recharts-cartesian-grid-horizontal line {
+  stroke: #e9f0ff;
+  stroke-dasharray: 3 3;
 }
 
 .kpi-page {
