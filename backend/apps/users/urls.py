@@ -6,10 +6,10 @@ from .states.views_estado import TiposParametrosViewSet, EquipoViewSet, EstadoAg
 app_name = 'users'
 
 router = DefaultRouter()
-router.register(r'', views.UserViewSet, basename='user')
+router.register(r'', views.UserViewSet, basename='user')  # Registrar en la raíz
 router.register(r'parametros', TiposParametrosViewSet, basename='parametros')
 router.register(r'equipos', EquipoViewSet, basename='equipos')
-router.register(r'estado', EstadoAgenteViewSet, basename='estado')
+router.register(r'estados', EstadoAgenteViewSet, basename='estado')
 
 urlpatterns = [
     path('', include(router.urls)),

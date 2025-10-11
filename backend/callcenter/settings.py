@@ -26,7 +26,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-gpi4-g)d3aa$91a3i8g8+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,gwenn-infundibular-irreclaimably.ngrok-free.dev,.ngrok-free.dev', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,gwenn-infundibular-irreclaimably.ngrok-free.dev, avenaceous-bunglingly-dalila.ngrok-free.dev,.ngrok-free.dev', cast=Csv())
 
 
 # Application definition
@@ -192,3 +192,51 @@ if not DEBUG:
     ]
     if not all(required_twilio_settings):
         raise ValueError("Configuración de Twilio incompleta en producción. Verifica las variables de entorno.")
+
+# Configuración de Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module} - {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'simple': {
+            'format': '[{levelname}] {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        # Logger para webhooks de Twilio
+        'apps.integrations': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Logger para llamadas
+        'apps.calls': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Logger general de Django
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Logger raíz para capturar todo lo demás
+        '': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    },
+}

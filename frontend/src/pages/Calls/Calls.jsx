@@ -1,13 +1,11 @@
 import * as React from 'react';
 import MainLayout from '@/core/components/layout/MainLayout';
 import { useAuth } from '@/core/context/AuthContext';
-import { Box, Typography, Button, TextField, Alert, CircularProgress, Snackbar } from '@mui/material';
-import CallIcon from '@mui/icons-material/Call';
-import CallEndIcon from '@mui/icons-material/CallEnd';
-import BackspaceIcon from '@mui/icons-material/Backspace';
-import MicOffIcon from '@mui/icons-material/MicOff';
-import KeyboardVoiceIcon from '@mui/icons-material/KeyboardVoice';
-import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
+import { Box, Typography, Button, TextField, Snackbar, Alert, CircularProgress} from '@mui/material';
+import {
+    Call as CallIcon, CallEnd as CallEndIcon, Backspace as BackspaceIcon, MicOff as MicOffIcon, KeyboardVoice as KeyboardVoiceIcon, BackHand as BackHandIcon, CloseFullscreen as CloseFullscreenIcon, OpenInFull as OpenInFullIcon, PhoneInTalk as PhoneInTalkIcon
+} from '@mui/icons-material';
+import SalesSection from '@/components/sales/SalesSection';
 import useTwilioCall from '@/hooks/useTwilioCall';
 
 const Calls = () => {
@@ -71,6 +69,10 @@ const Calls = () => {
     const handleEndCall = () => {
         hangup();
         // No limpiar el número para poder rellamar fácilmente
+    }
+
+    const handleHold = () => {
+        toggleHold();
     }
 
     const handleMute = () => {
@@ -180,13 +182,13 @@ const Calls = () => {
                             variant="outlined"
                             placeholder="+57 300 123 4567"
                             sx={{ mb: 2,
-                                 textAlign: 'center',
+                                textAlign: 'center',
                                 '& input': {
                                 textAlign: 'center',
                                 fontSize: '0.875rem',
                                 fontWeight: 600,
                                 },
-                             }}
+                            }}
                             InputProps={{
                                 readOnly: true,
                             }}
@@ -265,10 +267,10 @@ const Calls = () => {
                                 </>
                             ) : (
                                 <>
-                                    <Button
+                                    {/*<Button
                                         variant={isMuted ? "contained" : "outlined"}
                                         color={isMuted ? "warning" : "primary"}
-                                        onClick={handleMute}
+                                        {/*onClick={handleHold}
                                         sx={{ 
                                             height: 60, 
                                             width: 60,
@@ -277,8 +279,8 @@ const Calls = () => {
                                             padding: 0,
                                         }}
                                     >
-                                        {isMuted ? <MicOffIcon sx={{ fontSize: 24 }} /> : <KeyboardVoiceIcon sx={{ fontSize: 24 }} />}
-                                    </Button>
+                                        {isOnHold ? <BackHandIcon sx={{ fontSize: 24 }} /> : <BackHandIcon sx={{ fontSize: 24 }} />}
+                                    </Button>*/}
                                     <Button
                                         variant="contained"
                                         color="error"
@@ -293,6 +295,20 @@ const Calls = () => {
                                     >
                                         <CallEndIcon sx={{ fontSize: 30 }} />
                                     </Button>
+                                    <Button
+                                        variant={isMuted ? "contained" : "outlined"}
+                                        color="primary"
+                                        onClick={handleMute}
+                                        sx={{ 
+                                            height: 60, 
+                                            width: 60,
+                                            minWidth: 60,
+                                            borderRadius: '50%',
+                                            padding: 0,
+                                        }}
+                                    >
+                                        {isMuted ? <MicOffIcon sx={{ fontSize: 24 }} /> : <KeyboardVoiceIcon sx={{ fontSize: 24 }} />}
+                                    </Button>  
                                 </> 
                             )}
                         </Box>
@@ -305,91 +321,9 @@ const Calls = () => {
                     minWidth: 0, 
                     display: 'flex',
                     flexDirection: 'column',
+                    gap: 2,
                 }}>
-                    <Box 
-                            border="1.5px solid #0C155A" 
-                            borderRadius={4} 
-                            p={2} 
-                            width="100%"
-                            height="100%"
-                            display="flex"
-                            flexDirection="column"
-                            backgroundColor="#EBF5FE"
-                        >
-                            <Typography variant="h6" mb={2}>Información de la llamada</Typography>
-                            
-                            {/* Estado de Twilio */}
-                            <Box sx={{ mb: 2 }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    <strong>Estado de Twilio:</strong> {
-                                        isReady ? '🟢 Conectado' : '🔴 Desconectado'
-                                    }
-                                </Typography>
-                                {isReady && (
-                                    <Typography variant="body2" color="text.secondary">
-                                        <strong>Agente:</strong> {user?.first_name} {user?.last_name}
-                                    </Typography>
-                                )}
-                            </Box>
-
-                            {/* Información de la llamada activa */}
-                            {isInCall ? (
-                                <Box>
-                                    <Typography variant="body1" color="success.main" fontWeight="bold" mb={1}>
-                                        ✅ En llamada con: {phoneNumber}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        <strong>Duración:</strong> {formatDuration(callDuration)}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        <strong>Estado:</strong> {isMuted ? '🔇 Silenciado' : '🔊 Activo'}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-                                        Usa el teclado numérico para enviar tonos DTMF durante la llamada.
-                                    </Typography>
-                                </Box>
-                            ) : isRinging ? (
-                                <Box>
-                                    <Typography variant="body1" color="primary" fontWeight="bold" mb={1}>
-                                        📞 Llamando a: {phoneNumber}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        Esperando respuesta...
-                                    </Typography>
-                                </Box>
-                            ) : (
-                                <Box>
-                                    <Typography variant="body2" color="text.secondary" mb={2}>
-                                        {phoneNumber ? 
-                                            `Número marcado: ${phoneNumber}` : 
-                                            'Marque un número para iniciar la llamada'
-                                        }
-                                    </Typography>
-                                    
-                                    <Box sx={{ mt: 3, p: 2, backgroundColor: 'background.paper', borderRadius: 2 }}>
-                                        <Typography variant="subtitle2" fontWeight="bold" mb={1}>
-                                            💡 Instrucciones:
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary" component="div">
-                                            <ul style={{ margin: 0, paddingLeft: 20 }}>
-                                                <li>Ingresa el número usando el teclado</li>
-                                                <li>Formato: +57 300 123 4567 (con código de país)</li>
-                                                <li>O simplemente: 3001234567 (se agregará +57 automáticamente)</li>
-                                                <li>Presiona el botón verde para llamar</li>
-                                            </ul>
-                                        </Typography>
-                                    </Box>
-
-                                    {error && (
-                                        <Box sx={{ mt: 2 }}>
-                                            <Typography variant="body2" color="error">
-                                                ⚠️ {error}
-                                            </Typography>
-                                        </Box>
-                                    )}
-                                </Box>
-                            )}
-                        </Box>
+                    <SalesSection user={user} />
                 </Box>
             </Box>
         </MainLayout>

@@ -127,3 +127,126 @@ class KPIViewSet(viewsets.ViewSet):
             "fecha_hasta": fecha_hasta,
             "llamadas_por_hora_detalle": llamadas_por_hora_ls
         })
+
+    @action(detail=False, methods=['get'], url_path='overview')
+    def overview(self, request):
+        """
+        Endpoint compatible con el frontend.
+        Devuelve KPIs del agente autenticado en estructura anidada.
+        
+        Query params:
+            from: Fecha inicio (YYYY-MM-DD)
+            to: Fecha fin (YYYY-MM-DD)
+        
+        Response:
+            {
+                "now": "2025-10-10T15:30:00Z",
+                "values": { ... },
+                "meta": { ... },
+                "series": { ... }
+            }
+        """
+        # Obtener agente del token JWT (seguridad)
+        agente = request.user
+        
+        # Parsear fechas desde query params
+        fecha_desde_str = request.query_params.get('from')
+        fecha_hasta_str = request.query_params.get('to')
+        
+        if not fecha_desde_str or not fecha_hasta_str:
+            return Response(
+                {"detail": "Los parámetros 'from' y 'to' son requeridos (formato YYYY-MM-DD)"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        fecha_desde = parse_date(fecha_desde_str)
+        fecha_hasta = parse_date(fecha_hasta_str)
+        
+        if not fecha_desde or not fecha_hasta:
+            return Response(
+                {"detail": "Fechas inválidas. Usa formato YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validar que fecha_desde <= fecha_hasta
+        if fecha_desde > fecha_hasta:
+            return Response(
+                {"detail": "La fecha 'from' no puede ser posterior a 'to'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Convertir fechas a datetime con timezone
+        tz = timezone.get_current_timezone()
+        inicio_dia = datetime.combine(fecha_desde, time.min).replace(tzinfo=tz)
+        fin_dia = datetime.combine(fecha_hasta, time.max).replace(tzinfo=tz)
+        
+        # Filtrar llamadas del agente en el rango
+        llamadas = Llamada.objects.filter(
+            agente=agente,
+            hora_inicio_timbrado__range=(inicio_dia, fin_dia)
+        )
+        
+        total_llamadas = llamadas.count()
+        
+        # Ventas realizadas (excluir NO_VENTA)
+        ventas = llamadas.exclude(estado_venta='NO_VENTA').count()
+        
+        # Cumplimiento como decimal 0-1
+        cumplimiento_decimal = (ventas / total_llamadas) if total_llamadas > 0 else 0
+        
+        # Llamadas por hora (promedio)
+        dias = (fecha_hasta - fecha_desde).days + 1
+        horas_totales = dias * 8  # Asumiendo 8 horas laborales por día
+        llamadas_por_hora_promedio = round(total_llamadas / horas_totales, 2) if horas_totales > 0 else 0
+        
+        # Desglose de llamadas por hora (para gráfica)
+        llamadas_por_hora_qs = (
+            llamadas.annotate(
+                hora=Extract('hora_inicio_timbrado', 'hour')
+            )
+            .values('hora')
+            .annotate(total=Count('id'))
+            .order_by('hora')
+        )
+        
+        # Crear diccionario con todas las horas (9-18)
+        horas_dict = {i: 0 for i in range(9, 19)}
+        for item in llamadas_por_hora_qs:
+            horas_dict[item['hora']] = item['total']
+        
+        # Convertir a lista con key "valor" (como espera el frontend)
+        series_llamadas_por_hora = [
+            {"hora": f"{hora:02d}:00", "valor": total}
+            for hora, total in sorted(horas_dict.items())
+        ]
+        
+        # Duración promedio de llamada
+        duracion_promedio = llamadas.filter(
+            duracion_llamada_segundos__isnull=False
+        ).aggregate(promedio=Avg('duracion_llamada_segundos'))['promedio'] or 0
+        
+        # Metas fijas (TODO: Implementar modelo Meta en el futuro)
+        # Estas metas son valores de ejemplo que se pueden ajustar
+        metas = {
+            "llamadas_atendidas": 50,
+            "ventas_realizadas": 15,
+            "tiempo_promedio_llamada": 180,  # 3 minutos en segundos
+            "llamadas_por_hora": 6,
+            "cumplimiento": 1  # 100% como decimal
+        }
+        
+        # Respuesta en formato que espera el frontend
+        return Response({
+            "now": timezone.now().isoformat(),
+            "values": {
+                "llamadas_atendidas": total_llamadas,
+                "ventas_realizadas": ventas,
+                "tiempo_promedio_llamada": round(duracion_promedio, 2),
+                "llamadas_por_hora": llamadas_por_hora_promedio,
+                "cumplimiento": round(cumplimiento_decimal, 4)  # Decimal 0-1
+            },
+            "meta": metas,
+            "series": {
+                "llamadas_por_hora": series_llamadas_por_hora
+            }
+        })

@@ -1,10 +1,15 @@
 /**
  * Hook personalizado para manejar llamadas con Twilio
  * Encapsula toda la lógica de estado y eventos de llamadas
+ * Cambia automáticamente el estado del agente a EN_LLAMADA cuando se conecta
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import twilioClient from '@/services/twilioClient';
 import { useAuth } from '@/core/context/AuthContext';
+import { changeState } from '@/core/api/agentStates';
+
+// Variable global para notificar cambios de estado
+let stateChangeListeners = [];
 
 const useTwilioCall = () => {
   const { user } = useAuth();
@@ -53,24 +58,46 @@ const useTwilioCall = () => {
           setIsRinging(true);
         });
 
-        twilioClient.onConnect((call) => {
+        twilioClient.onConnect(async (call) => {
           console.log('[useTwilioCall] Llamada conectada');
           setIsInCall(true);
           setIsRinging(false);
           setCallStatus('in-call');
           setIncomingCall(null);
           
+          // Cambiar automáticamente el estado del agente a EN_LLAMADA
+          try {
+            console.log('[useTwilioCall] Cambiando estado del agente a EN_LLAMADA');
+            await changeState('EN_LLAMADA', 'Llamada conectada automáticamente');
+            
+            // Notificar a los listeners que hubo un cambio de estado
+            stateChangeListeners.forEach(listener => listener());
+          } catch (err) {
+            console.error('[useTwilioCall] Error al cambiar estado del agente:', err);
+          }
+          
           // Iniciar contador de duración
           startCallTimer();
         });
 
-        twilioClient.onDisconnect(() => {
+        twilioClient.onDisconnect(async () => {
           console.log('[useTwilioCall] Llamada desconectada');
           setIsInCall(false);
           setIsRinging(false);
           setCallStatus('idle');
           setIsMuted(false);
           setIncomingCall(null);
+          
+          // Cambiar automáticamente el estado del agente a POSTCALL (After Call)
+          try {
+            console.log('[useTwilioCall] Cambiando estado del agente a POSTCALL');
+            await changeState('POSTCALL', 'Llamada finalizada, en proceso after call');
+            
+            // Notificar a los listeners que hubo un cambio de estado
+            stateChangeListeners.forEach(listener => listener());
+          } catch (err) {
+            console.error('[useTwilioCall] Error al cambiar estado del agente:', err);
+          }
           
           // Detener contador de duración
           stopCallTimer();
@@ -220,6 +247,16 @@ const useTwilioCall = () => {
     return `${mins}:${secs}`;
   }, []);
 
+  /**
+   * Suscribe un listener para recibir notificaciones de cambios de estado
+   */
+  const subscribeToStateChanges = useCallback((listener) => {
+    stateChangeListeners.push(listener);
+    return () => {
+      stateChangeListeners = stateChangeListeners.filter(l => l !== listener);
+    };
+  }, []);
+
   return {
     // Estado
     isReady,
@@ -238,6 +275,7 @@ const useTwilioCall = () => {
     acceptIncomingCall,
     rejectIncomingCall,
     sendDigit,
+    subscribeToStateChanges,
     
     // Utilidades
     formatDuration,
@@ -245,3 +283,11 @@ const useTwilioCall = () => {
 };
 
 export default useTwilioCall;
+
+// Exportar también la función para suscribirse desde fuera del hook
+export const subscribeToAgentStateChanges = (listener) => {
+  stateChangeListeners.push(listener);
+  return () => {
+    stateChangeListeners = stateChangeListeners.filter(l => l !== listener);
+  };
+};

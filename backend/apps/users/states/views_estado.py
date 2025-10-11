@@ -18,7 +18,6 @@ from apps.users.models import (
 from apps.users.permissions import IsAdmin, IsAdminOrOwner
 from apps.users.states.serializers_estado import (
     EstadoAgenteDetalleSerializer,
-    EstadoAgenteActualSerializer,
     CambioEstadoSerializer,
     TiposParametrosSerializer,
     EquipoSerializer,
@@ -49,11 +48,11 @@ class TiposParametrosViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
     
     def get_queryset(self):
-        """Filtrar por categoría si se proporciona."""
-        queryset = TiposParametros.objects.filter(activo=True)
-        categoria = self.request.query_params.get('categoria')
-        if categoria:
-            queryset = queryset.filter(categoria=categoria)
+        """Filtrar por nombre si se proporciona."""
+        queryset = TiposParametros.objects.all()
+        nombre = self.request.query_params.get('nombre')
+        if nombre:
+            queryset = queryset.filter(nombre=nombre)
         return queryset
 
 
@@ -96,145 +95,213 @@ class EquipoViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class EstadoAgenteViewSet(viewsets.ViewSet):
+class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet para gestión de estados de agentes.
     
-    current: Obtener estado actual del agente autenticado
-    historial: Obtener historial de estados del agente autenticado
-    change_state: Cambiar el estado del agente (con validaciones)
-    disponibles: Listar agentes disponibles para recibir llamadas
+    list: Listar historial de estados (paginado)
+    retrieve: Obtener un registro específico
+    current: Obtener estado actual de un agente
+    historial: Obtener historial de estados por fecha
+    change_state: Cambiar estado de un agente
+    disponibles: Listar agentes disponibles para llamadas
+    todos: Listar estados actuales de todos los agentes
     """
+    queryset = EstadoAgenteDetalle.objects.all()
+    serializer_class = EstadoAgenteDetalleSerializer
     permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """
+        Filtrar según el rol del usuario.
+        Admin ve todos los registros, agente solo los suyos.
+        """
+        user = self.request.user
+        queryset = EstadoAgenteDetalle.objects.select_related('agente')
+        
+        if user.is_admin():
+            return queryset
+        else:
+            # Agente solo ve su propio historial
+            return queryset.filter(agente=user)
     
     @action(detail=False, methods=['get'])
     def current(self, request):
-        """Obtiene el estado actual del agente autenticado."""
-        user = request.user
+        """
+        Obtiene el estado actual del agente autenticado.
+        Admin puede consultar por agente_id query param.
         
-        # Si es admin, puede consultar el estado de cualquier agente
-        if user.is_admin():
-            agente_id = request.query_params.get('agente_id')
-            if agente_id:
-                user = get_object_or_404(User, id=agente_id, role=User.Role.AGENT)
+        Query params:
+            - agente_id: ID del agente (solo admin)
+        """
+        agente_id = request.query_params.get('agente_id')
         
-        try:
-            estado_actual = EstadoAgenteActual.objects.select_related(
-                'agente', 'detalle'
-            ).get(agente=user)
-            serializer = EstadoAgenteActualSerializer(estado_actual)
-            return Response(serializer.data)
-        except EstadoAgenteActual.DoesNotExist:
-            return Response(
-                {'detail': 'No se encontró el estado del agente.'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        # Determinar qué agente consultar
+        if agente_id and request.user.is_admin():
+            agente = get_object_or_404(User, id=agente_id, role=User.Role.AGENT)
+        else:
+            agente = request.user
+        
+        # Obtener o crear estado actual
+        from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
+        estado_actual, created = EstadoAgenteActual.objects.get_or_create(
+            agente=agente,
+            defaults={
+                'estado': EstadoAgenteActual.EstadoAgente.DESCONECTADO,
+                'acepta_llamadas': False,
+                'conexion_activa': False,
+                'tiene_audio': False
+            }
+        )
+        
+        serializer = EstadoAgenteActualSerializer(estado_actual)
+        return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def historial(self, request):
-        """Obtiene el historial de estados del agente autenticado."""
-        user = request.user
+        """
+        Obtiene el historial de estados del agente.
         
-        # Si es admin, puede consultar el historial de cualquier agente
-        if user.is_admin():
-            agente_id = request.query_params.get('agente_id')
-            if agente_id:
-                user = get_object_or_404(User, id=agente_id, role=User.Role.AGENT)
+        Query params:
+            - agente_id: ID del agente (solo admin)
+            - fecha_inicio: Fecha inicio (YYYY-MM-DD)
+            - fecha_fin: Fecha fin (YYYY-MM-DD)
+            - estado: Filtrar por estado específico
+        """
+        agente_id = request.query_params.get('agente_id')
+        fecha_inicio = request.query_params.get('fecha_inicio')
+        fecha_fin = request.query_params.get('fecha_fin')
+        estado = request.query_params.get('estado')
         
-        estados = EstadoAgenteDetalle.objects.filter(
-            agente=user
-        ).select_related('agente', 'estado_parametro').order_by('-hora_inicio')[:50]
+        # Determinar qué agente consultar
+        if agente_id and request.user.is_admin():
+            queryset = EstadoAgenteDetalle.objects.filter(
+                agente_id=agente_id
+            )
+        else:
+            queryset = EstadoAgenteDetalle.objects.filter(
+                agente=request.user
+            )
         
-        serializer = EstadoAgenteDetalleSerializer(estados, many=True)
+        # Aplicar filtros
+        if fecha_inicio:
+            from datetime import datetime
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            queryset = queryset.filter(fecha__gte=fecha_inicio_dt)
+        
+        if fecha_fin:
+            from datetime import datetime
+            fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            queryset = queryset.filter(fecha__lte=fecha_fin_dt)
+        
+        if estado:
+            queryset = queryset.filter(estado=estado)
+        
+        # Ordenar
+        queryset = queryset.select_related('agente').order_by('-fecha', '-hora_inicio')
+        
+        # Paginar
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['post'])
     def change_state(self, request):
         """
-        Cambia el estado del agente con validaciones.
+        Cambia el estado del agente autenticado.
+        Admin puede cambiar estado de cualquier agente.
         
         Body:
-        {
-            "estado": "DISPONIBLE",
-            "comentarios": "Listo para recibir llamadas",
-            "tiene_audio": true,
-            "conexion_activa": true
-        }
+            - nuevo_estado: Estado al que cambiar
+            - comentarios: Motivo del cambio (opcional)
+            - agente_id: ID del agente (solo admin, opcional)
         """
-        serializer = CambioEstadoSerializer(
-            data=request.data,
-            context={'request': request}
+        # Determinar qué agente modificar
+        agente_id = request.data.get('agente_id')
+        if agente_id and request.user.is_admin():
+            agente = get_object_or_404(User, id=agente_id, role=User.Role.AGENT)
+        else:
+            agente = request.user
+        
+        # Validar datos
+        serializer = CambioEstadoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Obtener o crear estado actual
+        estado_actual, created = EstadoAgenteActual.objects.get_or_create(
+            agente=agente,
+            defaults={
+                'estado': EstadoAgenteActual.EstadoAgente.DESCONECTADO,
+                'acepta_llamadas': False,
+                'conexion_activa': False,
+                'tiene_audio': False
+            }
         )
         
-        if serializer.is_valid():
-            detalle = serializer.save()
-            response_serializer = EstadoAgenteDetalleSerializer(detalle)
-            return Response(
-                response_serializer.data,
-                status=status.HTTP_201_CREATED
-            )
+        # Actualizar IP y user agent si se proporcionan
+        if serializer.validated_data.get('ip_address'):
+            estado_actual.ip_address = serializer.validated_data['ip_address']
+        if serializer.validated_data.get('user_agent'):
+            estado_actual.user_agent = serializer.validated_data['user_agent']
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Cambiar estado
+        nuevo_registro = estado_actual.cambiar_estado(
+            nuevo_estado=serializer.validated_data['nuevo_estado'],
+            comentarios=serializer.validated_data.get('comentarios', ''),
+            usuario=request.user
+        )
+        
+        # Retornar el nuevo estado
+        from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
+        response_serializer = EstadoAgenteActualSerializer(estado_actual)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['get'])
     def disponibles(self, request):
         """
         Lista todos los agentes disponibles para recibir llamadas.
-        Solo accesible para admins.
+        Solo admin.
         """
         if not request.user.is_admin():
             return Response(
-                {'detail': 'No tiene permisos para ver esta información.'},
+                {'detail': 'No tienes permisos para esta acción'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        estados = EstadoAgenteActual.objects.filter(
-            estado=EstadoAgenteDetalle.EstadoAgente.DISPONIBLE,
+        # Buscar agentes disponibles
+        estados_disponibles = EstadoAgenteActual.objects.filter(
+            estado=EstadoAgenteActual.EstadoAgente.DISPONIBLE,
             acepta_llamadas=True,
-            tiene_audio=True,
-            conexion_activa=True
+            conexion_activa=True,
+            tiene_audio=True
         ).select_related('agente')
         
-        data = []
-        for estado in estados:
-            data.append({
-                'agente_id': estado.agente.id,
-                'agente_nombre': estado.agente.full_name,
-                'agente_email': estado.agente.email,
-                'estado': estado.estado,
-                'estado_display': estado.get_estado_display(),
-                'puede_recibir_llamadas': estado.puede_recibir_llamadas,
-                'ultima_actualizacion': estado.ultima_actualizacion
-            })
-        
-        serializer = EstadoAgenteSimpleSerializer(data, many=True)
+        # Preparar respuesta simple
+        from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
+        serializer = EstadoAgenteActualSerializer(estados_disponibles, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def todos(self, request):
         """
-        Lista el estado actual de todos los agentes.
-        Solo accesible para admins.
+        Lista los estados actuales de todos los agentes.
+        Solo admin.
         """
         if not request.user.is_admin():
             return Response(
-                {'detail': 'No tiene permisos para ver esta información.'},
+                {'detail': 'No tienes permisos para esta acción'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        estados = EstadoAgenteActual.objects.select_related('agente').all()
+        # Obtener todos los estados actuales
+        estados = EstadoAgenteActual.objects.all().select_related('agente')
         
-        data = []
-        for estado in estados:
-            data.append({
-                'agente_id': estado.agente.id,
-                'agente_nombre': estado.agente.full_name,
-                'agente_email': estado.agente.email,
-                'estado': estado.estado,
-                'estado_display': estado.get_estado_display(),
-                'puede_recibir_llamadas': estado.puede_recibir_llamadas,
-                'ultima_actualizacion': estado.ultima_actualizacion
-            })
-        
-        serializer = EstadoAgenteSimpleSerializer(data, many=True)
+        from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
+        serializer = EstadoAgenteActualSerializer(estados, many=True)
         return Response(serializer.data)
+
+
