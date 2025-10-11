@@ -169,6 +169,10 @@ class Llamada(models.Model):
         ENTRANTE = 'ENTRANTE', 'Entrante'
         SALIENTE = 'SALIENTE', 'Saliente'
     
+    class EstadoVenta(models.TextChoices):
+        VENTA = 'VENTA', 'Venta'
+        NO_VENTA = 'NO_VENTA', 'No Venta'
+        PENDIENTE = 'PENDIENTE', 'Pendiente'
     # Identificadores únicos
     llamada_sid = models.CharField(
         'SID de Llamada',
@@ -227,6 +231,12 @@ class Llamada(models.Model):
         choices=EstadoLlamada.choices,
         default=EstadoLlamada.TIMBRADO
     )
+    estado_venta = models.CharField(
+        'Estado de venta',
+        max_length=20,
+        choices=EstadoVenta.choices,
+        default=EstadoVenta.VENTA
+    )    
     estado_recibida = models.BooleanField(
         'Recibida',
         default=False,

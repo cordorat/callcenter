@@ -26,4 +26,5 @@ urlpatterns = [
     path("api/calls/", include('apps.calls.urls')),
     path("api/integrations/", include('apps.integrations.urls')),
     path("api/webhooks/", include('webhooks.urls')),
+    path("api/kpis/", include('apps.kpis.urls')),
 ]
