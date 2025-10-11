@@ -5,6 +5,7 @@ import Login from '../pages/Login/Login';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import Calls from '../pages/Calls/Calls';
 import Kpis from '../pages/Kpis/Kpis';          
+import Campaing from '../pages/Campaing/Campaing';
 import PrivateRoute from './PrivateRoute';
 
 const AppRoutes = () => {
@@ -46,7 +47,13 @@ const AppRoutes = () => {
             </PrivateRoute>
           }
         />
-        
+
+        <Route path="/campana" element={
+          <PrivateRoute>
+            <Campaing />
+          </PrivateRoute>
+        } />
+
         {/* Ruta por defecto */}
         <Route 
           path="*" 

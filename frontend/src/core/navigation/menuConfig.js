@@ -29,8 +29,8 @@ export const menuItems = [
     roles: ['ADMIN']
   },
   {
-    label: 'Campañas',
-    path: '/campañas',
+    label: 'Campaña',
+    path: '/campana',
     icon: CampaignIcon,
     roles: ['ADMIN']
   },

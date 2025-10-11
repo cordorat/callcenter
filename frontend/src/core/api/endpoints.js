@@ -30,4 +30,10 @@ export const ENDPOINTS = {
   // (opcional) series adicionales:
   KPIS_BY_HOUR: `${BASE_URL}/kpis/by-hour/`,       // GET ?from=&to=
   KPIS_TARGETS: `${BASE_URL}/kpis/targets/`,       // GET metas del agente
+  
+  // --- CAMPAIGNS / BASES DE DATOS ---
+  CAMPAIGNS_UPLOAD: `${BASE_URL}/campaigns/cargar-base-datos/`,    // POST multipart file + campana_id
+  CAMPAIGNS_LIST: `${BASE_URL}/campaigns/listar-bases-datos/`,     // GET paginado
+  CAMPAIGNS_DETAIL: (id) => `${BASE_URL}/campaigns/base-datos/${id}/`, // GET detalle
+  CAMPAIGNS_RECORDS: (id) => `${BASE_URL}/campaigns/cargar-bd-registros/${id}/`, // GET registros paginados
 };

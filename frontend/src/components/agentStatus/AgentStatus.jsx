@@ -300,7 +300,8 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
         open={snackbar.open} 
         autoHideDuration={4000} 
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        sx={{ mt: 8 }}
       >
         <Alert 
           onClose={handleCloseSnackbar} 
