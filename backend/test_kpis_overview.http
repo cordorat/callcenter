@@ -1,0 +1,65 @@
+### Test del nuevo endpoint de KPIs compatible con frontend
+### Asegúrate de tener el servidor corriendo: python manage.py runserver
+
+### 1. Login como agente para obtener token
+POST http://localhost:8000/api/auth/login/
+Content-Type: application/json
+
+{
+  "email": "admin@callcenter.com",
+  "password": "admin123"
+}
+
+### 2. Guardar token del response anterior y usarlo aquí
+@token = TU_ACCESS_TOKEN_AQUI
+
+### 3. Test endpoint KPIs Overview - Día actual
+GET http://localhost:8000/api/kpis/overview/?from=2025-10-10&to=2025-10-10
+Authorization: Bearer {{token}}
+
+### 4. Test endpoint KPIs Overview - Última semana
+GET http://localhost:8000/api/kpis/overview/?from=2025-10-03&to=2025-10-10
+Authorization: Bearer {{token}}
+
+### 5. Test endpoint KPIs Overview - Mes actual
+GET http://localhost:8000/api/kpis/overview/?from=2025-10-01&to=2025-10-10
+Authorization: Bearer {{token}}
+
+### 6. Test sin parámetros (debe dar error)
+GET http://localhost:8000/api/kpis/overview/
+Authorization: Bearer {{token}}
+
+### 7. Test con fechas inválidas (debe dar error)
+GET http://localhost:8000/api/kpis/overview/?from=2025-10-10&to=2025-10-05
+Authorization: Bearer {{token}}
+
+### 8. Test endpoint anterior (agente) - Sigue funcionando
+GET http://localhost:8000/api/kpis/agente/?agente_id=1&rango=hoy
+Authorization: Bearer {{token}}
+
+###
+### RESPUESTA ESPERADA del endpoint overview:
+### {
+###   "now": "2025-10-10T15:30:00.123456Z",
+###   "values": {
+###     "llamadas_atendidas": 45,
+###     "ventas_realizadas": 12,
+###     "tiempo_promedio_llamada": 185.5,
+###     "llamadas_por_hora": 5.62,
+###     "cumplimiento": 0.2667
+###   },
+###   "meta": {
+###     "llamadas_atendidas": 50,
+###     "ventas_realizadas": 15,
+###     "tiempo_promedio_llamada": 180,
+###     "llamadas_por_hora": 6,
+###     "cumplimiento": 1
+###   },
+###   "series": {
+###     "llamadas_por_hora": [
+###       {"hora": "09:00", "valor": 5},
+###       {"hora": "10:00", "valor": 8},
+###       ...
+###     ]
+###   }
+### }

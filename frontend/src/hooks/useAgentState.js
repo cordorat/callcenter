@@ -8,6 +8,7 @@ import {
     mapFrontendToBackend,
     requiresComments
 } from '../core/api/agentStates';
+import { subscribeToAgentStateChanges } from './useTwilioCall';
 
 /**
  * Hook personalizado para gestionar el estado del agente
@@ -110,6 +111,16 @@ export const useAgentState = ({ autoLoad = true, refreshInterval = 0 } = {}) => 
             return () => clearInterval(interval);
         }
     }, [refreshInterval, loadCurrentState]);
+
+    // Escuchar cambios de estado desde useTwilioCall
+    useEffect(() => {
+        const unsubscribe = subscribeToAgentStateChanges(() => {
+            console.log('[useAgentState] Cambio de estado detectado desde Twilio, actualizando inmediatamente...');
+            loadCurrentState();
+        });
+
+        return unsubscribe;
+    }, [loadCurrentState]);
 
     return {
         // Estado
