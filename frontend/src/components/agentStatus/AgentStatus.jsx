@@ -29,6 +29,9 @@ import {
 import { useState } from "react";
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import WarningIcon from '@mui/icons-material/Warning';
+import InfoIcon from '@mui/icons-material/Info';
 import { useAgentState } from '@/hooks/useAgentState';
 import { AGENT_STATUSES, requiresComments, mapFrontendToBackend } from '@/core/api/agentStates';
 
@@ -306,7 +309,29 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
         <Alert 
           onClose={handleCloseSnackbar} 
           severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          variant="outlined"
+          sx={{ 
+            width: '100%',
+            minWidth: '280px',
+            borderRadius: '10px',
+            backgroundColor: '#EBF5FE',
+            borderWidth: '2px',
+            borderColor: snackbar.severity === 'success' ? '#0f9d58' : 
+                        snackbar.severity === 'error' ? '#d32f2f' : 
+                        snackbar.severity === 'warning' ? '#f57c00' : '#0C155A',
+            boxShadow: '0 4px 12px rgba(12, 21, 90, 0.15)',
+            '& .MuiAlert-icon': {
+              fontSize: '1.3rem',
+              color: snackbar.severity === 'success' ? '#0f9d58' : 
+                     snackbar.severity === 'error' ? '#d32f2f' : 
+                     snackbar.severity === 'warning' ? '#f57c00' : '#0C155A',
+            },
+            '& .MuiAlert-message': {
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              color: '#0C155A',
+            },
+          }}
         >
           {snackbar.message}
         </Alert>

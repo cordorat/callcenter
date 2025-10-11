@@ -27,10 +27,30 @@ const UploadButton = ({ onFileSelect }) => {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
       <Button
-        variant="contained"
+        variant="outlined"
         component="label"
-        color="primary"
         startIcon={<UploadFileIcon />}
+        sx={{
+          borderColor: '#0C155A',
+          borderWidth: '2px',
+          color: '#0C155A',
+          backgroundColor: '#EBF5FE',
+          borderRadius: '10px',
+          textTransform: 'none',
+          fontSize: '0.95rem',
+          fontWeight: 600,
+          px: 3,
+          py: 1.2,
+          boxShadow: '0 2px 8px rgba(12, 21, 90, 0.15)',
+          '&:hover': {
+            borderWidth: '2px',
+            borderColor: '#0C155A',
+            backgroundColor: '#D3E8FB',
+            boxShadow: '0 4px 12px rgba(12, 21, 90, 0.25)',
+            transform: 'translateY(-1px)',
+          },
+          transition: 'all 0.2s ease',
+        }}
       >
         Subir Base de Datos
         <input
