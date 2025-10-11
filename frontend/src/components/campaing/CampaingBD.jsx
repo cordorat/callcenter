@@ -47,13 +47,13 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
       });
   console.info('Upload response:', res.data);
   await fetchBases();
-  setSnackMessage(res.data.mensaje || 'Base de datos subida correctamente');
+  setSnackMessage('Base de datos subida correctamente');
   setSnackSeverity('success');
   setSnackOpen(true);
     } catch (err) {
   console.error('Upload error', err);
   setError('Error al subir la base de datos');
-  setSnackMessage(err?.response?.data?.error || 'Error al subir la base de datos');
+  setSnackMessage('Error al subir la base de datos');
   setSnackSeverity('error');
   setSnackOpen(true);
     } finally {
@@ -73,7 +73,13 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Snackbar open={snackOpen} autoHideDuration={4000} onClose={() => setSnackOpen(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+      <Snackbar 
+        open={snackOpen} 
+        autoHideDuration={4000} 
+        onClose={() => setSnackOpen(false)} 
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{ mt: 8 }}
+      >
         <Alert onClose={() => setSnackOpen(false)} severity={snackSeverity} sx={{ width: '100%' }}>
           {snackMessage}
         </Alert>
