@@ -1,5 +1,5 @@
 from django.db import models
-
+from apps.users.models import User
 
 class Producto(models.Model):
     """
@@ -144,3 +144,66 @@ class IteracionCliente(models.Model):
     
     def __str__(self):
         return f"Contrato {self.contrato_id} - Campaña {self.campana_id.nombre if self.campana_id else 'N/A'}"
+
+class Equipo(models.Model):
+    """
+    Equipos de trabajo para organizar agentes.
+    """
+    equipo_id = models.AutoField(primary_key=True)
+    coordinador = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='equipos_coordinados',
+        db_column='coordinador_id'
+    )
+    campana = models.ForeignKey(
+        Campana,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='equipos',
+        db_column='campania_id'
+    )
+    nombre = models.CharField('Nombre del Equipo', max_length=100)
+    
+    class Meta:
+        db_table = 'equipo'
+        verbose_name = 'Equipo'
+        verbose_name_plural = 'Equipos'
+        ordering = ['nombre']
+    
+    def __str__(self):
+        return self.nombre
+
+
+class EquipoAgenteDetalle(models.Model):
+    """
+    Relación muchos a muchos entre equipos y agentes.
+    """
+    agente_id = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='equipos_detalle',
+        db_column='agente_id'
+    )
+    equipo_id = models.ForeignKey(
+        Equipo,
+        on_delete=models.CASCADE,
+        related_name='agentes_detalle',
+        db_column='equipo_id'
+    )
+    
+    class Meta:
+        db_table = 'equipo_agente_detalle'
+        verbose_name = 'Detalle Equipo-Agente'
+        verbose_name_plural = 'Detalles Equipo-Agente'
+        unique_together = ['equipo_id', 'agente_id']
+        indexes = [
+            models.Index(fields=['agente_id']),
+            models.Index(fields=['equipo_id']),
+        ]
+    
+    def __str__(self):
+        return f"{self.agente_id.full_name} en {self.equipo_id.nombre}"

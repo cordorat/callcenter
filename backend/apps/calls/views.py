@@ -11,14 +11,14 @@ from apps.calls.models import (
     Cliente,
     Campana,
     Llamada,
-    FormularioLlamada
+    FormularioVenta
 )
 from apps.users.permissions import IsAdmin, IsAdminOrOwner
 from apps.calls.serializers import (
     ClienteSerializer,
     CampanaSerializer,
     LlamadaSerializer,
-    FormularioLlamadaSerializer,
+    FormularioVentaSerializer,
     RecibirLlamadaSerializer,
     IniciarLlamadaSerializer,
     CompletarLlamadaSerializer,
@@ -393,8 +393,8 @@ class FormularioLlamadaViewSet(viewsets.ModelViewSet):
     update: Actualizar formulario (completar campos)
     pendientes: Obtener formularios pendientes del agente
     """
-    queryset = FormularioLlamada.objects.all()
-    serializer_class = FormularioLlamadaSerializer
+    queryset = FormularioVenta.objects.all()
+    serializer_class = FormularioVentaSerializer
     permission_classes = [IsAuthenticated]
     
     def get_permissions(self):
@@ -413,9 +413,9 @@ class FormularioLlamadaViewSet(viewsets.ModelViewSet):
         user = self.request.user
         
         if user.is_admin():
-            queryset = FormularioLlamada.objects.all()
+            queryset = FormularioVenta.objects.all()
         else:
-            queryset = FormularioLlamada.objects.filter(llamada__agente=user)
+            queryset = FormularioVenta.objects.filter(llamada__agente=user)
         
         return queryset.select_related('llamada', 'llamada__agente').order_by('-created_at')
     
@@ -424,12 +424,12 @@ class FormularioLlamadaViewSet(viewsets.ModelViewSet):
         """Obtiene los formularios pendientes del agente autenticado."""
         user = request.user
         
-        formularios = FormularioLlamada.objects.filter(
+        formularios = FormularioVenta.objects.filter(
             llamada__agente=user,
             completado=False
         ).select_related('llamada', 'llamada__cliente', 'llamada__campana')
         
-        serializer = FormularioLlamadaSerializer(formularios, many=True)
+        serializer = FormularioVentaSerializer(formularios, many=True)
         return Response(serializer.data)
     
     def update(self, request, *args, **kwargs):

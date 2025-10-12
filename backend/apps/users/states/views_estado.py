@@ -11,10 +11,9 @@ from apps.users.models import (
     EstadoAgenteDetalle,
     EstadoAgenteActual,
     TiposParametros,
-    Equipo,
-    EquipoAgenteDetalle,
     User
 )
+from apps.campaigns.models import Equipo, EquipoAgenteDetalle
 from apps.users.permissions import IsAdmin, IsAdminOrOwner
 from apps.users.states.serializers_estado import (
     EstadoAgenteDetalleSerializer,

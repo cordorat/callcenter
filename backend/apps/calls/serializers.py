@@ -5,52 +5,25 @@ from rest_framework import serializers
 from django.utils import timezone
 from apps.calls.models import Llamada, IteracionCliente, Venta, FormularioVenta
 from apps.campaigns.models import Cliente, Campana
-from apps.users.models import User, EstadoAgenteActual, EstadoAgenteDetalle
+from apps.users.models import User, EstadoAgenteActual, EstadoAgenteDetalle, TiposParametros
+from common.estados_helper import EstadosHelper, get_estado, get_estado_id
 
 
-class ClienteSerializer(serializers.ModelSerializer):
-    """Serializer para clientes."""
-    
-    nombre_completo = serializers.ReadOnlyField()
-    
-    class Meta:
-        model = Cliente
-        fields = [
-            'id', 'nombre', 'apellido', 'nombre_completo', 'telefono',
-            'telefono_alternativo', 'email', 'documento_id', 'direccion',
-            'ciudad', 'pais', 'notas', 'created_at', 'updated_at'
-        ]
-        read_only_fields = ['created_at', 'updated_at']
-    
-    def validate_documento_id(self, value):
-        """Valida que el documento sea único."""
-        if value:
-            instance = self.instance
-            if Cliente.objects.filter(documento_id=value).exclude(
-                id=instance.id if instance else None
-            ).exists():
-                raise serializers.ValidationError(
-                    'Ya existe un cliente con este documento.'
-                )
-        return value
+
 
 
 class CampanaSerializer(serializers.ModelSerializer):
     """Serializer para campañas."""
     
-    tipo_display = serializers.CharField(
-        source='get_tipo_display',
-        read_only=True
-    )
     total_llamadas = serializers.SerializerMethodField()
     llamadas_completadas = serializers.SerializerMethodField()
     
     class Meta:
         model = Campana
         fields = [
-            'id', 'nombre', 'descripcion', 'tipo', 'tipo_display',
+            'id', 'nombre', 'descripcion',
             'fecha_inicio', 'fecha_fin', 'objetivo_llamadas',
-            'objetivo_ventas', 'activo', 'total_llamadas',
+            'objetivo_ventas', 'total_llamadas',
             'llamadas_completadas', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
@@ -61,77 +34,99 @@ class CampanaSerializer(serializers.ModelSerializer):
     
     def get_llamadas_completadas(self, obj):
         """Cuenta llamadas completadas de la campaña."""
-        # TODO: Actualizar cuando se defina el nuevo campo de estado
-        return obj.llamadas.filter(
-            estado_llamada_id__isnull=False
-        ).count()
+        estado_completada = get_estado_id('ESTADO_LLAMADA', 'COMPLETADA')
+        if estado_completada:
+            return obj.llamadas.filter(
+                estado_llamada_id=estado_completada
+            ).count()
+        return 0
 
 
-# FormularioLlamadaSerializer - DEPRECADO: Modelo eliminado en refactorización
-# class FormularioLlamadaSerializer(serializers.ModelSerializer):
-#     """Serializer para formularios de llamada."""
-#     
-#     class Meta:
-#         model = FormularioLlamada
-#         fields = [
-#             'id', 'llamada', 'campos_json', 'completado',
-#             'fecha_completado', 'created_at', 'updated_at'
-#         ]
-#         read_only_fields = ['created_at', 'updated_at', 'fecha_completado']
-#     
-#     def validate_campos_json(self, value):
-#         """Valida que campos_json sea un diccionario válido."""
-#         if not isinstance(value, dict):
-#             raise serializers.ValidationError(
-#                 'Los campos deben ser un objeto JSON válido.'
-#             )
-#         return value
+class FormularioVentaSerializer(serializers.ModelSerializer):
+    """Serializer para formularios de venta."""
+    
+    class Meta:
+        model = FormularioVenta
+        fields = [
+            'formulario_id', 'llamada_id', 'cliente_id', 'venta_id',
+            'datos_formulario'
+        ]
+    
+    def validate_datos_formulario(self, value):
+        """Valida que datos_formulario sea un diccionario válido."""
+        if value and not isinstance(value, dict):
+            raise serializers.ValidationError(
+                'Los datos deben ser un objeto JSON válido.'
+            )
+        return value
+
+
+class VentaSerializer(serializers.ModelSerializer):
+    """Serializer para ventas."""
+    
+    class Meta:
+        model = Venta
+        fields = ['venta_id', 'campana_id', 'monto']
+        read_only_fields = ['venta_id']
+
+
+class IteracionClienteSerializer(serializers.ModelSerializer):
+    """Serializer para iteraciones de cliente."""
+    
+    class Meta:
+        model = IteracionCliente
+        fields = [
+            'id', 'campana_id', 'cliente_id',
+            'estado_interacion_llamada_id', 'intento'
+        ]
+    
+    def validate_estado_interacion_llamada_id(self, value):
+        """Valida que el estado sea de tipo ESTADO_INTERACION_LLAMADA."""
+        if value:
+            estados_validos = EstadosHelper.get_estados_por_categoria('ESTADO_INTERACION_LLAMADA')
+            if value not in estados_validos:
+                raise serializers.ValidationError(
+                    'El estado debe ser de tipo ESTADO_INTERACION_LLAMADA.'
+                )
+        return value
 
 
 class LlamadaSerializer(serializers.ModelSerializer):
     """Serializer para lectura de llamadas."""
     
-    estado_llamada_display = serializers.CharField(
-        source='get_estado_llamada_display',
-        read_only=True
-    )
-    tipo_llamada_display = serializers.CharField(
-        source='get_tipo_llamada_display',
-        read_only=True
-    )
     agente_nombre = serializers.CharField(
         source='agente.full_name',
         read_only=True
     )
     cliente_nombre = serializers.CharField(
-        source='cliente.nombre_completo',
+        source='cliente_id.nombre_completo',
         read_only=True
     )
     campana_nombre = serializers.CharField(
-        source='campana.nombre',
+        source='campana_id.nombre',
         read_only=True
     )
-    duracion_timbrado_formateada = serializers.ReadOnlyField()
-    duracion_llamada_formateada = serializers.ReadOnlyField()
     duracion_total_formateada = serializers.ReadOnlyField()
+    estado_venta_valor = serializers.CharField(
+        source='estado_venta.valor',
+        read_only=True
+    )
     
     class Meta:
         model = Llamada
         fields = [
-            'id', 'llamada_sid', 'agente', 'agente_nombre', 'cliente',
-            'cliente_nombre', 'campana', 'campana_nombre', 'tipo_llamada',
-            'tipo_llamada_display', 'estado_llamada', 'estado_llamada_display',
+            'llamada_sid', 'agente', 'agente_nombre', 'cliente_id',
+            'cliente_nombre', 'campana_id', 'campana_nombre',
             'telefono_origen', 'telefono_destino', 'hora_inicio_timbrado',
             'hora_inicio_llamada', 'hora_fin_llamada', 'duracion_timbrado_segundos',
-            'duracion_timbrado_formateada', 'duracion_llamada_segundos',
-            'duracion_llamada_formateada', 'duracion_total_segundos',
-            'duracion_total_formateada', 'grabacion_url', 'motivo_rechazo',
-            'notas', 'agente_anterior', 'intentos_redireccion', 'formulario',
-            'metadata', 'created_at', 'updated_at'
+            'duracion_llamada_segundos', 'duracion_total_formateada', 
+            'grabacion_url', 'grabacion_duracion',
+            'twilio_call_sid', 'twilio_status', 'twilio_recording_sid',
+            'twilio_recording_url', 'agente_anterior', 
+            'estado_venta', 'estado_venta_valor', 'estado_recibida'
         ]
         read_only_fields = [
-            'created_at', 'updated_at', 'duracion_timbrado_segundos',
-            'duracion_llamada_segundos', 'duracion_total_segundos'
+            'duracion_timbrado_segundos', 'duracion_llamada_segundos'
         ]
 
 
@@ -165,31 +160,35 @@ class RecibirLlamadaSerializer(serializers.Serializer):
         user = request.user
         
         # Validar que el usuario sea agente
-        if not user.is_agent():
+        if not hasattr(user, 'rol_id') or user.rol_id != get_estado_id('ROL_USUARIO', 'AGENTE'):
             raise serializers.ValidationError(
                 'Solo los agentes pueden recibir llamadas.'
             )
         
         # Validar que el agente esté disponible
         try:
-            estado_actual = EstadoAgenteActual.objects.get(agente=user)
-            if not estado_actual.puede_recibir_llamadas:
+            estado_actual = EstadoAgenteActual.objects.get(agente_id=user)
+            estado_disponible = get_estado_id('ESTADO_AGENTE', 'DISPONIBLE')
+            
+            if estado_actual.estado_id_id != estado_disponible:
+                estado_obj = estado_actual.estado_id
+                estado_nombre = estado_obj.valor if estado_obj else 'Desconocido'
                 raise serializers.ValidationError({
-                    'agente': f'El agente no está disponible. Estado actual: {estado_actual.get_estado_display()}'
+                    'agente': f'El agente no está disponible. Estado actual: {estado_nombre}'
                 })
         except EstadoAgenteActual.DoesNotExist:
             raise serializers.ValidationError(
                 'No se encontró el estado del agente.'
             )
         
-        # Validar que la campaña exista y esté activa
+        # Validar que la campaña exista
         campana_id = attrs.get('campana_id')
         try:
-            campana = Campana.objects.get(id=campana_id, activo=True)
+            campana = Campana.objects.get(id=campana_id)
             attrs['campana'] = campana
         except Campana.DoesNotExist:
             raise serializers.ValidationError({
-                'campana_id': 'La campaña no existe o no está activa.'
+                'campana_id': 'La campaña no existe.'
             })
         
         # Validar que el cliente exista si se proporciona
@@ -231,35 +230,41 @@ class RecibirLlamadaSerializer(serializers.Serializer):
         llamada = Llamada.objects.create(
             llamada_sid=validated_data['llamada_sid'],
             agente=user,
-            cliente=cliente,
-            campana=validated_data['campana'],
-            tipo_llamada=Llamada.TipoLlamada.ENTRANTE,
-            estado_llamada=Llamada.EstadoLlamada.TIMBRADO,
+            cliente_id=cliente,
+            campana_id=validated_data['campana'],
             telefono_origen=validated_data['telefono_origen'],
             telefono_destino=validated_data['telefono_destino'],
-            hora_inicio_timbrado=timezone.now()
+            hora_inicio_timbrado=timezone.now(),
+            estado_venta=EstadosHelper.venta_pendiente(),
+            estado_recibida=get_estado('ESTADO_LLAMADA', 'TIMBRADO')
         )
         
         # Actualizar estado del agente a EN_LLAMADA
-        # Esto se manejará mejor con signals, pero por ahora lo hacemos manual
-        estado_actual = EstadoAgenteActual.objects.get(agente=user)
+        estado_actual = EstadoAgenteActual.objects.get(agente_id=user)
         
         # Cerrar estado anterior
-        if estado_actual.detalle and estado_actual.detalle.esta_activo:
-            detalle_anterior = estado_actual.detalle
-            detalle_anterior.hora_fin = timezone.now()
-            detalle_anterior.save()
+        if estado_actual.estado_detalle_id:
+            try:
+                detalle_anterior = EstadoAgenteDetalle.objects.get(
+                    estado_agente_detalle_id=estado_actual.estado_detalle_id
+                )
+                if not detalle_anterior.hora_fin:
+                    detalle_anterior.hora_fin = timezone.now()
+                    detalle_anterior.save()
+            except EstadoAgenteDetalle.DoesNotExist:
+                pass
         
         # Crear nuevo estado EN_LLAMADA
         nuevo_detalle = EstadoAgenteDetalle.objects.create(
-            agente=user,
-            estado=EstadoAgenteDetalle.EstadoAgente.EN_LLAMADA,
-            comentarios=f'Llamada recibida: {llamada.llamada_sid}'
+            agente_id=user,
+            estado_id=EstadosHelper.agente_en_llamada(),
+            comentario=f'Llamada recibida: {llamada.llamada_sid}',
+            hora_inicio=timezone.now(),
+            fecha=timezone.now().date()
         )
         
-        estado_actual.estado = EstadoAgenteDetalle.EstadoAgente.EN_LLAMADA
-        estado_actual.detalle = nuevo_detalle
-        estado_actual.acepta_llamadas = False
+        estado_actual.estado_id = EstadosHelper.agente_en_llamada()
+        estado_actual.estado_detalle_id = nuevo_detalle.estado_agente_detalle_id
         estado_actual.save()
         
         return llamada
@@ -270,12 +275,15 @@ class IniciarLlamadaSerializer(serializers.Serializer):
     
     def update(self, instance, validated_data):
         """Actualiza la llamada a EN_CURSO."""
-        if instance.estado_llamada != Llamada.EstadoLlamada.TIMBRADO:
+        estado_timbrado = get_estado('ESTADO_LLAMADA', 'TIMBRADO')
+        
+        if instance.estado_recibida != estado_timbrado:
+            estado_nombre = instance.estado_recibida.valor if instance.estado_recibida else 'Desconocido'
             raise serializers.ValidationError(
-                f'La llamada no puede iniciar desde el estado {instance.get_estado_llamada_display()}'
+                f'La llamada no puede iniciar desde el estado {estado_nombre}'
             )
         
-        instance.estado_llamada = Llamada.EstadoLlamada.EN_CURSO
+        instance.estado_recibida = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
         instance.hora_inicio_llamada = timezone.now()
         instance.save()
         
@@ -285,12 +293,6 @@ class IniciarLlamadaSerializer(serializers.Serializer):
 class CompletarLlamadaSerializer(serializers.Serializer):
     """Serializer para completar una llamada."""
     
-    notas = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        max_length=1000,
-        help_text='Notas sobre la llamada'
-    )
     grabacion_url = serializers.URLField(
         required=False,
         allow_blank=True,
@@ -300,28 +302,49 @@ class CompletarLlamadaSerializer(serializers.Serializer):
         default=False,
         help_text='Si se debe crear un formulario para la llamada'
     )
+    monto_venta = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        help_text='Monto de la venta si se realizó'
+    )
     
     def update(self, instance, validated_data):
         """Completa la llamada."""
-        if instance.estado_llamada not in [
-            Llamada.EstadoLlamada.EN_CURSO,
-            Llamada.EstadoLlamada.TIMBRADO
-        ]:
+        estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
+        estado_timbrado = get_estado('ESTADO_LLAMADA', 'TIMBRADO')
+        
+        if instance.estado_recibida not in [estado_en_curso, estado_timbrado]:
+            estado_nombre = instance.estado_recibida.valor if instance.estado_recibida else 'Desconocido'
             raise serializers.ValidationError(
-                f'La llamada no puede completarse desde el estado {instance.get_estado_llamada_display()}'
+                f'La llamada no puede completarse desde el estado {estado_nombre}'
             )
         
-        instance.estado_llamada = Llamada.EstadoLlamada.COMPLETADA
+        instance.estado_recibida = get_estado('ESTADO_LLAMADA', 'COMPLETADA')
         instance.hora_fin_llamada = timezone.now()
-        instance.notas = validated_data.get('notas', instance.notas)
         instance.grabacion_url = validated_data.get('grabacion_url', instance.grabacion_url)
+        
+        # Si se realizó venta, actualizar estado
+        monto_venta = validated_data.get('monto_venta')
+        if monto_venta:
+            instance.estado_venta = EstadosHelper.venta_realizada()
+        else:
+            instance.estado_venta = EstadosHelper.venta_no_realizada()
+        
         instance.save()
         
-        # Crear formulario si se solicita
-        if validated_data.get('crear_formulario'):
-            FormularioLlamada.objects.create(
-                llamada=instance,
-                campos_json={}
+        # Crear venta si se solicita
+        if monto_venta and validated_data.get('crear_formulario'):
+            venta = Venta.objects.create(
+                campana_id=instance.campana_id,
+                monto=monto_venta
+            )
+            FormularioVenta.objects.create(
+                llamada_id=instance,
+                cliente_id=instance.cliente_id,
+                venta_id=venta,
+                datos_formulario={}
             )
         
         # Actualizar estado del agente a POSTCALL
@@ -329,23 +352,31 @@ class CompletarLlamadaSerializer(serializers.Serializer):
         user = request.user
         
         try:
-            estado_actual = EstadoAgenteActual.objects.get(agente=user)
+            estado_actual = EstadoAgenteActual.objects.get(agente_id=user)
             
             # Cerrar estado anterior
-            if estado_actual.detalle and estado_actual.detalle.esta_activo:
-                detalle_anterior = estado_actual.detalle
-                detalle_anterior.hora_fin = timezone.now()
-                detalle_anterior.save()
+            if estado_actual.estado_detalle_id:
+                try:
+                    detalle_anterior = EstadoAgenteDetalle.objects.get(
+                        estado_agente_detalle_id=estado_actual.estado_detalle_id
+                    )
+                    if not detalle_anterior.hora_fin:
+                        detalle_anterior.hora_fin = timezone.now()
+                        detalle_anterior.save()
+                except EstadoAgenteDetalle.DoesNotExist:
+                    pass
             
             # Crear nuevo estado POSTCALL
             nuevo_detalle = EstadoAgenteDetalle.objects.create(
-                agente=user,
-                estado=EstadoAgenteDetalle.EstadoAgente.POSTCALL,
-                comentarios=f'Llamada completada: {instance.llamada_sid}'
+                agente_id=user,
+                estado_id=EstadosHelper.agente_postcall(),
+                comentario=f'Llamada completada: {instance.llamada_sid}',
+                hora_inicio=timezone.now(),
+                fecha=timezone.now().date()
             )
             
-            estado_actual.estado = EstadoAgenteDetalle.EstadoAgente.POSTCALL
-            estado_actual.detalle = nuevo_detalle
+            estado_actual.estado_id = EstadosHelper.agente_postcall()
+            estado_actual.estado_detalle_id = nuevo_detalle.estado_agente_detalle_id
             estado_actual.save()
         except EstadoAgenteActual.DoesNotExist:
             pass
@@ -356,68 +387,76 @@ class CompletarLlamadaSerializer(serializers.Serializer):
 class RechazarLlamadaSerializer(serializers.Serializer):
     """Serializer para rechazar una llamada."""
     
-    motivo_rechazo_id = serializers.IntegerField(
+    motivo_rechazo_valor = serializers.CharField(
         required=False,
         allow_null=True,
-        help_text='ID del parámetro de motivo de rechazo'
+        max_length=50,
+        help_text='Valor del motivo de rechazo (ej: FUERA_DE_HORARIO, SIN_CAPACIDAD)'
     )
-    notas = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        max_length=500,
-        help_text='Notas sobre el rechazo'
-    )
+    
+    def validate_motivo_rechazo_valor(self, value):
+        """Valida que el motivo de rechazo exista."""
+        if value:
+            motivo = get_estado('MOTIVO_RECHAZO', value)
+            if not motivo:
+                raise serializers.ValidationError(
+                    f'El motivo de rechazo "{value}" no existe.'
+                )
+        return value
     
     def update(self, instance, validated_data):
         """Rechaza la llamada."""
-        if instance.estado_llamada not in [
-            Llamada.EstadoLlamada.TIMBRADO,
-            Llamada.EstadoLlamada.EN_CURSO
-        ]:
+        estado_timbrado = get_estado('ESTADO_LLAMADA', 'TIMBRADO')
+        estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
+        
+        if instance.estado_recibida not in [estado_timbrado, estado_en_curso]:
+            estado_nombre = instance.estado_recibida.valor if instance.estado_recibida else 'Desconocido'
             raise serializers.ValidationError(
-                f'La llamada no puede rechazarse desde el estado {instance.get_estado_llamada_display()}'
+                f'La llamada no puede rechazarse desde el estado {estado_nombre}'
             )
         
-        instance.estado_llamada = Llamada.EstadoLlamada.RECHAZADA
+        instance.estado_recibida = get_estado('ESTADO_LLAMADA', 'RECHAZADA')
         instance.hora_fin_llamada = timezone.now()
+        instance.estado_venta = EstadosHelper.venta_no_realizada()
         
-        if validated_data.get('motivo_rechazo_id'):
-            from apps.users.models import TiposParametros
-            try:
-                motivo = TiposParametros.objects.get(
-                    id=validated_data['motivo_rechazo_id'],
-                    categoria=TiposParametros.Categoria.MOTIVO_RECHAZO
-                )
-                instance.motivo_rechazo = motivo
-            except TiposParametros.DoesNotExist:
-                pass
+        # Asignar motivo de rechazo si se proporciona
+        motivo_valor = validated_data.get('motivo_rechazo_valor')
+        if motivo_valor:
+            # Podríamos agregar un campo motivo_rechazo al modelo Llamada si es necesario
+            pass
         
-        instance.notas = validated_data.get('notas', instance.notas)
         instance.save()
         
-        # Actualizar estado del agente a DISPONIBLE o el que corresponda
+        # Actualizar estado del agente a DISPONIBLE
         request = self.context.get('request')
         user = request.user
         
         try:
-            estado_actual = EstadoAgenteActual.objects.get(agente=user)
+            estado_actual = EstadoAgenteActual.objects.get(agente_id=user)
             
             # Cerrar estado anterior
-            if estado_actual.detalle and estado_actual.detalle.esta_activo:
-                detalle_anterior = estado_actual.detalle
-                detalle_anterior.hora_fin = timezone.now()
-                detalle_anterior.save()
+            if estado_actual.estado_detalle_id:
+                try:
+                    detalle_anterior = EstadoAgenteDetalle.objects.get(
+                        estado_agente_detalle_id=estado_actual.estado_detalle_id
+                    )
+                    if not detalle_anterior.hora_fin:
+                        detalle_anterior.hora_fin = timezone.now()
+                        detalle_anterior.save()
+                except EstadoAgenteDetalle.DoesNotExist:
+                    pass
             
             # Volver a DISPONIBLE
             nuevo_detalle = EstadoAgenteDetalle.objects.create(
-                agente=user,
-                estado=EstadoAgenteDetalle.EstadoAgente.DISPONIBLE,
-                comentarios=f'Llamada rechazada: {instance.llamada_sid}'
+                agente_id=user,
+                estado_id=EstadosHelper.agente_disponible(),
+                comentario=f'Llamada rechazada: {instance.llamada_sid}',
+                hora_inicio=timezone.now(),
+                fecha=timezone.now().date()
             )
             
-            estado_actual.estado = EstadoAgenteDetalle.EstadoAgente.DISPONIBLE
-            estado_actual.detalle = nuevo_detalle
-            estado_actual.acepta_llamadas = True
+            estado_actual.estado_id = EstadosHelper.agente_disponible()
+            estado_actual.estado_detalle_id = nuevo_detalle.estado_agente_detalle_id
             estado_actual.save()
         except EstadoAgenteActual.DoesNotExist:
             pass
@@ -431,22 +470,25 @@ class TransferirLlamadaSerializer(serializers.Serializer):
     agente_destino_id = serializers.IntegerField(
         help_text='ID del agente al que se transfiere'
     )
-    notas = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        max_length=500,
-        help_text='Notas sobre la transferencia'
-    )
     
     def validate_agente_destino_id(self, value):
         """Valida que el agente destino exista y esté disponible."""
         try:
-            agente = User.objects.get(id=value, role=User.Role.AGENT)
+            # Validar que el usuario existe y es agente
+            agente = User.objects.get(id=value)
+            rol_agente_id = get_estado_id('ROL_USUARIO', 'AGENTE')
+            
+            if not hasattr(agente, 'rol_id') or agente.rol_id != rol_agente_id:
+                raise serializers.ValidationError(
+                    f'El usuario {agente.full_name} no es un agente.'
+                )
             
             # Validar que esté disponible
             try:
-                estado = EstadoAgenteActual.objects.get(agente=agente)
-                if not estado.puede_recibir_llamadas:
+                estado = EstadoAgenteActual.objects.get(agente_id=agente)
+                estado_disponible = get_estado_id('ESTADO_AGENTE', 'DISPONIBLE')
+                
+                if estado.estado_id_id != estado_disponible:
                     raise serializers.ValidationError(
                         f'El agente {agente.full_name} no está disponible para recibir llamadas.'
                     )
@@ -463,7 +505,9 @@ class TransferirLlamadaSerializer(serializers.Serializer):
     
     def update(self, instance, validated_data):
         """Transfiere la llamada a otro agente."""
-        if instance.estado_llamada != Llamada.EstadoLlamada.EN_CURSO:
+        estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
+        
+        if instance.estado_recibida != estado_en_curso:
             raise serializers.ValidationError(
                 'Solo se pueden transferir llamadas en curso.'
             )
@@ -473,51 +517,67 @@ class TransferirLlamadaSerializer(serializers.Serializer):
         agente_destino = User.objects.get(id=validated_data['agente_destino_id'])
         
         # Actualizar la llamada
-        instance.estado_llamada = Llamada.EstadoLlamada.TRANSFERIDA
+        instance.estado_recibida = get_estado('ESTADO_LLAMADA', 'TRANSFERIDA')
         instance.agente_anterior = agente_origen
         instance.agente = agente_destino
-        instance.intentos_redireccion += 1
-        instance.notas = (instance.notas or '') + f"\n[Transferencia] {validated_data.get('notas', '')}"
         instance.save()
         
         # Liberar agente origen
         try:
-            estado_origen = EstadoAgenteActual.objects.get(agente=agente_origen)
-            if estado_origen.detalle and estado_origen.detalle.esta_activo:
-                detalle_anterior = estado_origen.detalle
-                detalle_anterior.hora_fin = timezone.now()
-                detalle_anterior.save()
+            estado_origen = EstadoAgenteActual.objects.get(agente_id=agente_origen)
+            
+            # Cerrar estado anterior
+            if estado_origen.estado_detalle_id:
+                try:
+                    detalle_anterior = EstadoAgenteDetalle.objects.get(
+                        estado_agente_detalle_id=estado_origen.estado_detalle_id
+                    )
+                    if not detalle_anterior.hora_fin:
+                        detalle_anterior.hora_fin = timezone.now()
+                        detalle_anterior.save()
+                except EstadoAgenteDetalle.DoesNotExist:
+                    pass
             
             nuevo_detalle_origen = EstadoAgenteDetalle.objects.create(
-                agente=agente_origen,
-                estado=EstadoAgenteDetalle.EstadoAgente.DISPONIBLE,
-                comentarios=f'Llamada transferida: {instance.llamada_sid}'
+                agente_id=agente_origen,
+                estado_id=EstadosHelper.agente_disponible(),
+                comentario=f'Llamada transferida: {instance.llamada_sid}',
+                hora_inicio=timezone.now(),
+                fecha=timezone.now().date()
             )
             
-            estado_origen.estado = EstadoAgenteDetalle.EstadoAgente.DISPONIBLE
-            estado_origen.detalle = nuevo_detalle_origen
-            estado_origen.acepta_llamadas = True
+            estado_origen.estado_id = EstadosHelper.agente_disponible()
+            estado_origen.estado_detalle_id = nuevo_detalle_origen.estado_agente_detalle_id
             estado_origen.save()
         except EstadoAgenteActual.DoesNotExist:
             pass
         
         # Ocupar agente destino
         try:
-            estado_destino = EstadoAgenteActual.objects.get(agente=agente_destino)
-            if estado_destino.detalle and estado_destino.detalle.esta_activo:
-                detalle_anterior = estado_destino.detalle
-                detalle_anterior.hora_fin = timezone.now()
-                detalle_anterior.save()
+            estado_destino = EstadoAgenteActual.objects.get(agente_id=agente_destino)
+            
+            # Cerrar estado anterior
+            if estado_destino.estado_detalle_id:
+                try:
+                    detalle_anterior = EstadoAgenteDetalle.objects.get(
+                        estado_agente_detalle_id=estado_destino.estado_detalle_id
+                    )
+                    if not detalle_anterior.hora_fin:
+                        detalle_anterior.hora_fin = timezone.now()
+                        detalle_anterior.save()
+                except EstadoAgenteDetalle.DoesNotExist:
+                    pass
             
             nuevo_detalle_destino = EstadoAgenteDetalle.objects.create(
-                agente=agente_destino,
-                estado=EstadoAgenteDetalle.EstadoAgente.EN_LLAMADA,
-                comentarios=f'Llamada recibida por transferencia: {instance.llamada_sid}'
+                agente_id=agente_destino,
+                estado_id=EstadosHelper.agente_en_llamada(),
+                comentario=f'Llamada recibida por transferencia: {instance.llamada_sid}',
+                hora_inicio=timezone.now(),
+                fecha=timezone.now().date()
             )
             
-            estado_destino.estado = EstadoAgenteDetalle.EstadoAgente.EN_LLAMADA
-            estado_destino.detalle = nuevo_detalle_destino
-            estado_destino.acepta_llamadas = False
+            estado_destino.estado_id = EstadosHelper.agente_en_llamada()
+            estado_destino.estado_detalle_id = nuevo_detalle_destino.estado_agente_detalle_id
             estado_destino.save()
         except EstadoAgenteActual.DoesNotExist:
             pass

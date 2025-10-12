@@ -65,7 +65,7 @@ class Llamada(models.Model):
         db_column='estado_venta_id',
         help_text='Estado de la venta'
     )   
-    estado_recibida = models.BooleanField(
+    estado_recibida = models.ForeignKey(
         TiposParametros,
         on_delete=models.SET_NULL,
         null=True,
@@ -162,7 +162,6 @@ class Llamada(models.Model):
         ordering = ['-hora_inicio_timbrado']
         indexes = [
             models.Index(fields=['agente', '-hora_inicio_timbrado']),
-            models.Index(fields=['cliente', '-hora_inicio_timbrado']),
             models.Index(fields=['llamada_sid']),
             models.Index(fields=['telefono_origen']),
         ]
@@ -291,7 +290,5 @@ class FormularioVenta(models.Model):
         db_table = 'formulario_venta'
         verbose_name = 'Formulario de Venta'
         verbose_name_plural = 'Formularios de Ventas'
-        ordering = ['-created_at']
-    
     def __str__(self):
         return f"Formulario {self.formulario_id}"
