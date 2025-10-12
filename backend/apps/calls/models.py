@@ -6,132 +6,114 @@ from django.utils import timezone
 from apps.users.models import User, TiposParametros
 from apps.campaigns.models import Cliente, Campana
 
-
+class Venta(models.Model):
+    """
+    Registro de ventas realizadas.
+    """
+    venta_id = models.AutoField(primary_key=True)
+    campana_id = models.ForeignKey(
+        Campana,
+        on_delete=models.CASCADE,
+        related_name='ventas',
+        db_column='campana_id'
+    )
+    monto = models.DecimalField('Monto', max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    class Meta:
+        db_table = 'venta'
+        verbose_name = 'Venta'
+        verbose_name_plural = 'Ventas'
+    
+    def __str__(self):
+        return f"Venta {self.venta_id}"
+    
 class Llamada(models.Model):
     """
     Registro de llamadas del call center.
+    Tabla del MER: Llamada (campos exactos del MER + Twilio + teléfonos)
     """
-    # Identificadores únicos
-    llamada_sid = models.CharField(
-        'SID de Llamada',
-        max_length=100,
-        unique=True,
-        null=True,
-        blank=True,
-        help_text='ID único de Twilio o sistema telefónico'
-    )
+    # llamada_id se genera automáticamente como AutoField (PK)
     
-    # Relaciones
+    # Relaciones según MER
     agente = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
-        related_name='llamadas',
-        db_column='agente_id'
+        related_name='llamadas_atendidas'
     )
-    cliente_id = models.ForeignKey(
+    cliente = models.ForeignKey(
         Cliente,
         on_delete=models.SET_NULL,
         null=True,
-        blank=True,
-        related_name='llamadas',
-        db_column='cliente_id'
+        related_name='llamadas'
     )
-    campana_id = models.ForeignKey(
-        Campana,
+    venta = models.ForeignKey(
+        Venta,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='llamadas'
     )
     
-    telefono_origen = models.CharField(
-        'Teléfono de Origen',
-        max_length=20,
-        help_text='Número que llama'
+    # Campos del MER
+    fecha_hora_inicio = models.DateTimeField(
+        'Fecha y Hora de Inicio',
+        default=timezone.now
     )
-    telefono_destino = models.CharField(
-        'Teléfono de Destino',
-        max_length=20,
-        help_text='Número al que se llama'
-    )
-    
-    estado_venta = models.ForeignKey(
-        TiposParametros,
-        on_delete=models.SET_NULL,
+    fecha_hora_fin = models.DateTimeField(
+        'Fecha y Hora de Fin',
         null=True,
-        blank=True,
-        related_name='estados_ventas',
-        db_column='estado_venta_id',
-        help_text='Estado de la venta'
-    )   
-    estado_recibida = models.ForeignKey(
-        TiposParametros,
-        on_delete=models.SET_NULL,
-        null=True,
-        default=None,  
-        db_column='estado_recibida_id',
-        help_text='Si el agente aceptó la llamada'
+        blank=True
     )
-
-    
-    hora_inicio_timbrado = models.DateTimeField(
-        'Hora Inicio Timbrado',
-        default=timezone.now,
-        help_text='Momento en que empieza a sonar'
-    )
-    hora_inicio_llamada = models.DateTimeField(
-        'Hora Inicio Llamada',
-        null=True,
-        blank=True,
-        help_text='Momento en que el agente contesta'
-    )
-    hora_fin_llamada = models.DateTimeField(
-        'Hora Fin Llamada',
+    duracion = models.IntegerField(
+        'Duración (segundos)',
         null=True,
         blank=True
     )
     
-    duracion_timbrado_segundos = models.IntegerField(
-        'Duración Timbrado (seg)',
-        null=True,
-        blank=True,
-        help_text='Tiempo que sonó antes de ser atendida o rechazada'
+    # Estados según MER (FK a TiposParametros)
+    estado_llamada = models.ForeignKey(
+        TiposParametros,
+        on_delete=models.PROTECT,
+        related_name='llamadas_estado_llamada',
+        help_text='Estado: contestada, no contestada'
     )
-    duracion_llamada_segundos = models.IntegerField(
-        'Duración Llamada (seg)',
-        null=True,
-        blank=True,
-        help_text='Duración total de la conversación'
+    estado_venta = models.ForeignKey(
+        TiposParametros,
+        on_delete=models.PROTECT,
+        related_name='llamadas_estado_venta',
+        help_text='Estado: venta, no venta'
+    )
+    estado_reportada = models.ForeignKey(
+        TiposParametros,
+        on_delete=models.PROTECT,
+        related_name='llamadas_estado_reportada',
+        help_text='Estado: reportada, no reportada'
+    )
+
+    transcipcion = models.TextField(
+        'Transcripción',
+        blank=True
     )
     
-    # Grabación
     grabacion_url = models.URLField(
         'URL de Grabación',
         max_length=500,
-        blank=True,
-        help_text='URL de la grabación en Twilio o servidor'
-    )
-    grabacion_duracion = models.IntegerField(
-        'Duración Grabación (seg)',
-        null=True,
         blank=True
     )
     
-    # Campos específicos de Twilio
+    # Campos adicionales NECESARIOS para Twilio
     twilio_call_sid = models.CharField(
         'Twilio Call SID',
         max_length=100,
         blank=True,
-        unique=True,
-        null=True,
         help_text='ID único de la llamada en Twilio'
     )
     twilio_status = models.CharField(
         'Estado Twilio',
         max_length=50,
         blank=True,
-        help_text='Estado de la llamada en Twilio (ringing, in-progress, completed, etc.)'
+        help_text='Estado de la llamada en Twilio'
     )
     twilio_recording_sid = models.CharField(
         'Twilio Recording SID',
@@ -143,29 +125,45 @@ class Llamada(models.Model):
         'URL Grabación Twilio',
         max_length=500,
         blank=True,
-        help_text='URL de la grabación en los servidores de Twilio'
+        help_text='URL de la grabación en Twilio'
     )
-    # Transferencias y redireccionamientos
-    agente_anterior = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='llamadas_transferidas',
-        help_text='Agente que transfirió esta llamada'
+    
+    # Campos adicionales NECESARIOS para operación
+    telefono_origen = models.CharField(
+        'Teléfono de Origen',
+        max_length=20
     )
-
+    telefono_destino = models.CharField(
+        'Teléfono de Destino',
+        max_length=20
+    )
+    
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
     
     class Meta:
         db_table = 'llamada'
         verbose_name = 'Llamada'
         verbose_name_plural = 'Llamadas'
-        ordering = ['-hora_inicio_timbrado']
+        ordering = ['-fecha_hora_inicio']
         indexes = [
-            models.Index(fields=['agente', '-hora_inicio_timbrado']),
-            models.Index(fields=['llamada_sid']),
+            models.Index(fields=['agente', '-fecha_hora_inicio']),
+            models.Index(fields=['cliente', '-fecha_hora_inicio']),
+            models.Index(fields=['estado_llamada']),
             models.Index(fields=['telefono_origen']),
         ]
+    
+    def __str__(self):
+        agente_nombre = self.agente.get_full_name() if self.agente else "Sin asignar"
+        return f"Llamada {self.id} - {agente_nombre}"
+    
+    def save(self, *args, **kwargs):
+        """Calcula duración automáticamente."""
+        if self.fecha_hora_fin and self.fecha_hora_inicio:
+            delta = self.fecha_hora_fin - self.fecha_hora_inicio
+            self.duracion = int(delta.total_seconds())
+        super().save(*args, **kwargs)
+
     
     def __str__(self):
         agente = self.agente_id.full_name if self.agente_id else "Sin agente"
@@ -201,95 +199,87 @@ class Llamada(models.Model):
 
 
 class IteracionCliente(models.Model):
+    """
+    Iteraciones o intentos de contacto con clientes.
+    Tabla del MER: Iteracion_Cliente
+    """
+    # iteracion_id se genera automáticamente como AutoField (PK)
     
-    campana_id = models.ForeignKey(
+    campana = models.ForeignKey(
         Campana,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='campanas_iteraciones',
-        db_column='campana_id'
+        on_delete=models.CASCADE,
+        related_name='iteraciones'
     )
-    cliente_id = models.ForeignKey(
+    cliente = models.ForeignKey(
         Cliente,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='clientes_iteraciones',
-        db_column='cliente_id'
-    )    
-    estado_interacion_llamada_id = models.ForeignKey(
-        TiposParametros,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='iteraciones_estado',
-        db_column='estado_interacion_llamada_id'
+        on_delete=models.CASCADE,
+        related_name='iteraciones'
     )
-    intento = models.IntegerField('ID Venta', null=True, blank=True)
+    estado_iteracion = models.ForeignKey(
+        TiposParametros,
+        on_delete=models.PROTECT,
+        related_name='iteraciones_estado'
+    )
+    intento = models.IntegerField(
+        'Número de Intento',
+        default=1
+    )
+    
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
     
     class Meta:
         db_table = 'iteracion_cliente'
         verbose_name = 'Iteración de Cliente'
         verbose_name_plural = 'Iteraciones de Clientes'
+        ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['cliente_id', 'campana_id']),
+            models.Index(fields=['campana', 'cliente']),
+            models.Index(fields=['cliente', '-created_at']),
         ]
     
     def __str__(self):
-        cliente_nombre = self.cliente_id.nombre if self.cliente_id else "Sin cliente"
-        return f"Iteración {self.id} - {cliente_nombre} - Campaña {self.campana_id.nombre if self.campana_id else 'N/A'}"
+        return f"Iteración {self.intento} - {self.cliente.nombre} - Campaña {self.campana.nombre}"
 
-
-class Venta(models.Model):
-    """
-    Registro de ventas realizadas.
-    """
-    venta_id = models.AutoField(primary_key=True)
-    campana_id = models.ForeignKey(
-        Campana,
-        on_delete=models.CASCADE,
-        related_name='ventas',
-        db_column='campana_id'
-    )
-    monto = models.DecimalField('Monto', max_digits=10, decimal_places=2, null=True, blank=True)
-    
-    class Meta:
-        db_table = 'venta'
-        verbose_name = 'Venta'
-        verbose_name_plural = 'Ventas'
-    
-    def __str__(self):
-        return f"Venta {self.venta_id}"
 
 class FormularioVenta(models.Model):
     """
     Formulario asociado a una venta.
     """
-    formulario_id = models.AutoField(primary_key=True)
-    llamada_id = models.ForeignKey(
+
+    llamada = models.ForeignKey(
         Llamada,
         on_delete=models.CASCADE,
-        related_name='formularios',
-        db_column='llamada_id'
+        related_name='formularios'
     )
-    cliente_id = models.ForeignKey(
-        Cliente,
+    agente = models.ForeignKey(
+        User,
         on_delete=models.CASCADE,
-        related_name='formularios',
-        db_column='cliente_id'
+        related_name='formularios_completados'
     )
-    venta_id = models.ForeignKey(
-        Venta,
-        on_delete=models.CASCADE,
-        related_name='formularios',
-        db_column='campana_id'
+    
+    campos_json = models.JSONField(
+        'Campos del Formulario',
+        default=dict,
+        help_text='Estructura JSON con los campos y valores del formulario'
     )
-    datos_formulario = models.JSONField('Datos del Formulario', blank=True, null=True)
+    completado = models.BooleanField(
+        'Completado',
+        default=False
+    )
+    fecha_completado = models.DateTimeField(
+        'Fecha de Completado',
+        null=True,
+        blank=True
+    )
+    
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
     
     class Meta:
-        db_table = 'formulario_venta'
-        verbose_name = 'Formulario de Venta'
-        verbose_name_plural = 'Formularios de Ventas'
+        verbose_name = 'Formulario de Llamada'
+        verbose_name_plural = 'Formularios de Llamadas'
+        ordering = ['-created_at']
+    
     def __str__(self):
-        return f"Formulario {self.formulario_id}"
+        return f"Formulario {self.id} - Llamada {self.llamada_id}"

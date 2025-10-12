@@ -3,7 +3,12 @@ Helper para gestión de estados del sistema.
 Facilita el acceso a los TiposParametros sin hardcodear IDs.
 """
 from django.core.cache import cache
-from apps.users.models import TiposParametros
+
+
+def _get_tipos_parametros_model():
+    """Lazy import para evitar circular imports."""
+    from apps.users.models import TiposParametros
+    return TiposParametros
 
 
 class EstadosHelper:
@@ -38,6 +43,7 @@ class EstadosHelper:
         Returns:
             TiposParametros object o None si no existe
         """
+        TiposParametros = _get_tipos_parametros_model()
         cache_key = f"{cls.CACHE_PREFIX}{categoria}_{valor}"
         
         # Intentar obtener del caché
@@ -83,6 +89,7 @@ class EstadosHelper:
         Returns:
             QuerySet de TiposParametros
         """
+        TiposParametros = _get_tipos_parametros_model()
         cache_key = f"{cls.CACHE_PREFIX}cat_{categoria}"
         
         estados = cache.get(cache_key)

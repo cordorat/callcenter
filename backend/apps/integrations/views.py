@@ -62,8 +62,8 @@ def generate_twilio_client_token(request):
         }, status=status.HTTP_403_FORBIDDEN)
     
     try:
-        # Identity única del agente
-        identity = f"agent_{user.id}"
+        # Identity única del agente (usar pk que funciona con cualquier primary key)
+        identity = f"agent_{user.pk}"
         
         # Crear token de acceso
         token = AccessToken(

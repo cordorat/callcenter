@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import transaction
-from datetime import date
+from datetime import date, timedelta
 
 from .models import User, TiposParametros, EstadoAgenteDetalle, EstadoAgenteActual
 from .serializers import (
@@ -16,7 +16,7 @@ from .serializers import (
     CambiarEstadoSerializer
 )
 from .permissions import IsAdmin, IsAdminOrOwner
-
+from common.estados_helper import get_estado
 User = get_user_model()
 
 
@@ -60,9 +60,9 @@ class UserViewSet(viewsets.ModelViewSet):
         Los agentes solo ven su propia información.
         """
         user = self.request.user
-        if user.is_admin():
+        if user.rol==get_estado('ROL_USUARIO', 'AGENTE'):
             return User.objects.all()
-        return User.objects.filter(id=user.id)
+        return User.objects.filter(pk=user.pk)
     
     def create(self, request, *args, **kwargs):
         """Crea un nuevo usuario (solo administradores)."""
@@ -83,7 +83,7 @@ class UserViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         
         # No permitir que un usuario se elimine a sí mismo
-        if instance.id == request.user.id:
+        if instance.pk == request.user.pk:
             return Response(
                 {"detail": "No puedes desactivarte a ti mismo."},
                 status=status.HTTP_400_BAD_REQUEST
@@ -148,15 +148,17 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class TiposParametrosViewSet(viewsets.ViewSet):
     """
-    ViewSet para listar los tipos de parámetros (estados disponibles para agentes).
-    GET /api/parametros/
+    ViewSet para listar los tipos de parámetros del sistema.
+    
+    GET /api/users/parametros/ - Lista todos los parámetros
+    GET /api/users/parametros/?nombre=ROL_USUARIO - Filtra por categoría/nombre
     
     Respuesta: [
         {
             "parametros_id": 1,
-            "nombre": "ESTADO_AGENTE",
-            "valor": "Disponible",
-            "descripcion": "Agente disponible para recibir llamadas"
+            "nombre": "ROL_USUARIO",
+            "valor": "ADMIN",
+            "descripcion": "Rol Administrador"
         },
         ...
     ]
@@ -164,16 +166,26 @@ class TiposParametrosViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
     
     def list(self, request):
-        """Lista todos los estados de agente sin paginación."""
-        estados = TiposParametros.objects.filter(nombre='ESTADO_AGENTE').order_by('valor')
+        """
+        Lista los parámetros del sistema.
+        Puede filtrarse por nombre usando query param ?nombre=ROL_USUARIO
+        """
+        nombre_filter = request.query_params.get('nombre', None)
+        
+        if nombre_filter:
+            # Filtrar por categoría específica
+            parametros = TiposParametros.objects.filter(nombre=nombre_filter).order_by('valor')
+        else:
+            # Devolver todos los parámetros agrupados por nombre
+            parametros = TiposParametros.objects.all().order_by('nombre', 'valor')
         
         resultado = []
-        for estado in estados:
+        for param in parametros:
             resultado.append({
-                'parametros_id': estado.parametros_id,
-                'nombre': estado.nombre,
-                'valor': estado.valor,
-                'descripcion': estado.descripcion
+                'parametros_id': param.parametros_id,
+                'nombre': param.nombre,
+                'valor': param.valor,
+                'descripcion': param.descripcion
             })
         
         return Response(resultado)
@@ -195,10 +207,10 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
         registros_creados = []
         for estado in estados:
             detalle, created = EstadoAgenteDetalle.objects.get_or_create(
-                agente=agente,
-                estado=estado,
+                agente_id=agente,
+                estado_id=estado,
                 fecha=fecha_actual,
-                defaults={'tiempo': '00:00:00', 'cambios': ''}
+                defaults={'tiempo': timedelta(seconds=0), 'cambios': ''}
             )
             if created:
                 registros_creados.append(estado.valor)
@@ -219,10 +231,10 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
         
         # Obtener o crear el registro del día para ese estado
         detalle, created = EstadoAgenteDetalle.objects.get_or_create(
-            agente=agente,
-            estado=estado_anterior,
+            agente_id=agente,
+            estado_id=estado_anterior,
             fecha=fecha_actual,
-            defaults={'tiempo': '00:00:00', 'cambios': ''}
+            defaults={'tiempo': timedelta(seconds=0), 'cambios': ''}
         )
         
         # Agregar el cambio ANTES de actualizar el tiempo
@@ -244,12 +256,12 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
         }
         """
         try:
-            estado_actual = EstadoAgenteActual.objects.select_related('estado', 'agente').get(
-                agente=request.user
+            estado_actual = EstadoAgenteActual.objects.select_related('estado_id', 'agente_id').get(
+                agente_id=request.user
             )
             return Response({
-                'agente': estado_actual.agente.full_name,
-                'estado': estado_actual.estado.valor
+                'agente': estado_actual.agente_id.full_name,
+                'estado': estado_actual.estado_id.valor
             })
         except EstadoAgenteActual.DoesNotExist:
             # Si no tiene estado, asignar "Desconectado" por defecto
@@ -261,8 +273,8 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
                 
                 with transaction.atomic():
                     estado_actual = EstadoAgenteActual.objects.create(
-                        agente=request.user,
-                        estado=estado_desconectado
+                        agente_id=request.user,
+                        estado_id=estado_desconectado
                     )
                     
                     # Inicializar los 9 registros diarios
@@ -336,8 +348,8 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
         with transaction.atomic():
             # Obtener o crear el estado actual del agente
             estado_actual, created = EstadoAgenteActual.objects.select_for_update().get_or_create(
-                agente=agente_objetivo,
-                defaults={'estado': nuevo_estado}
+                agente_id=agente_objetivo,
+                defaults={'estado_id': nuevo_estado}
             )
             
             # Inicializar los registros diarios si es necesario
@@ -345,7 +357,7 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
             
             if not created:
                 # Verificar si es el mismo estado
-                if estado_actual.estado.parametros_id == estado_id:
+                if estado_actual.estado_id.parametros_id == estado_id:
                     return Response(
                         {'detail': 'Ya se encuentra en ese estado'},
                         status=status.HTTP_400_BAD_REQUEST
@@ -357,21 +369,21 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
                 # Actualizar el tiempo del estado anterior
                 self._actualizar_tiempo_estado_anterior(
                     agente_objetivo,
-                    estado_actual.estado,
+                    estado_actual.estado_id,
                     duracion_segundos,
                     usuario_cambio
                 )
                 
                 # Cambiar al nuevo estado
-                estado_actual.estado = nuevo_estado
-                estado_actual.fecha_inicio = timezone.now()
+                estado_actual.estado_id = nuevo_estado
+                estado_actual.tiempo = timezone.now()
                 estado_actual.save()
             else:
                 # Primera vez que se establece el estado
                 # Agregar el cambio inicial
                 detalle_inicial = EstadoAgenteDetalle.objects.get(
-                    agente=agente_objetivo,
-                    estado=nuevo_estado,
+                    agente_id=agente_objetivo,
+                    estado_id=nuevo_estado,
                     fecha=fecha_actual
                 )
                 detalle_inicial.agregar_cambio(usuario_cambio.full_name)
@@ -417,17 +429,17 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
             )
         
         detalles = EstadoAgenteDetalle.objects.filter(
-            agente=request.user,
+            agente_id=request.user,
             fecha=fecha_consulta
-        ).select_related('estado', 'agente').order_by('estado__valor')
+        ).select_related('estado_id', 'agente_id').order_by('estado_id__valor')
         
         # Construir respuesta personalizada
         resultado = []
         for detalle in detalles:
             resultado.append({
                 'fecha': str(detalle.fecha),
-                'agente': detalle.agente.full_name,
-                'estado': detalle.estado.valor,
+                'agente': detalle.agente_id.full_name,
+                'estado': detalle.estado_id.valor,
                 'tiempo': detalle.tiempo,
                 'cambios': detalle.cambios
             })

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import User, TiposParametros
-
+from common.estados_helper import get_estado
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializador para mostrar información de usuarios."""
@@ -10,8 +10,8 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = '_all__'
-        read_only_fields = ['id']
+        fields = '__all__'
+        read_only_fields = ['documento_id']
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -37,7 +37,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'phone',
             'documento_id',
             'foto_perfil',
-            'role',
+            'rol',
             'password',
             'password_confirm',
             'is_active'
@@ -65,11 +65,11 @@ class UserCreateSerializer(serializers.ModelSerializer):
         
         return attrs
     
-    def validate_role(self, value):
+    def validate_rol(self, value):
         """Valida que solo los administradores puedan crear otros administradores."""
         request = self.context.get('request')
-        if request and value == User.Role.ADMIN:
-            if not request.user.is_admin():
+        if request and value == get_estado('ROL_USUARIO', 'ADMIN'):
+            if not request.user.rol==get_estado('ROL_USUARIO', 'ADMIN'):
                 raise serializers.ValidationError(
                     "No tienes permisos para crear administradores."
                 )
@@ -107,7 +107,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         instance = self.instance
         
         # Los agentes solo pueden actualizar su propia información
-        if request.user.is_agent() and request.user.id != instance.id:
+        if request.user.is_agent() and request.user.pk != instance.pk:
             raise serializers.ValidationError(
                 "No tienes permisos para actualizar otros usuarios."
             )

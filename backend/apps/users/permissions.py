@@ -1,5 +1,5 @@
 from rest_framework.permissions import BasePermission
-
+from common.estados_helper import get_estado
 
 class IsAdmin(BasePermission):
     """
@@ -7,7 +7,7 @@ class IsAdmin(BasePermission):
     """
     
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.is_admin()
+        return request.user and request.user.is_authenticated and request.user.rol==get_estado('ROL_USUARIO', 'ADMIN')
 
 
 class IsAdminOrOwner(BasePermission):

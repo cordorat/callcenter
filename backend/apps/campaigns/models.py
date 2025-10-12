@@ -1,14 +1,35 @@
 from django.db import models
-from apps.users.models import User
+from apps.users.models import User, TiposParametros, Centro
+from django.utils import timezone
 
 class Producto(models.Model):
     """
-    Productos o servicios ofrecidos en las campañas.
+    Productos o servicios que se ofrecen en las campañas.
+    Tabla del MER: Producto
     """
-    producto_id = models.AutoField(primary_key=True)
-    nombre = models.CharField('Nombre', max_length=255)
-    descripcion = models.TextField('Descripción', blank=True)
-    precio = models.DecimalField('Precio', max_digits=10, decimal_places=2, null=True, blank=True)
+    # producto_id se genera automáticamente como AutoField (PK)
+    
+    nombre = models.CharField(
+        'Nombre del Producto',
+        max_length=200
+    )
+    descripcion = models.TextField(
+        'Descripción',
+        blank=True
+    )
+    precio = models.DecimalField(
+        'Precio',
+        max_digits=10,
+        decimal_places=2,
+        help_text='Precio base del producto'
+    )
+    activo = models.BooleanField(
+        'Activo',
+        default=True
+    )
+    
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
     
     class Meta:
         db_table = 'producto'
@@ -17,27 +38,69 @@ class Producto(models.Model):
         ordering = ['nombre']
     
     def __str__(self):
-        return self.nombre
+        return f"{self.nombre} - ${self.precio}"
 
 
 class Campana(models.Model):
     """
     Campañas de ventas/marketing del call center.
+    Tabla del MER: Campaña (campos exactos del MER)
     """
-    campana_id = models.AutoField(primary_key=True)
-    nombre = models.CharField('Nombre de la Campaña', max_length=150)
-    descripcion = models.TextField('Descripción', blank=True)
-    fecha_inicio = models.DateField('Fecha de Inicio', null=True, blank=True)
-    fecha_fin = models.DateField('Fecha de Fin', null=True, blank=True)
+    # campana_id se genera automáticamente como AutoField (PK)
+    
     jefe_campana = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
+        related_name='campanas_a_cargo',
+        verbose_name='Jefe de Campaña'
+    )
+    centro = models.ForeignKey(
+        Centro,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='campanas',
+        verbose_name='Centro'
+    )
+    
+    nombre = models.CharField(
+        'Nombre de la Campaña',
+        max_length=200
+    )
+    descripcion = models.TextField(
+        'Descripción',
+        blank=True
+    )
+    fecha_inicio = models.DateField(
+        'Fecha de Inicio',
+        default=timezone.now
+    )
+    fecha_fin = models.DateField(
+        'Fecha de Fin',
+        null=True,
+        blank=True
+    )
+    estado = models.ForeignKey(
+        TiposParametros,
+        on_delete=models.PROTECT,
+        related_name='campanas_estado',
+        verbose_name='Estado'
+    )
+    objetivo_llamadas = models.IntegerField(
+        'Objetivo de Llamadas',
+        null=True,
         blank=True,
-        db_column='id_jefe_campana',
-        related_name='campanas_dirigidas'
-    )    
-        
+        help_text='Meta de llamadas para esta campaña'
+    )
+    objetivo_ventas = models.IntegerField(
+        'Objetivo de Ventas',
+        null=True,
+        blank=True,
+        help_text='Meta de ventas/conversiones'
+    )
+    
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
     
     class Meta:
         db_table = 'campana'
@@ -51,67 +114,98 @@ class Campana(models.Model):
 
 class ProductoCampanaDetalle(models.Model):
     """
-    Relación muchos a muchos entre productos y campañas.
+    Relación entre productos y campañas (tabla intermedia).
+    Tabla del MER: Producto_Campaña_Detalle (solo FKs)
     """
-    producto_id = models.ForeignKey(
+    # id se genera automáticamente como AutoField (PK)
+    
+    producto = models.ForeignKey(
         Producto,
         on_delete=models.CASCADE,
-        related_name='campanas_detalle',
-        db_column='producto_id'
+        related_name='campanas_detalle'
     )
-    campana_id = models.ForeignKey(
+    campana = models.ForeignKey(
         Campana,
         on_delete=models.CASCADE,
-        related_name='productos_detalle',
-        db_column='campana_id'
+        related_name='productos_detalle'
     )
+    
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
     
     class Meta:
         db_table = 'producto_campana_detalle'
-        verbose_name = 'Producto-Campaña Detalle'
-        verbose_name_plural = 'Productos-Campañas Detalle'
-        unique_together = ['producto_id', 'campana_id']
+        verbose_name = 'Producto en Campaña'
+        verbose_name_plural = 'Productos en Campañas'
+        unique_together = [['producto', 'campana']]
+        indexes = [
+            models.Index(fields=['producto', 'campana']),
+        ]
     
     def __str__(self):
-        return f"{self.producto_id.nombre} - {self.campana_id.nombre}"
+        return f"{self.producto.nombre} en {self.campana.nombre}"
 
 
 class BaseDatosCargada(models.Model):
     """
-    Bases de datos cargadas para campañas.
+    Registro de bases de datos cargadas para campañas.
+    Tabla del MER: Base_Datos_Cargada
     """
     id = models.AutoField(primary_key=True)
-    campana_id = models.IntegerField('ID Campaña')
-    nombre_bd = models.CharField('Nombre BD', max_length=150)
-    fecha_carga = models.DateTimeField('Fecha de Carga', auto_now_add=True)
+    
+    campana = models.ForeignKey(
+        Campana,
+        on_delete=models.CASCADE,
+        related_name='bases_datos'
+    )
+    nombre_bd = models.CharField(
+        'Nombre de la Base de Datos',
+        max_length=150
+    )
+    fecha_carga = models.DateTimeField(
+        'Fecha de Carga',
+        auto_now_add=True
+    )
+    
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
     
     class Meta:
         db_table = 'base_datos_cargada'
         verbose_name = 'Base de Datos Cargada'
         verbose_name_plural = 'Bases de Datos Cargadas'
+        ordering = ['-fecha_carga']
+        indexes = [
+            models.Index(fields=['campana', '-fecha_carga']),
+        ]
     
     def __str__(self):
-        return f"{self.nombre_bd} - Campaña {self.campana_id}"
+        return f"{self.nombre_bd} - {self.campana.nombre}"
 
 
 class Cliente(models.Model):
     """
-    Clientes para las campañas.
+    Información de clientes para gestión de llamadas.
+    Tabla del MER: Cliente
+    EXACTO según modelo de campaigns (con otros_datos JSON)
     """
     cliente_id = models.AutoField(primary_key=True)
-    base_datos_id = models.ForeignKey(
+    campana = models.ForeignKey(
+        Campana,
+        on_delete=models.CASCADE,
+        related_name='clientes'
+    )
+    nombre = models.CharField(max_length=255)
+    telefono = models.CharField(max_length=20)
+    otros_datos = models.JSONField(blank=True, null=True)
+    base_datos = models.ForeignKey(
         BaseDatosCargada,
         on_delete=models.CASCADE,
         related_name='clientes',
-        db_column='base_datos_id',
         null=True,
         blank=True
     )
-    campana_id = models.IntegerField('ID Campaña')
-    nombre = models.CharField('Nombre', max_length=255)
-    telefono = models.CharField('Teléfono', max_length=20)
-    otros_datos = models.JSONField('Otros Datos', blank=True, null=True)
-    
+
     class Meta:
         db_table = 'cliente'
         verbose_name = 'Cliente'
@@ -120,12 +214,12 @@ class Cliente(models.Model):
             models.Index(fields=['base_datos_id', 'campana_id']),
             models.Index(fields=['telefono']),
         ]
-    
+
     def __str__(self):
         return f"{self.nombre} ({self.telefono})"
 
 
-class IteracionCliente(models.Model):
+class Contrato(models.Model):
     
     contrato_id=models.AutoField(primary_key=True)
     campana_id = models.ForeignKey(
@@ -174,7 +268,7 @@ class Equipo(models.Model):
         verbose_name_plural = 'Equipos'
         ordering = ['nombre']
     
-    def __str__(self):
+    def _str_(self):
         return self.nombre
 
 
@@ -205,5 +299,5 @@ class EquipoAgenteDetalle(models.Model):
             models.Index(fields=['equipo_id']),
         ]
     
-    def __str__(self):
+    def _str_(self):
         return f"{self.agente_id.full_name} en {self.equipo_id.nombre}"
