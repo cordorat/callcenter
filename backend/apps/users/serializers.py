@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import User
+from .models import User, TiposParametros
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -10,21 +10,8 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = [
-            'id',
-            'email',
-            'first_name',
-            'last_name',
-            'full_name',
-            'phone',
-            'documento_id',
-            'foto_perfil',
-            'role',
-            'is_active',
-            'created_at',
-            'updated_at'
-        ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        fields = '_all__'
+        read_only_fields = ['id']
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -182,3 +169,19 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.save()
         return user
+    
+class CambiarEstadoSerializer(serializers.Serializer):
+    """Serializer para cambiar el estado de un agente"""
+    estado_id = serializers.IntegerField()
+    agente_id = serializers.IntegerField(required=False, help_text="ID del agente (si lo cambia un supervisor)")
+    
+    def validate_estado_id(self, value):
+        """Valida que el estado exista y sea del tipo correcto"""
+        try:
+            estado = TiposParametros.objects.get(
+                parametros_id=value,
+                nombre='ESTADO_AGENTE'
+            )
+            return value
+        except TiposParametros.DoesNotExist:
+            raise serializers.ValidationError("El estado especificado no es válido")

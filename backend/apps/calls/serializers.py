@@ -3,12 +3,8 @@ Serializadores para gestión de llamadas del call center.
 """
 from rest_framework import serializers
 from django.utils import timezone
-from apps.calls.models import (
-    Cliente,
-    Campana,
-    Llamada,
-    FormularioLlamada
-)
+from apps.calls.models import Llamada, IteracionCliente, Venta, FormularioVenta
+from apps.campaigns.models import Cliente, Campana
 from apps.users.models import User, EstadoAgenteActual, EstadoAgenteDetalle
 
 
@@ -65,29 +61,31 @@ class CampanaSerializer(serializers.ModelSerializer):
     
     def get_llamadas_completadas(self, obj):
         """Cuenta llamadas completadas de la campaña."""
+        # TODO: Actualizar cuando se defina el nuevo campo de estado
         return obj.llamadas.filter(
-            estado_llamada=Llamada.EstadoLlamada.COMPLETADA
+            estado_llamada_id__isnull=False
         ).count()
 
 
-class FormularioLlamadaSerializer(serializers.ModelSerializer):
-    """Serializer para formularios de llamada."""
-    
-    class Meta:
-        model = FormularioLlamada
-        fields = [
-            'id', 'llamada', 'campos_json', 'completado',
-            'fecha_completado', 'created_at', 'updated_at'
-        ]
-        read_only_fields = ['created_at', 'updated_at', 'fecha_completado']
-    
-    def validate_campos_json(self, value):
-        """Valida que campos_json sea un diccionario válido."""
-        if not isinstance(value, dict):
-            raise serializers.ValidationError(
-                'Los campos deben ser un objeto JSON válido.'
-            )
-        return value
+# FormularioLlamadaSerializer - DEPRECADO: Modelo eliminado en refactorización
+# class FormularioLlamadaSerializer(serializers.ModelSerializer):
+#     """Serializer para formularios de llamada."""
+#     
+#     class Meta:
+#         model = FormularioLlamada
+#         fields = [
+#             'id', 'llamada', 'campos_json', 'completado',
+#             'fecha_completado', 'created_at', 'updated_at'
+#         ]
+#         read_only_fields = ['created_at', 'updated_at', 'fecha_completado']
+#     
+#     def validate_campos_json(self, value):
+#         """Valida que campos_json sea un diccionario válido."""
+#         if not isinstance(value, dict):
+#             raise serializers.ValidationError(
+#                 'Los campos deben ser un objeto JSON válido.'
+#             )
+#         return value
 
 
 class LlamadaSerializer(serializers.ModelSerializer):

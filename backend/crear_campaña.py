@@ -8,7 +8,7 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'callcenter.settings')
 django.setup()
 
-from apps.calls.models import Campana
+from apps.campaigns.models import Campana
 
 def check_and_create_campaign():
     """Verifica si existe una campaña activa y crea una si no."""
