@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.campaigns",
     "apps.calls",
+    "apps.sales",
     "apps.recordings",
     "apps.kpis",
     "apps.integrations",
