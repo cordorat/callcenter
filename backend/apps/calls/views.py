@@ -7,15 +7,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
-from apps.calls.models import (
-    Cliente,
-    Campana,
-    Llamada,
-    FormularioVenta
-)
+from apps.calls.models import Llamada, FormularioVenta
+from apps.campaigns.models import Cliente, Campana
 from apps.users.permissions import IsAdmin, IsAdminOrOwner
 from apps.calls.serializers import (
-    ClienteSerializer,
     CampanaSerializer,
     LlamadaSerializer,
     FormularioVentaSerializer,
@@ -25,7 +20,8 @@ from apps.calls.serializers import (
     RechazarLlamadaSerializer,
     TransferirLlamadaSerializer
 )
-
+from common.estados_helper import get_estado_id
+from apps.campaigns.serializers import ClienteSerializer
 
 class ClienteViewSet(viewsets.ModelViewSet):
     """
@@ -101,15 +97,10 @@ class CampanaViewSet(viewsets.ModelViewSet):
         """Filtrar campañas."""
         queryset = Campana.objects.all()
         
-        # Filtrar por tipo
-        tipo = self.request.query_params.get('tipo')
-        if tipo:
-            queryset = queryset.filter(tipo=tipo)
-        
-        # Filtrar por activas
-        activo = self.request.query_params.get('activo')
-        if activo is not None:
-            queryset = queryset.filter(activo=activo.lower() == 'true')
+        # Filtrar por nombre
+        nombre = self.request.query_params.get('nombre')
+        if nombre:
+            queryset = queryset.filter(nombre__icontains=nombre)
         
         return queryset.order_by('-created_at')
     
@@ -120,29 +111,35 @@ class CampanaViewSet(viewsets.ModelViewSet):
         
         llamadas = campana.llamadas.all()
         
+        # Obtener IDs de estados
+        estado_completada_id = get_estado_id('ESTADO_LLAMADA', 'COMPLETADA')
+        estado_en_curso_id = get_estado_id('ESTADO_LLAMADA', 'EN_CURSO')
+        estado_rechazada_id = get_estado_id('ESTADO_LLAMADA', 'RECHAZADA')
+        estado_no_contestada_id = get_estado_id('ESTADO_LLAMADA', 'NO_CONTESTADA')
+        
         stats = {
             'total_llamadas': llamadas.count(),
             'llamadas_completadas': llamadas.filter(
-                estado_llamada=Llamada.EstadoLlamada.COMPLETADA
-            ).count(),
+                estado_recibida_id=estado_completada_id
+            ).count() if estado_completada_id else 0,
             'llamadas_en_curso': llamadas.filter(
-                estado_llamada=Llamada.EstadoLlamada.EN_CURSO
-            ).count(),
+                estado_recibida_id=estado_en_curso_id
+            ).count() if estado_en_curso_id else 0,
             'llamadas_rechazadas': llamadas.filter(
-                estado_llamada=Llamada.EstadoLlamada.RECHAZADA
-            ).count(),
+                estado_recibida_id=estado_rechazada_id
+            ).count() if estado_rechazada_id else 0,
             'llamadas_no_contestadas': llamadas.filter(
-                estado_llamada=Llamada.EstadoLlamada.NO_CONTESTADA
-            ).count(),
+                estado_recibida_id=estado_no_contestada_id
+            ).count() if estado_no_contestada_id else 0,
             'duracion_promedio_segundos': 0,
             'tasa_contacto': 0
         }
         
         # Calcular duración promedio
         llamadas_completadas = llamadas.filter(
-            estado_llamada=Llamada.EstadoLlamada.COMPLETADA,
+            estado_recibida_id=estado_completada_id,
             duracion_llamada_segundos__isnull=False
-        )
+        ) if estado_completada_id else llamadas.none()
         
         if llamadas_completadas.exists():
             from django.db.models import Avg
@@ -185,15 +182,21 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         
-        if user.is_admin():
+        # Validar rol de usuario
+        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        es_admin = hasattr(user, 'rol_id') and user.rol_id == rol_admin_id
+        
+        if es_admin:
             queryset = Llamada.objects.all()
         else:
             queryset = Llamada.objects.filter(agente=user)
         
         # Filtros opcionales
-        estado = self.request.query_params.get('estado')
-        if estado:
-            queryset = queryset.filter(estado_llamada=estado)
+        estado_valor = self.request.query_params.get('estado')
+        if estado_valor:
+            estado_id = get_estado_id('ESTADO_LLAMADA', estado_valor)
+            if estado_id:
+                queryset = queryset.filter(estado_recibida_id=estado_id)
         
         campana_id = self.request.query_params.get('campana_id')
         if campana_id:
@@ -201,15 +204,15 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         
         fecha_desde = self.request.query_params.get('fecha_desde')
         if fecha_desde:
-            queryset = queryset.filter(created_at__gte=fecha_desde)
+            queryset = queryset.filter(hora_inicio_timbrado__gte=fecha_desde)
         
         fecha_hasta = self.request.query_params.get('fecha_hasta')
         if fecha_hasta:
-            queryset = queryset.filter(created_at__lte=fecha_hasta)
+            queryset = queryset.filter(hora_inicio_timbrado__lte=fecha_hasta)
         
         return queryset.select_related(
-            'agente', 'cliente', 'campana', 'motivo_rechazo'
-        ).order_by('-created_at')
+            'agente', 'cliente_id', 'campana_id', 'estado_venta', 'estado_recibida'
+        ).order_by('-hora_inicio_timbrado')
     
     @action(detail=False, methods=['post'])
     def recibir_llamada(self, request):
@@ -247,8 +250,11 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         """
         llamada = self.get_object()
         
-        # Validar que sea el agente asignado
-        if llamada.agente != request.user and not request.user.is_admin():
+        # Validar que sea el agente asignado o admin
+        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        es_admin = hasattr(request.user, 'rol_id') and request.user.rol_id == rol_admin_id
+        
+        if llamada.agente != request.user and not es_admin:
             return Response(
                 {'detail': 'No tiene permisos para iniciar esta llamada.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -274,15 +280,18 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         
         Body:
         {
-            "notas": "Cliente interesado en el producto",
             "grabacion_url": "https://...",
-            "crear_formulario": true
+            "crear_formulario": true,
+            "monto_venta": 150.50
         }
         """
         llamada = self.get_object()
         
-        # Validar que sea el agente asignado
-        if llamada.agente != request.user and not request.user.is_admin():
+        # Validar que sea el agente asignado o admin
+        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        es_admin = hasattr(request.user, 'rol_id') and request.user.rol_id == rol_admin_id
+        
+        if llamada.agente != request.user and not es_admin:
             return Response(
                 {'detail': 'No tiene permisos para completar esta llamada.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -308,14 +317,16 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         
         Body:
         {
-            "motivo_rechazo_id": 1,
-            "notas": "Cliente no disponible"
+            "motivo_rechazo_valor": "FUERA_DE_HORARIO"
         }
         """
         llamada = self.get_object()
         
-        # Validar que sea el agente asignado
-        if llamada.agente != request.user and not request.user.is_admin():
+        # Validar que sea el agente asignado o admin
+        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        es_admin = hasattr(request.user, 'rol_id') and request.user.rol_id == rol_admin_id
+        
+        if llamada.agente != request.user and not es_admin:
             return Response(
                 {'detail': 'No tiene permisos para rechazar esta llamada.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -341,14 +352,16 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         
         Body:
         {
-            "agente_destino_id": 2,
-            "notas": "Cliente requiere soporte técnico"
+            "agente_destino_id": 2
         }
         """
         llamada = self.get_object()
         
-        # Validar que sea el agente asignado
-        if llamada.agente != request.user and not request.user.is_admin():
+        # Validar que sea el agente asignado o admin
+        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        es_admin = hasattr(request.user, 'rol_id') and request.user.rol_id == rol_admin_id
+        
+        if llamada.agente != request.user and not es_admin:
             return Response(
                 {'detail': 'No tiene permisos para transferir esta llamada.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -372,21 +385,28 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         """Obtiene las llamadas activas del agente autenticado."""
         user = request.user
         
+        # Obtener IDs de estados activos
+        estado_timbrado_id = get_estado_id('ESTADO_LLAMADA', 'TIMBRADO')
+        estado_en_curso_id = get_estado_id('ESTADO_LLAMADA', 'EN_CURSO')
+        
+        estados_activos = []
+        if estado_timbrado_id:
+            estados_activos.append(estado_timbrado_id)
+        if estado_en_curso_id:
+            estados_activos.append(estado_en_curso_id)
+        
         llamadas = Llamada.objects.filter(
             agente=user,
-            estado_llamada__in=[
-                Llamada.EstadoLlamada.TIMBRADO,
-                Llamada.EstadoLlamada.EN_CURSO
-            ]
-        ).select_related('agente', 'cliente', 'campana')
+            estado_recibida_id__in=estados_activos
+        ).select_related('agente', 'cliente_id', 'campana_id')
         
         serializer = LlamadaSerializer(llamadas, many=True)
         return Response(serializer.data)
 
 
-class FormularioLlamadaViewSet(viewsets.ModelViewSet):
+class FormularioVentaViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para gestión de formularios de llamada.
+    ViewSet para gestión de formularios de venta.
     
     list: Listar formularios del agente (o todos si es admin)
     retrieve: Obtener un formulario específico
@@ -412,33 +432,50 @@ class FormularioLlamadaViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         
-        if user.is_admin():
+        # Validar rol de usuario
+        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        es_admin = hasattr(user, 'rol_id') and user.rol_id == rol_admin_id
+        
+        if es_admin:
             queryset = FormularioVenta.objects.all()
         else:
-            queryset = FormularioVenta.objects.filter(llamada__agente=user)
+            queryset = FormularioVenta.objects.filter(llamada_id__agente=user)
         
-        return queryset.select_related('llamada', 'llamada__agente').order_by('-created_at')
+        return queryset.select_related('llamada_id', 'llamada_id__agente').order_by('-formulario_id')
     
     @action(detail=False, methods=['get'])
     def pendientes(self, request):
         """Obtiene los formularios pendientes del agente autenticado."""
         user = request.user
         
+        # Para FormularioVenta no hay campo completado, 
+        # consideramos pendientes los que tienen datos_formulario vacío o null
         formularios = FormularioVenta.objects.filter(
-            llamada__agente=user,
-            completado=False
-        ).select_related('llamada', 'llamada__cliente', 'llamada__campana')
+            llamada_id__agente=user
+        ).filter(
+            datos_formulario__isnull=True
+        ) | FormularioVenta.objects.filter(
+            llamada_id__agente=user,
+            datos_formulario={}
+        )
+        
+        formularios = formularios.select_related(
+            'llamada_id', 'cliente_id', 'llamada_id__campana_id'
+        )
         
         serializer = FormularioVentaSerializer(formularios, many=True)
         return Response(serializer.data)
     
     def update(self, request, *args, **kwargs):
-        """Actualiza el formulario y marca como completado si todos los campos están llenos."""
+        """Actualiza el formulario."""
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
-        # Validar que sea el agente asignado a la llamada
-        if instance.llamada.agente != request.user and not request.user.is_admin():
+        # Validar que sea el agente asignado a la llamada o admin
+        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        es_admin = hasattr(request.user, 'rol_id') and request.user.rol_id == rol_admin_id
+        
+        if instance.llamada_id.agente != request.user and not es_admin:
             return Response(
                 {'detail': 'No tiene permisos para actualizar este formulario.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -446,13 +483,6 @@ class FormularioLlamadaViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        
-        # Marcar como completado si se indica
-        if request.data.get('completado') and not instance.completado:
-            from django.utils import timezone
-            instance.completado = True
-            instance.fecha_completado = timezone.now()
-        
         self.perform_update(serializer)
         
         return Response(serializer.data)

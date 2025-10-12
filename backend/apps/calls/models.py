@@ -69,10 +69,11 @@ class Llamada(models.Model):
         TiposParametros,
         on_delete=models.SET_NULL,
         null=True,
-        default=False,
+        default=None,  
         db_column='estado_recibida_id',
         help_text='Si el agente aceptó la llamada'
     )
+
     
     hora_inicio_timbrado = models.DateTimeField(
         'Hora Inicio Timbrado',

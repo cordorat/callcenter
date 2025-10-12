@@ -12,6 +12,7 @@ from django.db.models.functions import Extract
 
 from apps.calls.models import Llamada
 from apps.users.models import User
+from common.estados_helper import get_estado_id, get_estado
 
 
 class KPIViewSet(viewsets.ViewSet):
@@ -79,8 +80,12 @@ class KPIViewSet(viewsets.ViewSet):
 
         total_llamadas = llamadas.count()
 
-        # Ventas realizadas (usando estado_venta)
-        ventas = llamadas.exclude(estado_venta='NO_VENTA').count()
+        # Ventas realizadas (excluir NO_VENTA usando estados_helper)
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        if estado_no_venta_id:
+            ventas = llamadas.exclude(estado_venta_id=estado_no_venta_id).count()
+        else:
+            ventas = 0
 
         # Cumplimiento
         cumplimiento = (ventas / total_llamadas * 100) if total_llamadas > 0 else 0
@@ -188,8 +193,12 @@ class KPIViewSet(viewsets.ViewSet):
         
         total_llamadas = llamadas.count()
         
-        # Ventas realizadas (excluir NO_VENTA)
-        ventas = llamadas.exclude(estado_venta='NO_VENTA').count()
+        # Ventas realizadas (excluir NO_VENTA usando estados_helper)
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        if estado_no_venta_id:
+            ventas = llamadas.exclude(estado_venta_id=estado_no_venta_id).count()
+        else:
+            ventas = 0
         
         # Cumplimiento como decimal 0-1
         cumplimiento_decimal = (ventas / total_llamadas) if total_llamadas > 0 else 0
