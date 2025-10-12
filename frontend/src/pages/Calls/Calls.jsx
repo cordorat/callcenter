@@ -13,6 +13,9 @@ const Calls = () => {
     const [phoneNumber, setPhoneNumber] = React.useState('');
     const [showIncomingAlert, setShowIncomingAlert] = React.useState(false);
     
+    // Configuración de espaciado vertical del contenedor del teclado
+    const keypadVerticalPadding = 10; // Ajusta este valor para más o menos espacio (en unidades de 8px)
+    
     // Hook de Twilio con toda la lógica de llamadas
     const {
         isReady,
@@ -95,25 +98,59 @@ const Calls = () => {
             <Snackbar
                 open={showIncomingAlert}
                 anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                sx={{ mt: 8 }}
             >
                 <Alert 
                     severity="info" 
-                    sx={{ width: '400px' }}
+                    variant="filled"
+                    sx={{ 
+                        width: '420px',
+                        borderRadius: '12px',
+                        boxShadow: '0 6px 20px rgba(12, 21, 90, 0.25)',
+                        '& .MuiAlert-icon': {
+                            fontSize: '1.5rem',
+                        },
+                        '& .MuiAlert-message': {
+                            fontSize: '0.95rem',
+                            fontWeight: 600,
+                        },
+                    }}
                     action={
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box sx={{ display: 'flex', gap: 1.5 }}>
                             <Button 
-                                color="success" 
                                 size="small" 
                                 variant="contained"
                                 onClick={handleAcceptIncoming}
+                                sx={{
+                                    backgroundColor: '#0f9d58',
+                                    color: 'white',
+                                    borderRadius: '8px',
+                                    fontWeight: 600,
+                                    px: 2,
+                                    '&:hover': {
+                                        backgroundColor: '#0a7d45',
+                                    }
+                                }}
                             >
                                 Aceptar
                             </Button>
                             <Button 
-                                color="error" 
                                 size="small" 
                                 variant="outlined"
                                 onClick={handleRejectIncoming}
+                                sx={{
+                                    borderColor: 'white',
+                                    color: 'white',
+                                    borderRadius: '8px',
+                                    fontWeight: 600,
+                                    px: 2,
+                                    borderWidth: '2px',
+                                    '&:hover': {
+                                        borderColor: 'white',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                        borderWidth: '2px',
+                                    }
+                                }}
                             >
                                 Rechazar
                             </Button>
@@ -137,17 +174,25 @@ const Calls = () => {
                     maxWidth: '400px', 
                     display: 'flex',
                     flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
                 }}>
                     <Box 
                         display="flex" 
                         flexDirection="column" 
                         alignItems="center" 
-                        justifyContent="center"
-                        p={2} 
-                        border="1.5px solid #0C155A" 
-                        borderRadius={4} 
-                        backgroundColor="#ebf5feff"
-                        height="100%"
+                        justifyContent="flex-start"
+                        px={3}
+                        py={keypadVerticalPadding}
+                        borderRadius={3} 
+                        backgroundColor="#F8FAFB"
+                        sx={{
+                            boxShadow: '0 2px 8px rgba(12, 21, 90, 0.08)',
+                            transition: 'box-shadow 0.2s ease',
+                            '&:hover': {
+                                boxShadow: '0 4px 12px rgba(12, 21, 90, 0.12)',
+                            }
+                        }}
                     >
                         {/* Estado de conexión */}
                         {!isReady && (
@@ -181,12 +226,28 @@ const Calls = () => {
                             disabled={isInCall || !isReady}
                             variant="outlined"
                             placeholder="+57 300 123 4567"
-                            sx={{ mb: 2,
-                                textAlign: 'center',
+                            sx={{ 
+                                mb: 4,
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '10px',
+                                    backgroundColor: '#EBF5FE',
+                                    '& fieldset': {
+                                        borderColor: 'rgba(12, 21, 90, 0.2)',
+                                        borderWidth: '2px',
+                                    },
+                                    '&:hover fieldset': {
+                                        borderColor: 'rgba(12, 21, 90, 0.3)',
+                                    },
+                                    '&.Mui-focused fieldset': {
+                                        borderColor: '#0C155A',
+                                    },
+                                },
                                 '& input': {
-                                textAlign: 'center',
-                                fontSize: '0.875rem',
-                                fontWeight: 600,
+                                    textAlign: 'center',
+                                    fontSize: '1.1rem',
+                                    fontWeight: 600,
+                                    color: '#0C155A',
+                                    letterSpacing: '1px',
                                 },
                             }}
                             InputProps={{
@@ -205,12 +266,34 @@ const Calls = () => {
                         )}
                             
                         {/* Teclado numérico */}
-                        <Box display="grid" gridTemplateColumns="repeat(3, 60px)" gap={1} mb={2}>
+                        <Box display="grid" gridTemplateColumns="repeat(3, 60px)" gap={1.5} mb={2}>
                             {['1','2','3','4','5','6','7','8','9','*','0','#'].map((num) => (
                                 <Button 
                                     key={num} 
                                     variant="outlined" 
-                                    sx={{ height: 60, fontSize: '1.2rem', borderRadius: 8 }}
+                                    sx={{ 
+                                        height: 63, 
+                                        fontSize: '1.3rem', 
+                                        fontWeight: 700,
+                                        borderRadius: '50%',
+                                        borderWidth: '2px',
+                                        borderColor: 'rgba(12, 21, 90, 0.15)',
+                                        color: '#0C155A',
+                                        backgroundColor: '#EBF5FE',
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': {
+                                            borderColor: '#0C155A',
+                                            backgroundColor: '#D3E8FB',
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 4px 8px rgba(12, 21, 90, 0.15)',
+                                        },
+                                        '&:active': {
+                                            transform: 'translateY(0)',
+                                        },
+                                        '&.Mui-disabled': {
+                                            opacity: 0.5,
+                                        }
+                                    }}
                                     onClick={() => handleKeyPress(num)}
                                     disabled={!isReady}
                                 >
@@ -227,87 +310,119 @@ const Calls = () => {
                         )}
 
                         {/* Botones de acción */}
-                        <Box display="flex" gap={1} width="100%" justifyContent={'center'}> 
+                        <Box display="flex" gap={2} width="100%" justifyContent={'center'}> 
                             {!isInCall ? (
                                 <>
                                     <Button
                                         variant="contained"
-                                        color="success"
                                         onClick={handleCall}
                                         disabled={!phoneNumber.trim() || !isReady || callStatus === 'connecting'}
                                         sx={{ 
-                                            height: 60, 
-                                            width: 60,
-                                            minWidth: 60,
+                                            height: 64, 
+                                            width: 64,
+                                            minWidth: 64,
                                             borderRadius: '50%',
                                             padding: 0,
+                                            backgroundColor: '#0f9d58',
+                                            boxShadow: '0 4px 12px rgba(15, 157, 88, 0.3)',
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                                backgroundColor: '#0a7d45',
+                                                boxShadow: '0 6px 16px rgba(15, 157, 88, 0.4)',
+                                                transform: 'scale(1.05)',
+                                            },
+                                            '&:active': {
+                                                transform: 'scale(0.95)',
+                                            },
                                         }}
                                     >
                                         {callStatus === 'connecting' ? (
-                                            <CircularProgress size={24} color="inherit" />
+                                            <CircularProgress size={28} color="inherit" />
                                         ) : (
-                                            <CallIcon sx={{ fontSize: 30 }} />
+                                            <CallIcon sx={{ fontSize: 32 }} />
                                         )}
                                     </Button>
                                     <Button
-                                        variant="none"
-                                        color="secondary"
+                                        variant="outlined"
                                         onClick={handleBackspace}
                                         disabled={!phoneNumber.trim() || !isReady}
                                         sx={{ 
-                                            height: 60, 
-                                            width: 60,
-                                            minWidth: 60,
+                                            height: 64, 
+                                            width: 64,
+                                            minWidth: 64,
                                             borderRadius: '50%',
                                             padding: 0,
+                                            borderWidth: '2px',
+                                            borderColor: 'rgba(12, 21, 90, 0.2)',
+                                            color: '#0C155A',
+                                            backgroundColor: '#EBF5FE',
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                                borderColor: '#0C155A',
+                                                backgroundColor: '#D3E8FB',
+                                                transform: 'scale(1.05)',
+                                            },
+                                            '&:active': {
+                                                transform: 'scale(0.95)',
+                                            },
                                         }}
                                     >
-                                        <BackspaceIcon sx={{ fontSize: 24 }} />
+                                        <BackspaceIcon sx={{ fontSize: 26 }} />
                                     </Button>   
                                 </>
                             ) : (
                                 <>
-                                    {/*<Button
-                                        variant={isMuted ? "contained" : "outlined"}
-                                        color={isMuted ? "warning" : "primary"}
-                                        {/*onClick={handleHold}
-                                        sx={{ 
-                                            height: 60, 
-                                            width: 60,
-                                            minWidth: 60,
-                                            borderRadius: '50%',
-                                            padding: 0,
-                                        }}
-                                    >
-                                        {isOnHold ? <BackHandIcon sx={{ fontSize: 24 }} /> : <BackHandIcon sx={{ fontSize: 24 }} />}
-                                    </Button>*/}
                                     <Button
                                         variant="contained"
-                                        color="error"
                                         onClick={handleEndCall}
                                         sx={{ 
-                                            height: 60, 
-                                            width: 60,
-                                            minWidth: 60,
+                                            height: 64, 
+                                            width: 64,
+                                            minWidth: 64,
                                             borderRadius: '50%',
                                             padding: 0,
+                                            backgroundColor: '#d32f2f',
+                                            boxShadow: '0 4px 12px rgba(211, 47, 47, 0.3)',
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                                backgroundColor: '#b71c1c',
+                                                boxShadow: '0 6px 16px rgba(211, 47, 47, 0.4)',
+                                                transform: 'scale(1.05)',
+                                            },
+                                            '&:active': {
+                                                transform: 'scale(0.95)',
+                                            },
                                         }}
                                     >
-                                        <CallEndIcon sx={{ fontSize: 30 }} />
+                                        <CallEndIcon sx={{ fontSize: 32 }} />
                                     </Button>
                                     <Button
                                         variant={isMuted ? "contained" : "outlined"}
-                                        color="primary"
                                         onClick={handleMute}
                                         sx={{ 
-                                            height: 60, 
-                                            width: 60,
-                                            minWidth: 60,
+                                            height: 64, 
+                                            width: 64,
+                                            minWidth: 64,
                                             borderRadius: '50%',
                                             padding: 0,
+                                            borderWidth: '2px',
+                                            borderColor: isMuted ? 'transparent' : 'rgba(12, 21, 90, 0.2)',
+                                            backgroundColor: isMuted ? '#f57c00' : '#EBF5FE',
+                                            color: isMuted ? 'white' : '#0C155A',
+                                            boxShadow: isMuted ? '0 4px 12px rgba(245, 124, 0, 0.3)' : 'none',
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                                borderColor: isMuted ? 'transparent' : '#0C155A',
+                                                backgroundColor: isMuted ? '#e65100' : '#D3E8FB',
+                                                transform: 'scale(1.05)',
+                                                boxShadow: isMuted ? '0 6px 16px rgba(245, 124, 0, 0.4)' : '0 4px 8px rgba(12, 21, 90, 0.15)',
+                                            },
+                                            '&:active': {
+                                                transform: 'scale(0.95)',
+                                            },
                                         }}
                                     >
-                                        {isMuted ? <MicOffIcon sx={{ fontSize: 24 }} /> : <KeyboardVoiceIcon sx={{ fontSize: 24 }} />}
+                                        {isMuted ? <MicOffIcon sx={{ fontSize: 26 }} /> : <KeyboardVoiceIcon sx={{ fontSize: 26 }} />}
                                     </Button>  
                                 </> 
                             )}
