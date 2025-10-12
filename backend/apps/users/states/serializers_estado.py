@@ -7,11 +7,9 @@ from apps.users.models import (
     EstadoAgenteDetalle,
     EstadoAgenteActual,
     TiposParametros,
-    Equipo,
-    EquipoAgenteDetalle,
     User
 )
-
+from apps.campaigns.models import Equipo, EquipoAgenteDetalle
 
 class TiposParametrosSerializer(serializers.ModelSerializer):
     """Serializer para tipos de parámetros del sistema."""

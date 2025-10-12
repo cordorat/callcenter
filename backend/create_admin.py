@@ -10,6 +10,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'callcenter.settings')
 django.setup()
 
 from apps.users.models import User
+from common.estados_helper import get_estado
 
 def create_admin():
     """Crea el usuario administrador si no existe."""
@@ -26,13 +27,13 @@ def create_admin():
         first_name='Admin',
         last_name='Sistema',
         phone='+1234567890',
-        role=User.Role.ADMIN
+        rol=get_estado('ROL_USUARIO', 'ADMIN')
     )
     
     print('Usuario administrador creado exitosamente!')
     print(f'   Email: {user.email}')
     print(f'   Password: admin123')
-    print(f'   Rol: {user.get_role_display()}')
+    #print(f'   Rol: {user.get_role_display()}')
     print('\n IMPORTANTE: Cambia la contraseña en producción!')
 
 if __name__ == '__main__':
