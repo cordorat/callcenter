@@ -216,14 +216,17 @@ Este proceso **ELIMINARÁ TODOS LOS DATOS**.
 ```powershell
 python manage.py migrate
 ```
-#### c) Crear nuevo superusuario
-```powershell
-python create_admin.py
-```
-#### d) Poblar la tabla parametros con los estados (roles, estado campaña, etc)
+
+#### c) Poblar la tabla parametros con los estados (roles, estado campaña, etc)
 ```powershell
 python poblar_tipos_parametros.py
 ```
+
+#### d) Crear nuevo superusuario
+```powershell
+python create_admin.py
+```
+
 
 ## 🔧 Solución de Problemas Comunes
 
