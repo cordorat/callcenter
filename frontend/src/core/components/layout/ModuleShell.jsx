@@ -77,55 +77,187 @@ export default function ModuleShell({ title, items, children }) {
           flexShrink: 0,
           whiteSpace: "nowrap",
           boxSizing: "border-box",
-          transition: "width 0.3s ease",
+          transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           "& .MuiDrawer-paper": {
             width: hovered ? expandedWidth : collapsedWidth,
             overflowX: "hidden",
             boxSizing: "border-box",
-            transition: "width 0.3s ease",
+            transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             display: "flex",
             flexDirection: "column",
+            backgroundColor: "#EBF5FE",
+            borderRight: "1px solid rgba(12, 21, 90, 0.1)",
+            boxShadow: "4px 0 24px rgba(12, 21, 90, 0.08)",
           },
         }}
         open
       >
-        <Toolbar sx={{ justifyContent: "center" }}>
+        <Toolbar 
+          sx={{ 
+            justifyContent: "center",
+            py: 3,
+            background: "linear-gradient(135deg, rgba(12, 21, 90, 0.05) 0%, rgba(12, 21, 90, 0.02) 100%)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
           {hovered ? (
-            <Typography variant="h6" noWrap>
-              Call Center
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #0C155A 0%, #1a2b7a 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(12, 21, 90, 0.3)',
+                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                  '@keyframes pulse': {
+                    '0%, 100%': {
+                      opacity: 1,
+                      transform: 'scale(1)',
+                    },
+                    '50%': {
+                      opacity: 0.9,
+                      transform: 'scale(1.05)',
+                    },
+                  },
+                }}
+              >
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '1.1rem',
+                  }}
+                >
+                  CC
+                </Typography>
+              </Box>
+              <Typography 
+                variant="h6" 
+                noWrap
+                sx={{
+                  color: '#0C155A',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                Call Center
+              </Typography>
+            </Box>
           ) : (
-            <Typography variant="h6">CC</Typography>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #0C155A 0%, #1a2b7a 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(12, 21, 90, 0.3)',
+                animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                '@keyframes pulse': {
+                  '0%, 100%': {
+                    opacity: 1,
+                    transform: 'scale(1)',
+                  },
+                  '50%': {
+                    opacity: 0.9,
+                    transform: 'scale(1.05)',
+                  },
+                },
+              }}
+            >
+              <Typography 
+                variant="h6"
+                sx={{ 
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '1.2rem',
+                }}
+              >
+                CC
+              </Typography>
+            </Box>
           )}
         </Toolbar>
 
-        <Divider />
+        <Divider sx={{ borderColor: 'rgba(12, 21, 90, 0.1)', mx: 2 }} />
 
-        <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center" }}>
-          <List sx={{ width: "100%" }}>
+        <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", py: 2 }}>
+          <List sx={{ width: "100%", px: 1.5 }}>
             {items.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <ListItem
                   key={item.id}
                   disablePadding
-                  sx={{
-                    backgroundColor: isActive ? "rgba(33, 150, 243, 0.12)" : "transparent",
-                    borderLeft: isActive ? "4px solid #0C155A" : "4px solid transparent",
-                  }}
+                  sx={{ mb: 0.5 }}
                 >
                   <Tooltip
                     title={!hovered ? item.label : ""}
                     placement="right"
                     arrow
+                    slotProps={{
+                      tooltip: {
+                        sx: {
+                          bgcolor: '#0C155A',
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                          py: 1,
+                          px: 1.5,
+                          borderRadius: '8px',
+                          backdropFilter: 'blur(10px)',
+                        }
+                      },
+                      arrow: {
+                        sx: {
+                          color: '#0C155A',
+                        }
+                      }
+                    }}
                   >
                     <ListItemButton
                       onClick={() => navigate(item.path)}
                       sx={{
-                        "&:hover": { backgroundColor: "action.hover" },
+                        borderRadius: '12px',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         justifyContent: hovered ? "initial" : "center",
-                        px: 2.5,
+                        px: hovered ? 2 : 1.5,
+                        py: 1.5,
                         width: "100%",
+                        position: 'relative',
+                        overflow: 'hidden',
+                        backgroundColor: isActive 
+                          ? "rgba(12, 21, 90, 0.12)" 
+                          : "transparent",
+                        backdropFilter: isActive ? 'blur(10px)' : 'none',
+                        "&:hover": { 
+                          backgroundColor: isActive 
+                            ? "rgba(12, 21, 90, 0.18)" 
+                            : "rgba(12, 21, 90, 0.06)",
+                          transform: 'translateX(4px)',
+                          boxShadow: isActive 
+                            ? '0 4px 20px rgba(12, 21, 90, 0.15)'
+                            : '0 4px 12px rgba(12, 21, 90, 0.08)',
+                        },
+                        "&::before": isActive ? {
+                          content: '""',
+                          position: 'absolute',
+                          left: 0,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: '4px',
+                          height: '60%',
+                          background: 'linear-gradient(180deg, #0C155A 0%, #1a2b7a 100%)',
+                          borderRadius: '0 4px 4px 0',
+                          boxShadow: '0 0 12px rgba(12, 21, 90, 0.4)',
+                        } : {},
                       }}
                     >
                       <ListItemIcon
@@ -133,7 +265,15 @@ export default function ModuleShell({ title, items, children }) {
                           minWidth: 0,
                           mr: hovered ? 2 : "auto",
                           justifyContent: "center",
-                          color: isActive ? "#0C155A" : "inherit",
+                          color: isActive ? "#0C155A" : "rgba(12, 21, 90, 0.6)",
+                          transition: 'all 0.3s ease',
+                          transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                          filter: isActive 
+                            ? 'drop-shadow(0 2px 8px rgba(12, 21, 90, 0.3))'
+                            : 'none',
+                          '& svg': {
+                            fontSize: '1.5rem',
+                          }
                         }}
                       >
                         <item.icon />
@@ -143,8 +283,11 @@ export default function ModuleShell({ title, items, children }) {
                           primary={item.label}
                           sx={{
                             "& .MuiListItemText-primary": {
-                              color: isActive ? "#0C155A" : "inherit",
-                              fontWeight: isActive ? 600 : 400,
+                              color: isActive ? "#0C155A" : "rgba(12, 21, 90, 0.75)",
+                              fontWeight: isActive ? 600 : 500,
+                              fontSize: '0.95rem',
+                              letterSpacing: '0.3px',
+                              transition: 'all 0.3s ease',
                             },
                           }}
                         />
@@ -157,9 +300,23 @@ export default function ModuleShell({ title, items, children }) {
           </List>
         </Box>
 
-        <Divider />
-        <Box sx={{ p: 2, textAlign: "center" }}>
-          <Typography variant="caption" color="text.secondary">
+        <Divider sx={{ borderColor: 'rgba(12, 21, 90, 0.1)', mx: 2, mb: 1 }} />
+        <Box 
+          sx={{ 
+            p: 2, 
+            textAlign: "center",
+            background: 'linear-gradient(135deg, rgba(12, 21, 90, 0.05) 0%, rgba(12, 21, 90, 0.02) 100%)',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          <Typography 
+            variant="caption" 
+            sx={{
+              color: 'rgba(12, 21, 90, 0.5)',
+              fontWeight: 500,
+              letterSpacing: '0.5px',
+            }}
+          >
             {hovered ? "v1.0.0" : "v1"}
           </Typography>
         </Box>
