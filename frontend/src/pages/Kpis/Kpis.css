@@ -1,102 +1,166 @@
 
 .kpi-page {
-  padding: 16px 20px;
-  color: #292836;
+  padding: 20px 24px;
+  color: #0C155A;
 }
 
 .kpi-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
 }
 
 .kpi-header h2 {
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 24px;
+  font-weight: 700;
+  color: #0C155A;
 }
 
 .kpi-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .btn {
-  background: #4C80BA;
+  background: #0C155A;
   color: #fff;
   border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
-  box-shadow: 0 2px 0 rgba(0, 174, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(12, 21, 90, 0.2);
+  transition: all 0.2s ease;
 }
-.btn:disabled { opacity: .7; cursor: not-allowed; }
+.btn:hover {
+  background: #1a2b7a;
+  box-shadow: 0 4px 12px rgba(12, 21, 90, 0.3);
+  transform: translateY(-2px);
+}
+.btn:disabled { 
+  opacity: .6; 
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .update-badge {
   font-size: 12px;
-  color: #000000;
-  background: #e9f0ff;
-  border: 1px solid #cad4dd;
-  padding: 6px 10px;
-  border-radius: 6px;
+  color: #0C155A;
+  background: #F8FAFB;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(12, 21, 90, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.update-badge:hover {
+  box-shadow: 0 4px 12px rgba(12, 21, 90, 0.1);
+  transform: translateY(-1px);
+}
+
+.update-badge::before {
+  content: "🕐";
+  font-size: 14px;
 }
 
 .kpi-filters {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  background: #eef4ff;
-  border: 1px solid #cad4dd;
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 14px;
+  gap: 16px;
+  background: #F8FAFB;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(12, 21, 90, 0.06);
 }
 
 .segmented {
   display: inline-flex;
-  background: #fff;
-  border: 1px solid #cad4dd;
+  background: #F0F4F8;
+  border: 1px solid rgba(12, 21, 90, 0.12);
   border-radius: 10px;
   overflow: hidden;
+  padding: 4px;
 }
 .segmented button {
-  padding: 8px 12px;
+  padding: 8px 16px;
   border: none;
   background: transparent;
   cursor: pointer;
   font-weight: 600;
-  color: #000000;
+  color: rgba(12, 21, 90, 0.7);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+.segmented button:hover {
+  color: #0C155A;
+  background: rgba(12, 21, 90, 0.05);
 }
 .segmented button.active {
-  background: #4C80BA;
+  background: #0C155A;
   color: #fff;
+  box-shadow: 0 2px 4px rgba(12, 21, 90, 0.2);
 }
 
 .dates {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 .dates label {
-  font-size: 12px;
-  color: #2b2f42;
+  font-size: 13px;
+  color: #0C155A;
+  font-weight: 600;
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 .dates input[type="date"]{
-  border: 1px solid #d7dbe2;
+  border: 1px solid rgba(12, 21, 90, 0.15);
   border-radius: 8px;
-  padding: 6px 8px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  color: #0C155A;
+  background: #F0F4F8;
+  transition: all 0.2s ease;
+}
+.dates input[type="date"]:focus{
+  outline: none;
+  border-color: #0C155A;
+  box-shadow: 0 0 0 3px rgba(12, 21, 90, 0.1);
 }
 
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 @media (max-width: 1200px) {
   .kpi-grid { grid-template-columns: repeat(3, 1fr); }
@@ -106,41 +170,50 @@
 }
 
 .kpi-card {
-  background: #f6f9ff;
-  border: 1px solid #cad4dd;
+  background: #F8FAFB;
   border-radius: 12px;
-  padding: 12px;
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(12, 21, 90, 0.06);
+  transition: all 0.2s ease;
+}
+
+.kpi-card:hover {
+  box-shadow: 0 4px 12px rgba(12, 21, 90, 0.1);
+  transform: translateY(-2px);
 }
 
 .kpi-highlight { 
-  background: #eef6ff;
-  border-color: #cad4dd;
+  background: linear-gradient(135deg, #EFF6FB 0%, #E0EDF9 100%);
+  border: 2px solid rgba(12, 21, 90, 0.5);
 }
 
 .kpi-label { 
-  font-size: 12px;
-  color: #50618e;
-  margin-bottom: 6px;
+  font-size: 13px;
+  color: rgba(12, 21, 90, 0.7);
+  margin-bottom: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .kpi-value-row { 
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 10px;
 }
 
 .kpi-value { 
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 800;
-  color: #132051;
+  color: #0C155A;
 }
 
 .kpi-chip {
   font-size: 11px;
   font-weight: 700;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid;
+  border: 1.5px solid;
 }
 .kpi-chip.ok { 
   color:#0a6b2b;
@@ -157,35 +230,42 @@
 .kpi-charts {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  gap: 12px;
+  gap: 16px;
 }
 @media (max-width: 1100px) {
   .kpi-charts { grid-template-columns: 1fr; }
 }
 
 .chart-card {
-  background: #f6f9ff;
-  border: 1px solid #cad4dd;
+  background: #F8FAFB;
   border-radius: 12px;
-  padding: 10px 12px;
+  padding: 20px;
   position: relative;
+  box-shadow: 0 2px 8px rgba(12, 21, 90, 0.08);
+  transition: all 0.2s ease;
+}
+
+.chart-card:hover {
+  box-shadow: 0 4px 12px rgba(12, 21, 90, 0.12);
 }
 
 .chart-title { 
   font-weight: 700;
-  color:#132051;
-  margin-bottom: 6px;
+  color: #0C155A;
+  margin-bottom: 12px;
+  font-size: 16px;
 }
 
 .chart-body { 
-  height: 260px;
+  height: 280px;
+  position: relative;
 }
 
 
 .donut-center {
   position: absolute;
-  top: 58%;
-  left: 75%;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
   color:#132051;
@@ -193,6 +273,7 @@
   pointer-events: none; /* ⬅️ Permite que el cursor pase a través del texto */
   z-index: 1; /* ⬅️ Mantiene el texto visible pero debajo del tooltip */
   animation: fadeInScale 0.8s ease-out;
+  width: 120px;
 }
 
 @keyframes fadeInScale {

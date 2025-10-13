@@ -12,6 +12,7 @@ from django.db.models.functions import Extract
 
 from apps.calls.models import Llamada
 from apps.users.models import User
+from common.estados_helper import get_estado_id, get_estado
 
 
 class KPIViewSet(viewsets.ViewSet):
@@ -37,7 +38,7 @@ class KPIViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        agente = get_object_or_404(User, id=agente_id)
+        agente = get_object_or_404(User, documento_id=agente_id)
 
         rango = request.query_params.get('rango', 'hoy')
         hoy = timezone.now().date()
@@ -74,13 +75,17 @@ class KPIViewSet(viewsets.ViewSet):
         # Filtro
         llamadas = Llamada.objects.filter(
             agente=agente,
-            hora_inicio_timbrado__range=(inicio_dia, fin_dia)
+            fecha_hora_inicio__range=(inicio_dia, fin_dia)
         )
 
         total_llamadas = llamadas.count()
 
-        # Ventas realizadas (usando estado_venta)
-        ventas = llamadas.exclude(estado_venta='NO_VENTA').count()
+        # Ventas realizadas (excluir NO_VENTA usando estados_helper)
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        if estado_no_venta_id:
+            ventas = llamadas.exclude(estado_venta_id=estado_no_venta_id).count()
+        else:
+            ventas = 0
 
         # Cumplimiento
         cumplimiento = (ventas / total_llamadas * 100) if total_llamadas > 0 else 0
@@ -92,7 +97,7 @@ class KPIViewSet(viewsets.ViewSet):
 
         llamadas_por_hora_qs = (
             llamadas.annotate(
-                hora=Extract('hora_inicio_timbrado', 'hour')
+                hora=Extract('fecha_hora_inicio', 'hour')
             )
             .values('hora')
             .annotate(total=Count('id'))
@@ -112,11 +117,11 @@ class KPIViewSet(viewsets.ViewSet):
 
         # Duración promedio
         duracion_promedio = llamadas.filter(
-            duracion_llamada_segundos__isnull=False
-        ).aggregate(promedio=Avg('duracion_llamada_segundos'))['promedio'] or 0
+            duracion__isnull=False
+        ).aggregate(promedio=Avg('duracion'))['promedio'] or 0
 
         return Response({
-            "agente_id": agente.id,
+            "agente_id": agente.pk,
             "agente_nombre": agente.get_full_name(),
             "total_llamadas": total_llamadas,
             "ventas_realizadas": ventas,
@@ -183,13 +188,17 @@ class KPIViewSet(viewsets.ViewSet):
         # Filtrar llamadas del agente en el rango
         llamadas = Llamada.objects.filter(
             agente=agente,
-            hora_inicio_timbrado__range=(inicio_dia, fin_dia)
+            fecha_hora_inicio__range=(inicio_dia, fin_dia)
         )
         
         total_llamadas = llamadas.count()
         
-        # Ventas realizadas (excluir NO_VENTA)
-        ventas = llamadas.exclude(estado_venta='NO_VENTA').count()
+        # Ventas realizadas (excluir NO_VENTA usando estados_helper)
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        if estado_no_venta_id:
+            ventas = llamadas.exclude(estado_venta_id=estado_no_venta_id).count()
+        else:
+            ventas = 0
         
         # Cumplimiento como decimal 0-1
         cumplimiento_decimal = (ventas / total_llamadas) if total_llamadas > 0 else 0
@@ -202,7 +211,7 @@ class KPIViewSet(viewsets.ViewSet):
         # Desglose de llamadas por hora (para gráfica)
         llamadas_por_hora_qs = (
             llamadas.annotate(
-                hora=Extract('hora_inicio_timbrado', 'hour')
+                hora=Extract('fecha_hora_inicio', 'hour')
             )
             .values('hora')
             .annotate(total=Count('id'))
@@ -222,8 +231,8 @@ class KPIViewSet(viewsets.ViewSet):
         
         # Duración promedio de llamada
         duracion_promedio = llamadas.filter(
-            duracion_llamada_segundos__isnull=False
-        ).aggregate(promedio=Avg('duracion_llamada_segundos'))['promedio'] or 0
+            duracion__isnull=False
+        ).aggregate(promedio=Avg('duracion'))['promedio'] or 0
         
         # Metas fijas (TODO: Implementar modelo Meta en el futuro)
         # Estas metas son valores de ejemplo que se pueden ajustar

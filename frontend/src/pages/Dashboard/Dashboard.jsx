@@ -17,11 +17,16 @@ const Dashboard = () => {
     logout();
   };
 
+  const handleStatusChange = (newStatus) => {
+    setCurrentStatus(newStatus);
+  };
+
   return (
     <MainLayout title="Dashboard">
       <div className="dashboard-container">
         <h1>Panel de Control</h1>
         <p>Has iniciado sesión correctamente</p>
+        
         {user && (
           <div style={{ marginTop: '20px' }}>
             <p><strong>Usuario:</strong> {user.email}</p>

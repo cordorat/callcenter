@@ -166,6 +166,8 @@ SIMPLE_JWT = {
     "UPDATE_LAST_LOGIN": True,
     "ALGORITHM": "HS256",
     "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "documento_id",  # Usar documento_id como primary key
+    "USER_ID_CLAIM": "documento_id",  # Campo en el JWT token
 }
 
 # CORS settings (para desarrollo)

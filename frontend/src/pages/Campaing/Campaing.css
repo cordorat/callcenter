@@ -1,0 +1,89 @@
+/* Estilos para la página de Campaña */
+
+.campaign-page {
+    padding: 20px 24px;
+    color: #0C155A;
+}
+
+.campaign-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.campaign-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.campaign-filters {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: #F8FAFB;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(12, 21, 90, 0.06);
+}
+
+.campaign-segmented {
+    display: inline-flex;
+    background: #F0F4F8;
+    border: 1px solid rgba(12, 21, 90, 0.12);
+    border-radius: 10px;
+    overflow: hidden;
+    padding: 4px;
+}
+
+.campaign-segmented button {
+    padding: 10px 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 600;
+    color: rgba(12, 21, 90, 0.7);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    margin: 0 4px;
+}
+
+.campaign-segmented button:hover {
+    color: #0C155A;
+    background: rgba(12, 21, 90, 0.05);
+}
+
+.campaign-segmented button.active {
+    background: #0C155A;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(12, 21, 90, 0.2);
+}
+
+.campaign-content {
+    background: #F8FAFB;
+    border-radius: 12px;
+    padding: 24px;
+    min-height: auto;
+    box-shadow: 0 2px 8px rgba(12, 21, 90, 0.06);
+}
+
+.campaign-tab-panel {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

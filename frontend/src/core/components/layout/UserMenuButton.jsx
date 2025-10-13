@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
+import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from "@/core/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -25,6 +26,10 @@ export default function UserMenuButton() {
     handleClose();
     navigate("/perfil"); // futura ruta del perfil
   };
+  const handleLogout = () => {
+    handleClose();
+    logout();
+  }
 
   return (
     <>
@@ -52,6 +57,12 @@ export default function UserMenuButton() {
           Editar perfil
         </MenuItem>
         <Divider />
+        <MenuItem onClick={handleLogout}>
+          <ListItemIcon>
+            <LogoutIcon fontSize="small" />
+          </ListItemIcon>
+          Cerrar sesión
+        </MenuItem>
       </Menu>
     </>
   );

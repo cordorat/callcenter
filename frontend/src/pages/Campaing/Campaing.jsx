@@ -2,7 +2,7 @@
 //Pantalla para gestionar campañas
 
 import * as React from "react";
-import { Box, Button, Tabs, Tab } from '@mui/material';
+import { Box, Button, Tooltip } from '@mui/material';
 import { useState } from 'react';
 import MainLayout from '@/core/components/layout/MainLayout';
 import UploadButton from "@/components/campaing/UploadButton";
@@ -12,113 +12,108 @@ import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
 import CampaingBD from '@/components/campaing/CampaingBD';
 import Teams from '@/components/campaing/Teams';
 
-// Componente para el contenido de cada pestaña
-function TabPanel({ children, value, index }) {
-  return (
-    <div hidden={value !== index}>
-      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+// Importar estilos
+import "./Campaing.css";
 
 export default function Campaing() {
-  const [currentTab, setCurrentTab] = useState(0);
+  const [currentTab, setCurrentTab] = useState("database"); // "database" | "teams"
   const [selectedFile, setSelectedFile] = useState(null);
-
-  const handleTabChange = (event, newValue) => {
-    setCurrentTab(newValue);
-  };
 
   return (
     <MainLayout title="Campaña">
-      {/* Botones de acción en la parte superior */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
-        <Button
-          variant="contained"
-          startIcon={<PlayCircleFilledIcon />}
-          sx={{
-            backgroundColor: '#0C155A',
-            color: 'white',
-            borderRadius: '10px',
-            textTransform: 'none',
-            fontSize: '0.95rem',
-            fontWeight: 600,
-            px: 3,
-            py: 1.2,
-            boxShadow: '0 2px 8px rgba(12, 21, 90, 0.25)',
-            '&:hover': {
-              backgroundColor: '#1a2b7a',
-              boxShadow: '0 4px 12px rgba(12, 21, 90, 0.35)',
-              transform: 'translateY(-1px)',
-            },
-            transition: 'all 0.2s ease',
-          }}
-        >
-          Iniciar Campaña
-        </Button>
-        <UploadButton onFileSelect={(file) => setSelectedFile(file)} />
-      </Box>
-
-        {/* Pestañas */}
-      <Box sx={{ 
-        borderRadius: 3, 
-        overflow: 'hidden', 
-        maxHeight: 'calc(100vh - 250px)',
-        minHeight: '400px',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '0 4px 12px rgba(12, 21, 90, 0.15)',
-        backgroundColor: 'white',
-      }}>
-
-        <Box sx={{ 
-          borderBottom: 2, 
-          borderColor: '#0C155A', 
-          backgroundColor: '#D3E8FB',
-        }}>
-          <Tabs 
-            value={currentTab} 
-            onChange={handleTabChange}
-            TabIndicatorProps={{
-              style: {
-                backgroundColor: '#0C155A',
-                height: 3,
-              }
-            }}
-            sx={{
-              '& .MuiTab-root': {
-                textTransform: 'none',
-                fontSize: '0.95rem',
-                fontWeight: 600,
-                color: 'rgba(12, 21, 90, 0.6)',
-                minHeight: 56,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  color: '#0C155A',
-                  backgroundColor: 'rgba(12, 21, 90, 0.05)',
+      <div className="campaign-page">
+        {/* Header con botones de acción */}
+        <div className="campaign-header">
+          <h2></h2>
+          <div className="campaign-actions">
+            <Tooltip
+              title="Iniciar campaña"
+              placement="bottom"
+              arrow
+              slotProps={{
+                tooltip: {
+                  sx: {
+                    bgcolor: '#0C155A',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    py: 1,
+                    px: 1.5,
+                    borderRadius: '8px',
+                    textAlign: 'center',
+                  }
                 },
-                '&.Mui-selected': {
-                  color: '#0C155A',
-                },
-              },
-            }}
-          >
-            <Tab label="Base de datos" />
-            <Tab label="Equipos" />
-          </Tabs>
-        </Box>
+                arrow: {
+                  sx: {
+                    color: '#0C155A',
+                  }
+                }
+              }}
+            >
+              <Button
+                variant="contained"
+                sx={{
+                  backgroundColor: '#0C155A',
+                  color: 'white',
+                  borderRadius: '50%',
+                  minWidth: '56px',
+                  width: '56px',
+                  height: '56px',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(12, 21, 90, 0.2)',
+                  '&:hover': {
+                    backgroundColor: '#1a2b7a',
+                    boxShadow: '0 4px 12px rgba(12, 21, 90, 0.3)',
+                    transform: 'translateY(-2px)',
+                  },
+                  transition: 'all 0.2s ease',
+                  '& .MuiSvgIcon-root': {
+                    fontSize: '1.8rem',
+                  },
+                }}
+              >
+                <PlayCircleFilledIcon />
+              </Button>
+            </Tooltip>
+            <UploadButton onFileSelect={(file) => setSelectedFile(file)} />
+          </div>
+        </div>
 
-        {/* Contenido de cada pestaña */}
-        <Box sx={{ flex: 1, overflow: 'auto' }}>
-          <TabPanel value={currentTab} index={0}>
-            <CampaingBD selectedFile={selectedFile} onClearFile={() => setSelectedFile(null)} />
-          </TabPanel>
+        {/* Pestañas segmentadas */}
+        <div className="campaign-filters">
+          <div className="campaign-segmented">
+            <button
+              className={currentTab === "database" ? "active" : ""}
+              onClick={() => setCurrentTab("database")}
+            >
+              Base de datos
+            </button>
+            <button
+              className={currentTab === "teams" ? "active" : ""}
+              onClick={() => setCurrentTab("teams")}
+            >
+              Equipos
+            </button>
+          </div>
+        </div>
 
-          <TabPanel value={currentTab} index={1}>
-            <Teams />
-          </TabPanel>
-        </Box>
-      </Box>
+        {/* Contenido de las pestañas */}
+        <div className="campaign-content">
+          {currentTab === "database" && (
+            <div className="campaign-tab-panel">
+              <CampaingBD selectedFile={selectedFile} onClearFile={() => setSelectedFile(null)} />
+            </div>
+          )}
+
+          {currentTab === "teams" && (
+            <div className="campaign-tab-panel">
+              <Teams />
+            </div>
+          )}
+        </div>
+      </div>
     </MainLayout>
   );
 }

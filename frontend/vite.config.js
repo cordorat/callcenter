@@ -10,4 +10,12 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    host: true,
+    allowedHosts: [
+      "gwenn-infundibular-irreclaimably.ngrok-free.dev",
+      "localhost",
+      "127.0.0.1",
+    ],
+  },
 });

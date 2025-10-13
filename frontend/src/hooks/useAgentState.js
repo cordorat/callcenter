@@ -23,19 +23,27 @@ export const useAgentState = ({ autoLoad = true, refreshInterval = 0 } = {}) => 
     const [loading, setLoading] = useState(autoLoad);
     const [error, setError] = useState(null);
     const [changing, setChanging] = useState(false);
+    const [syncing, setSyncing] = useState(false);
 
     /**
      * Carga el estado actual desde el backend
      */
-    const loadCurrentState = useCallback(async () => {
+    const loadCurrentState = useCallback(async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) {
+                setLoading(true);
+            } else {
+                setSyncing(true);
+            }
             setError(null);
 
             const data = await getCurrentState();
+            console.log('[useAgentState] Estado cargado desde backend:', data);
+            
             setCurrentState(data);
 
             const mappedState = mapBackendToFrontend(data.estado);
+            console.log('[useAgentState] Estado mapeado:', data.estado, '->', mappedState);
             setFrontendState(mappedState);
 
             return data;
@@ -45,7 +53,11 @@ export const useAgentState = ({ autoLoad = true, refreshInterval = 0 } = {}) => 
             setFrontendState('OFFLINE');
             throw err;
         } finally {
-            setLoading(false);
+            if (!silent) {
+                setLoading(false);
+            } else {
+                setSyncing(false);
+            }
         }
     }, []);
 
@@ -60,8 +72,11 @@ export const useAgentState = ({ autoLoad = true, refreshInterval = 0 } = {}) => 
             setChanging(true);
             setError(null);
 
+            console.log('[useAgentState] Iniciando cambio de estado a:', newFrontendState);
+
             // Convertir al formato del backend
             const newBackendState = mapFrontendToBackend(newFrontendState);
+            console.log('[useAgentState] Estado convertido a backend:', newBackendState);
 
             // Verificar si requiere comentarios
             if (requiresComments(newBackendState) && !comentarios) {
@@ -72,14 +87,17 @@ export const useAgentState = ({ autoLoad = true, refreshInterval = 0 } = {}) => 
             const userAgent = navigator.userAgent;
             const response = await changeState(newBackendState, comentarios, null, userAgent);
 
-            // Actualizar estado local
+            console.log('[useAgentState] Respuesta del backend:', response);
+
+            // Actualizar estado local INMEDIATAMENTE con la respuesta
             setCurrentState(response);
             const mappedState = mapBackendToFrontend(response.estado);
+            console.log('[useAgentState] Actualizando estado local a:', mappedState);
             setFrontendState(mappedState);
 
             return response;
         } catch (err) {
-            console.error('Error al cambiar estado:', err);
+            console.error('[useAgentState] Error al cambiar estado:', err);
             setError(err.message || 'Error al cambiar el estado');
             throw err;
         } finally {
@@ -114,9 +132,21 @@ export const useAgentState = ({ autoLoad = true, refreshInterval = 0 } = {}) => 
 
     // Escuchar cambios de estado desde useTwilioCall
     useEffect(() => {
-        const unsubscribe = subscribeToAgentStateChanges(() => {
-            console.log('[useAgentState] Cambio de estado detectado desde Twilio, actualizando inmediatamente...');
-            loadCurrentState();
+        const unsubscribe = subscribeToAgentStateChanges((newStateData) => {
+            console.log('[useAgentState] Cambio de estado detectado desde Twilio:', newStateData);
+            
+            if (newStateData) {
+                // Si recibimos datos del estado directamente, usarlos sin hacer llamada al servidor
+                console.log('[useAgentState] Usando datos directos del cambio de estado');
+                setCurrentState(newStateData);
+                const mappedState = mapBackendToFrontend(newStateData.estado);
+                console.log('[useAgentState] Estado mapeado inmediatamente:', newStateData.estado, '->', mappedState);
+                setFrontendState(mappedState);
+            } else {
+                // Si no hay datos, cargar desde el servidor
+                console.log('[useAgentState] Sin datos directos, cargando desde servidor...');
+                loadCurrentState(true);
+            }
         });
 
         return unsubscribe;
@@ -129,6 +159,7 @@ export const useAgentState = ({ autoLoad = true, refreshInterval = 0 } = {}) => 
         loading,             // Cargando estado inicial
         error,               // Error si lo hay
         changing,            // Cambiando estado
+        syncing,             // Sincronizando en background
 
         // Datos derivados
         isAvailable: currentState?.acepta_llamadas || false,

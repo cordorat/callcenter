@@ -1,30 +1,36 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import User
-
+from .models import User, TiposParametros
+from common.estados_helper import get_estado
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializador para mostrar información de usuarios."""
     
     full_name = serializers.ReadOnlyField()
+    role = serializers.SerializerMethodField()  # Campo computado para compatibilidad con frontend
+    id = serializers.SerializerMethodField()  # Campo id para compatibilidad con frontend
     
     class Meta:
         model = User
-        fields = [
-            'id',
-            'email',
-            'first_name',
-            'last_name',
-            'full_name',
-            'phone',
-            'documento_id',
-            'foto_perfil',
-            'role',
-            'is_active',
-            'created_at',
-            'updated_at'
-        ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        exclude = ['password', 'groups', 'user_permissions']  # Excluir campos sensibles
+        read_only_fields = ['documento_id']
+    
+    def get_role(self, obj):
+        """Devuelve el valor del rol como string en inglés para compatibilidad con frontend."""
+        if obj.rol:
+            # Mapear valores en español a inglés para el frontend
+            role_mapping = {
+                'AGENTE': 'AGENTE',
+                'ADMIN': 'ADMIN',
+                'COORDINADOR': 'COORDINADOR',
+                'ANALISTA': 'ANALISTA'
+            }
+            return role_mapping.get(obj.rol.valor, obj.rol.valor)
+        return None
+    
+    def get_id(self, obj):
+        """Devuelve documento_id si existe, sino el email como identificador único."""
+        return obj.documento_id if obj.documento_id else obj.email
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -40,6 +46,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         required=True,
         style={'input_type': 'password'}
     )
+    # Permitir enviar 'role' como string (ej: "ADMIN", "AGENT") para compatibilidad con frontend
+    role = serializers.CharField(write_only=True, required=False, allow_null=True)
     
     class Meta:
         model = User
@@ -50,7 +58,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'phone',
             'documento_id',
             'foto_perfil',
-            'role',
+            'rol',
+            'role',  # Campo adicional para aceptar string
             'password',
             'password_confirm',
             'is_active'
@@ -76,13 +85,38 @@ class UserCreateSerializer(serializers.ModelSerializer):
                 "password": list(e.messages)
             })
         
+        # 3. Convertir 'role' (string) a 'rol' (objeto TiposParametros) si es necesario
+        role_string = attrs.pop('role', None)
+        if role_string:
+            role_mapping = {
+                'AGENTE': 'AGENTE',
+                'ADMIN': 'ADMIN',
+                'COORDINADOR': 'COORDINADOR',
+                'ANALISTA': 'ANALISTA'
+            }
+            # Convertir a español si viene en inglés, o usar el valor original
+            role_valor = role_mapping.get(role_string, role_string)
+            
+            # Buscar el TiposParametros correspondiente
+            rol_obj = get_estado('ROL_USUARIO', role_valor)
+            if not rol_obj:
+                raise serializers.ValidationError({
+                    "role": f"Rol '{role_string}' no válido. Debe ser 'ADMIN', 'AGENTE', 'COORDINADOR' o 'ANALISTA'."
+                })
+            attrs['rol'] = rol_obj
+        elif not attrs.get('rol'):
+            # Si no se envió ni 'role' ni 'rol', error
+            raise serializers.ValidationError({
+                "role": "El campo 'role' o 'rol' es requerido."
+            })
+        
         return attrs
     
-    def validate_role(self, value):
+    def validate_rol(self, value):
         """Valida que solo los administradores puedan crear otros administradores."""
         request = self.context.get('request')
-        if request and value == User.Role.ADMIN:
-            if not request.user.is_admin():
+        if request and value == get_estado('ROL_USUARIO', 'ADMIN'):
+            if not request.user.rol==get_estado('ROL_USUARIO', 'ADMIN'):
                 raise serializers.ValidationError(
                     "No tienes permisos para crear administradores."
                 )
@@ -120,7 +154,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         instance = self.instance
         
         # Los agentes solo pueden actualizar su propia información
-        if request.user.is_agent() and request.user.id != instance.id:
+        if request.user.is_agent() and request.user.pk != instance.pk:
             raise serializers.ValidationError(
                 "No tienes permisos para actualizar otros usuarios."
             )
@@ -182,3 +216,19 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.save()
         return user
+    
+class CambiarEstadoSerializer(serializers.Serializer):
+    """Serializer para cambiar el estado de un agente"""
+    estado_id = serializers.IntegerField()
+    agente_id = serializers.IntegerField(required=False, help_text="ID del agente (si lo cambia un supervisor)")
+    
+    def validate_estado_id(self, value):
+        """Valida que el estado exista y sea del tipo correcto"""
+        try:
+            estado = TiposParametros.objects.get(
+                parametros_id=value,
+                nombre='ESTADO_AGENTE'
+            )
+            return value
+        except TiposParametros.DoesNotExist:
+            raise serializers.ValidationError("El estado especificado no es válido")
