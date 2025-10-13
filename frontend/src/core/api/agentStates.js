@@ -11,12 +11,12 @@ export const STATE_MAPPING = {
     // Backend -> Frontend
     DISPONIBLE: 'AVAILABLE',
     EN_LLAMADA: 'CALL',
-    POSTCALL: 'AFTERCALL',
+    AFTERCALL: 'AFTERCALL',
     BREAK: 'BREAK',
     ALMUERZO: 'LUNCH',
     CAPACITACION: 'BUSY',
-    REUNION: 'BUSY',
-    AUSENTE: 'BUSY',
+    BAÑO: 'BATHROOM',
+    NO_DISPONIBLE: 'BUSY',
     DESCONECTADO: 'OFFLINE',
 };
 
@@ -26,11 +26,11 @@ export const STATE_MAPPING = {
 export const STATE_MAPPING_REVERSE = {
     AVAILABLE: 'DISPONIBLE',
     CALL: 'EN_LLAMADA',
-    AFTERCALL: 'POSTCALL',
+    AFTERCALL: 'AFTERCALL',
     BREAK: 'BREAK',
     LUNCH: 'ALMUERZO',
-    BATHROOM: 'BREAK', // Bathroom se mapea a BREAK
-    BUSY: 'AUSENTE',
+    BATHROOM: 'BAÑO',
+    BUSY: 'NO_DISPONIBLE',
     OFFLINE: 'DESCONECTADO',
 };
 
@@ -41,11 +41,11 @@ export const STATE_MAPPING_REVERSE = {
 export const AGENT_STATUSES = [
     { value: 'AVAILABLE', label: 'Disponible', color: '#4CAF50', backendValue: 'DISPONIBLE' },
     { value: 'CALL', label: 'En llamada', color: '#198FFC', backendValue: 'EN_LLAMADA' },
-    { value: 'AFTERCALL', label: 'After Call', color: '#FCC419', backendValue: 'POSTCALL' },
+    { value: 'AFTERCALL', label: 'After Call', color: '#FCC419', backendValue: 'AFTERCALL' },
     { value: 'BREAK', label: 'Break', color: '#753a11ff', backendValue: 'BREAK' }, 
-    { value: 'BATHROOM', label: 'Baño', color: '#895208', backendValue: 'BREAK' },
+    { value: 'BATHROOM', label: 'Baño', color: '#895208', backendValue: 'BAÑO' },
     { value: 'LUNCH', label: 'Almuerzo', color: '#8B4513', backendValue: 'ALMUERZO' },
-    { value: 'BUSY', label: 'No disponible', color: '#C30C0C', backendValue: 'AUSENTE' },
+    { value: 'BUSY', label: 'No disponible', color: '#C30C0C', backendValue: 'NO_DISPONIBLE' },
     { value: 'OFFLINE', label: 'Desconectado', color: '#636363', backendValue: 'DESCONECTADO' },
 ];
 
@@ -60,10 +60,17 @@ export const STATES_REQUIRING_COMMENTS = ['CAPACITACION', 'REUNION', 'AUSENTE'];
  */
 export const getCurrentState = async () => {
     try {
+        console.log('[agentStates] Obteniendo estado actual...');
+        const startTime = performance.now();
+        
         const response = await apiClient.get(`${BASE_URL}/users/estados/current/`);
+        
+        const endTime = performance.now();
+        console.log(`[agentStates] Estado actual recibido en ${(endTime - startTime).toFixed(0)}ms:`, response.data);
+        
         return response.data;
     } catch (error) {
-        console.error('Error al obtener estado actual:', error);
+        console.error('[agentStates] Error al obtener estado actual:', error);
         throw error;
     }
 };
@@ -103,10 +110,17 @@ export const changeState = async (nuevoEstado, comentarios = '', ipAddress = nul
         if (ipAddress) payload.ip_address = ipAddress;
         if (userAgent) payload.user_agent = userAgent;
 
+        console.log('[agentStates] Enviando cambio de estado:', payload);
+        const startTime = performance.now();
+        
         const response = await apiClient.post(`${BASE_URL}/users/estados/change_state/`, payload);
+        
+        const endTime = performance.now();
+        console.log(`[agentStates] Respuesta recibida en ${(endTime - startTime).toFixed(0)}ms:`, response.data);
+        
         return response.data;
     } catch (error) {
-        console.error('Error al cambiar estado:', error);
+        console.error('[agentStates] Error al cambiar estado:', error);
         throw error;
     }
 };

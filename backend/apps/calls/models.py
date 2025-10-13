@@ -163,35 +163,15 @@ class Llamada(models.Model):
             delta = self.fecha_hora_fin - self.fecha_hora_inicio
             self.duracion = int(delta.total_seconds())
         super().save(*args, **kwargs)
-
-    
-    def __str__(self):
-        agente = self.agente_id.full_name if self.agente_id else "Sin agente"
-        return f"Llamada {self.llamada_id} - {agente}"
-    
-    def save(self, *args, **kwargs):
-        """Calcula duraciones automáticamente."""
-        # Duración del timbrado
-        if self.hora_inicio_llamada and self.hora_inicio_timbrado:
-            delta = self.hora_inicio_llamada - self.hora_inicio_timbrado
-            self.duracion_timbrado_segundos = int(delta.total_seconds())
-        
-        # Duración de la llamada
-        if self.hora_fin_llamada and self.hora_inicio_llamada:
-            delta = self.hora_fin_llamada - self.hora_inicio_llamada
-            self.duracion_llamada_segundos = int(delta.total_seconds())
-        if self.twilio_duration and not self.duracion:
-            self.duracion = self.twilio_duration        
-        super().save(*args, **kwargs)
     
     @property
     def duracion_total_formateada(self):
         """Devuelve la duración total en formato legible."""
-        if not self.duracion_llamada_segundos:
+        if not self.duracion:
             return "0s"
         
-        minutos = self.duracion_llamada_segundos // 60
-        segundos = self.duracion_llamada_segundos % 60
+        minutos = self.duracion // 60
+        segundos = self.duracion % 60
         
         if minutos > 0:
             return f"{minutos}m {segundos}s"

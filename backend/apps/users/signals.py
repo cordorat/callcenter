@@ -21,12 +21,8 @@ def crear_estado_agente_inicial(sender, instance, created, **kwargs):
         estado_desconectado = get_estado('ESTADO_AGENTE', 'DESCONECTADO')
         
         EstadoAgenteActual.objects.get_or_create(
-            agente=instance,
+            agente_id=instance,
             defaults={
-                'estado': estado_desconectado,
-                'acepta_llamadas': False,
-                'conexion_activa': False,
-                'tiene_audio': False,
-                'comentarios': 'Estado inicial automático'
+                'estado_id': estado_desconectado
             }
         )

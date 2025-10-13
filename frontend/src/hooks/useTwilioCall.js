@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import twilioClient from '@/services/twilioClient';
 import { useAuth } from '@/core/context/AuthContext';
-import { changeState } from '@/core/api/agentStates';
+import { changeState, mapFrontendToBackend } from '@/core/api/agentStates';
 
 // Variable global para notificar cambios de estado
 let stateChangeListeners = [];
@@ -65,19 +65,38 @@ const useTwilioCall = () => {
           setCallStatus('in-call');
           setIncomingCall(null);
           
+          // Iniciar contador de duración
+          startCallTimer();
+          
           // Cambiar automáticamente el estado del agente a EN_LLAMADA
           try {
             console.log('[useTwilioCall] Cambiando estado del agente a EN_LLAMADA');
-            await changeState('EN_LLAMADA', 'Llamada conectada automáticamente');
+            const backendState = mapFrontendToBackend('CALL');
             
-            // Notificar a los listeners que hubo un cambio de estado
-            stateChangeListeners.forEach(listener => listener());
+            // Esperamos la respuesta del servidor antes de notificar
+            await changeState(backendState, 'Llamada conectada automáticamente');
+            
+            console.log('[useTwilioCall] Estado cambiado exitosamente a EN_LLAMADA, notificando listeners...');
+            
+            // Notificar a los listeners DESPUÉS de que el cambio fue exitoso
+            stateChangeListeners.forEach(listener => {
+              try {
+                listener();
+              } catch (err) {
+                console.error('[useTwilioCall] Error en listener:', err);
+              }
+            });
           } catch (err) {
             console.error('[useTwilioCall] Error al cambiar estado del agente:', err);
+            // Aún así notificar para que intenten refrescar
+            stateChangeListeners.forEach(listener => {
+              try {
+                listener();
+              } catch (listenerErr) {
+                console.error('[useTwilioCall] Error en listener:', listenerErr);
+              }
+            });
           }
-          
-          // Iniciar contador de duración
-          startCallTimer();
         });
 
         twilioClient.onDisconnect(async () => {
@@ -88,19 +107,40 @@ const useTwilioCall = () => {
           setIsMuted(false);
           setIncomingCall(null);
           
-          // Cambiar automáticamente el estado del agente a POSTCALL (After Call)
+          // Detener contador de duración primero
+          stopCallTimer();
+          
+          // Cambiar automáticamente el estado del agente a AFTERCALL (After Call)
           try {
-            console.log('[useTwilioCall] Cambiando estado del agente a POSTCALL');
-            await changeState('POSTCALL', 'Llamada finalizada, en proceso after call');
+            console.log('[useTwilioCall] Cambiando estado del agente a AFTERCALL');
+            const backendState = mapFrontendToBackend('AFTERCALL');
             
-            // Notificar a los listeners que hubo un cambio de estado
-            stateChangeListeners.forEach(listener => listener());
+            // Esperamos la respuesta del servidor antes de notificar
+            const response = await changeState(backendState, 'Llamada finalizada, en proceso after call');
+            
+            console.log('[useTwilioCall] Estado cambiado exitosamente a AFTERCALL:', response);
+            console.log('[useTwilioCall] Notificando listeners con la respuesta del servidor...');
+            
+            // Notificar a los listeners DESPUÉS de que el cambio fue exitoso
+            // Pasamos la respuesta para que puedan usarla directamente
+            stateChangeListeners.forEach(listener => {
+              try {
+                listener(response);
+              } catch (err) {
+                console.error('[useTwilioCall] Error en listener:', err);
+              }
+            });
           } catch (err) {
             console.error('[useTwilioCall] Error al cambiar estado del agente:', err);
+            // Aún así notificar para que intenten refrescar
+            stateChangeListeners.forEach(listener => {
+              try {
+                listener(null);
+              } catch (listenerErr) {
+                console.error('[useTwilioCall] Error en listener:', listenerErr);
+              }
+            });
           }
-          
-          // Detener contador de duración
-          stopCallTimer();
         });
 
         // Inicializar

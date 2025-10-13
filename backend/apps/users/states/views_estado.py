@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from apps.users.models import (
     EstadoAgenteDetalle,
@@ -127,7 +128,7 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
             return queryset
         else:
             # Agente solo ve su propio historial
-            return queryset.filter(agente=user)
+            return queryset.filter(agente_id=user)
     
     @action(detail=False, methods=['get'])
     def current(self, request):
@@ -158,12 +159,9 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
         estado_desconectado = get_estado('ESTADO_AGENTE', 'DESCONECTADO')
         
         estado_actual, created = EstadoAgenteActual.objects.get_or_create(
-            agente=agente,
+            agente_id=agente,
             defaults={
-                'estado': estado_desconectado,
-                'acepta_llamadas': False,
-                'conexion_activa': False,
-                'tiene_audio': False
+                'estado_id': estado_desconectado
             }
         )
         
@@ -197,7 +195,7 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
             )
         else:
             queryset = EstadoAgenteDetalle.objects.filter(
-                agente=request.user
+                agente_id=request.user
             )
         
         # Aplicar filtros
@@ -215,7 +213,7 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(estado_id=estado_param)
         
         # Ordenar
-        queryset = queryset.select_related('agente').order_by('-fecha', '-hora_inicio')
+        queryset = queryset.select_related('agente_id').order_by('-fecha', '-hora_inicio')
         
         # Paginar
         page = self.paginate_queryset(queryset)
@@ -253,32 +251,47 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = CambioEstadoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        # Obtener el estado DESCONECTADO por defecto
-        estado_desconectado = get_estado('ESTADO_AGENTE', 'DESCONECTADO')
+        # Obtener el nuevo estado (viene como string del serializer)
+        nuevo_estado_valor = serializer.validated_data['nuevo_estado']
+        comentarios = serializer.validated_data.get('comentarios', '')
+        
+        # Convertir el string a instancia de TiposParametros
+        nuevo_estado = get_estado('ESTADO_AGENTE', nuevo_estado_valor)
         
         # Obtener o crear estado actual
+        estado_desconectado = get_estado('ESTADO_AGENTE', 'DESCONECTADO')
         estado_actual, created = EstadoAgenteActual.objects.get_or_create(
-            agente=agente,
+            agente_id=agente,
             defaults={
-                'estado': estado_desconectado,
-                'acepta_llamadas': False,
-                'conexion_activa': False,
-                'tiene_audio': False
+                'estado_id': estado_desconectado
             }
         )
         
-        # Actualizar IP y user agent si se proporcionan
-        if serializer.validated_data.get('ip_address'):
-            estado_actual.ip_address = serializer.validated_data['ip_address']
-        if serializer.validated_data.get('user_agent'):
-            estado_actual.user_agent = serializer.validated_data['user_agent']
-        
-        # Cambiar estado
-        nuevo_registro = estado_actual.cambiar_estado(
-            nuevo_estado=serializer.validated_data['nuevo_estado'],
-            comentarios=serializer.validated_data.get('comentarios', ''),
-            usuario=request.user
+        # Registrar el cambio en el historial (get_or_create para evitar duplicados)
+        from datetime import date
+        detalle, detalle_created = EstadoAgenteDetalle.objects.get_or_create(
+            agente_id=agente,
+            estado_id=nuevo_estado,
+            fecha=date.today(),
+            defaults={
+                'tiempo': '00:00:00',
+                'cambios': comentarios or f'Cambio de estado por {request.user.full_name}'
+            }
         )
+        
+        # Si ya existía el registro de hoy, agregar el cambio al historial
+        if not detalle_created:
+            cambio_texto = comentarios or f'Cambio de estado por {request.user.full_name}'
+            if detalle.cambios:
+                detalle.cambios += f', {cambio_texto}'
+            else:
+                detalle.cambios = cambio_texto
+            detalle.save()
+        
+        # Actualizar el estado actual
+        estado_actual.estado_id = nuevo_estado
+        estado_actual.tiempo = timezone.now()
+        estado_actual.save()
         
         # Retornar el nuevo estado
         from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
@@ -306,11 +319,8 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
         
         # Buscar agentes disponibles
         estados_disponibles = EstadoAgenteActual.objects.filter(
-            estado=estado_disponible,
-            acepta_llamadas=True,
-            conexion_activa=True,
-            tiene_audio=True
-        ).select_related('agente')
+            estado_id=estado_disponible
+        ).select_related('agente_id')
         
         # Preparar respuesta simple
         from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
@@ -334,7 +344,7 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
             )
         
         # Obtener todos los estados actuales
-        estados = EstadoAgenteActual.objects.all().select_related('agente')
+        estados = EstadoAgenteActual.objects.all().select_related('agente_id')
         
         from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
         serializer = EstadoAgenteActualSerializer(estados, many=True)

@@ -7,47 +7,68 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useAgentState } from '@/hooks/useAgentState';
 
 export default function AgentMinutes({ userId, currentStatus }) {
-  const { currentState, timeInState: backendTimeInState, loading, refresh } = useAgentState({ 
+  const { currentState, timeInState: backendTimeInState, loading, frontendState } = useAgentState({ 
     autoLoad: true,
-    refreshInterval: 20000 // Sincroniza con backend cada 30 segundos
+    refreshInterval: 30000 // Sincroniza con backend cada 30 segundos
   });
   
   const [displayTime, setDisplayTime] = useState(0);
   const intervalRef = useRef(null);
-  const lastSyncRef = useRef(Date.now());
-  const previousStatusRef = useRef(currentStatus);
+  const previousStateRef = useRef(null);
+  const isInitializedRef = useRef(false);
 
-  // Detectar cambio de estado desde el prop y actualizar inmediatamente
+  // Efecto para inicializar el tiempo cuando carga por primera vez
   useEffect(() => {
-    if (currentStatus && currentStatus !== previousStatusRef.current) {
-      console.log('Estado cambió de', previousStatusRef.current, 'a', currentStatus);
-      previousStatusRef.current = currentStatus;
-      
-      // Actualizar inmediatamente desde el backend
-      refresh();
-    }
-  }, [currentStatus, refresh]);
-
-  // Sincronizar con el tiempo del backend cuando cambia
-  useEffect(() => {
-    if (backendTimeInState !== null && backendTimeInState !== undefined) {
+    if (!isInitializedRef.current && backendTimeInState !== null && backendTimeInState !== undefined) {
+      console.log('[AgentMinutes] Inicialización: tiempo del backend =', backendTimeInState);
       setDisplayTime(backendTimeInState);
-      lastSyncRef.current = Date.now();
+      previousStateRef.current = currentState?.estado || frontendState;
+      isInitializedRef.current = true;
     }
-  }, [backendTimeInState, currentState?.estado]);
+  }, [backendTimeInState, currentState?.estado, frontendState]);
 
-  // Actualizar el contador cada segundo localmente
+  // Efecto principal: detectar cambio de estado y reiniciar contador
   useEffect(() => {
+    const currentStateValue = currentState?.estado || frontendState;
+    
+    // Si el estado cambió
+    if (currentStateValue && previousStateRef.current && currentStateValue !== previousStateRef.current) {
+      console.log('[AgentMinutes] 🔄 Estado cambió:', previousStateRef.current, '->', currentStateValue);
+      
+      previousStateRef.current = currentStateValue;
+      
+      // Limpiar intervalo anterior si existe
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      
+      // Resetear el tiempo a 0 (nuevo estado siempre empieza en 0)
+      console.log('[AgentMinutes] ⏱️ Reiniciando tiempo a 0');
+      setDisplayTime(0);
+    }
+  }, [currentState?.estado, frontendState]);
+
+  // Efecto separado: mantener el contador corriendo
+  useEffect(() => {
+    // Limpiar intervalo anterior
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    
+    // Iniciar nuevo contador
     intervalRef.current = setInterval(() => {
       setDisplayTime(prev => prev + 1);
     }, 1000);
-
+    
+    // Cleanup al desmontar o cuando cambia el estado
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [currentState?.estado]); // Reinicia el intervalo cuando cambia el estado
+  }, [currentState?.estado, frontendState]); // Se reinicia cuando cambia el estado
 
   // Formatear el tiempo en MM:SS o HH:MM:SS
   const formatTime = (seconds) => {

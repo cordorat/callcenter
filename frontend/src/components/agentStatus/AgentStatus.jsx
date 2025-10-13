@@ -45,6 +45,7 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
     canReceiveCalls,
     stateDisplay,
     changeState,
+    refresh,
   } = useAgentState({ 
     autoLoad: true,
     refreshInterval 
@@ -61,6 +62,14 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
     pendingStatus: null,
     comment: ''
   });
+
+  // Efecto para notificar al padre cuando cambia el estado
+  React.useEffect(() => {
+    if (frontendState && onStatusChange) {
+      console.log('[AgentStatus] Estado actualizado a:', frontendState);
+      onStatusChange(frontendState);
+    }
+  }, [frontendState, onStatusChange]);
 
   const handleChange = async (event) => {
     const newFrontendStatus = event.target.value;
@@ -157,8 +166,7 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
           size="small"
           sx={{ 
             minWidth: 150, 
-            minHeight: 40, 
-            marginRight: 2, 
+            minHeight: 40,  
             backgroundColor: '#ffebee', 
             borderRadius: 2, 
             paddingX: 1, 
@@ -189,7 +197,6 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
         sx={{ 
           minWidth: 150, 
           minHeight: 40, 
-          marginRight: 2, 
           backgroundColor: '#D3E8FB', 
           borderRadius: 2, 
           paddingX: 1, 
@@ -197,7 +204,6 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 1
         }}
       >
         <Select 
@@ -205,11 +211,21 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
           onChange={handleChange} 
           disableUnderline
           disabled={changing}
-          sx={{ flex: 1 }}
+          sx={{ 
+            flex: 1,
+            '& .MuiSelect-select': {
+              display: 'flex',
+              alignItems: 'center',
+              paddingRight: '24px !important',
+            },
+            '& .MuiSelect-icon': {
+              right: '2px',
+            }
+          }}
           renderValue={(selected) => {
             const selectedStatus = AGENT_STATUSES.find(s => s.value === selected);
             return (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
                 {changing ? (
                   <CircularProgress size={12} />
                 ) : (
@@ -218,6 +234,15 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
                   />
                 )}
                 {selectedStatus?.label || 'Desconocido'}
+                <Box 
+                  sx={{ 
+                    width: '1px', 
+                    height: '20px', 
+                    backgroundColor: 'rgba(12, 21, 90, 0.2)',
+                    marginLeft: 'auto',
+                    marginRight: '7px'
+                  }} 
+                />
               </Box>
             );
           }}

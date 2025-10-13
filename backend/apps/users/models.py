@@ -122,6 +122,29 @@ class User(AbstractUser):
         """Devuelve el nombre completo del usuario."""
         return f"{self.first_name} {self.last_name}".strip()
     
+    def is_admin(self):
+        """Verifica si el usuario tiene rol de ADMIN."""
+        if not self.rol:
+            return False
+        return self.rol.valor == 'ADMIN'
+    
+    def is_agent(self):
+        """Verifica si el usuario tiene rol de AGENTE."""
+        if not self.rol:
+            return False
+        return self.rol.valor == 'AGENTE'
+    
+    def get_role_display(self):
+        """Devuelve el valor del rol para mostrar."""
+        if self.rol:
+            return self.rol.valor
+        return 'Sin rol'
+    
+    def get_role_value(self):
+        """Devuelve el valor del rol."""
+        if self.rol:
+            return self.rol.valor
+        return None
 
 
 

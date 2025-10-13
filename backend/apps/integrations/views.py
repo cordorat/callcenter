@@ -138,28 +138,34 @@ def twilio_voice_request(request):
         
         # Obtener agente y campaña
         try:
-            agent = User.objects.get(id=agent_id, role=User.Role.AGENT)
+            agent = User.objects.get(documento_id=agent_id)
+            if not agent.is_agent():
+                logger.error(f"Usuario {agent_id} no es un agente")
+                return HttpResponse('<Response><Say language="es-MX">Error: Usuario no es agente</Say></Response>', content_type='text/xml')
         except User.DoesNotExist:
             logger.error(f"Agente {agent_id} no encontrado")
             return HttpResponse('<Response><Say language="es-MX">Error: Agente no encontrado</Say></Response>', content_type='text/xml')
         
         try:
-            campaign = Campana.objects.get(id=campaign_id, activa=True)
+            from common.estados_helper import get_estado
+            estado_activa = get_estado('ESTADO_CAMPANA', 'ACTIVA')
+            campaign = Campana.objects.get(id=campaign_id, estado=estado_activa)
         except Campana.DoesNotExist:
-            logger.error(f"Campaña {campaign_id} no encontrada")
+            logger.error(f"Campaña {campaign_id} no encontrada o no está activa")
             return HttpResponse('<Response><Say language="es-MX">Error: Campaña no encontrada</Say></Response>', content_type='text/xml')
         
         # Obtener o crear cliente
         try:
             if client_id:
-                cliente = Cliente.objects.get(id=client_id)
+                cliente = Cliente.objects.get(cliente_id=client_id)
             else:
+                # Buscar por teléfono y campaña, o crear nuevo
                 cliente, created = Cliente.objects.get_or_create(
                     telefono=to_number,
+                    campana=campaign,
                     defaults={
-                        'nombre': 'Cliente',
-                        'apellido': 'Nuevo',
-                        'activo': True
+                        'nombre': 'Cliente Nuevo',
+                        'otros_datos': {'origen': 'llamada_saliente'}
                     }
                 )
         except Exception as e:
@@ -168,28 +174,61 @@ def twilio_voice_request(request):
         
         # Crear registro de llamada en la BD
         try:
+            from common.estados_helper import get_estado
+            estado_timbrado = get_estado('ESTADO_LLAMADA', 'TIMBRADO')
+            estado_no_venta = get_estado('ESTADO_VENTA', 'NO_VENTA')
+            estado_no_reportada = get_estado('ESTADO_REPORTE', 'NO_REPORTADA')
+            
+            # Validar que los estados existan
+            if not estado_timbrado:
+                logger.error("Estado TIMBRADO no encontrado en ESTADO_LLAMADA")
+                return HttpResponse('<Response><Say language="es-MX">Error de configuración: Estado de llamada no encontrado</Say></Response>', content_type='text/xml')
+            if not estado_no_venta:
+                logger.error("Estado NO_VENTA no encontrado en ESTADO_VENTA")
+                return HttpResponse('<Response><Say language="es-MX">Error de configuración: Estado de venta no encontrado</Say></Response>', content_type='text/xml')
+            if not estado_no_reportada:
+                logger.error("Estado NO_REPORTADA no encontrado en ESTADO_REPORTE")
+                return HttpResponse('<Response><Say language="es-MX">Error de configuración: Estado de reporte no encontrado</Say></Response>', content_type='text/xml')
+            
             llamada = Llamada.objects.create(
                 agente=agent,
                 cliente=cliente,
-                campana=campaign,
-                llamada_sid=call_sid,  # Guardar el CallSid de Twilio
-                twilio_call_sid=call_sid,  # También en el campo específico de Twilio
+                twilio_call_sid=call_sid,
                 telefono_origen=twilio_client.phone_number,
                 telefono_destino=to_number,
-                tipo_llamada='SALIENTE',
-                estado_llamada='TIMBRADO',
-                hora_inicio_timbrado=timezone.now()
+                estado_llamada=estado_timbrado,
+                estado_venta=estado_no_venta,
+                estado_reportada=estado_no_reportada,
+                fecha_hora_inicio=timezone.now()
             )
             
             # Cambiar estado del agente a EN_LLAMADA
-            EstadoAgenteDetalle.objects.create(
-                agente=agent,
-                estado='EN_LLAMADA',
-                comentarios=f'Llamada saliente a {to_number}'
+            estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')
+            
+            # Obtener o crear el registro de detalle para hoy
+            from datetime import date
+            detalle, created = EstadoAgenteDetalle.objects.get_or_create(
+                agente_id=agent,
+                estado_id=estado_en_llamada,
+                fecha=date.today(),
+                defaults={
+                    'tiempo': '00:00:00',
+                    'cambios': f'Llamada saliente a {to_number}'
+                }
             )
-            EstadoAgenteActual.objects.filter(agente=agent).update(
-                estado='EN_LLAMADA',
-                acepta_llamadas=False
+            
+            # Si ya existía, agregar el cambio al historial
+            if not created:
+                if detalle.cambios:
+                    detalle.cambios += f', Llamada saliente a {to_number}'
+                else:
+                    detalle.cambios = f'Llamada saliente a {to_number}'
+                detalle.save()
+            
+            # Actualizar estado actual
+            EstadoAgenteActual.objects.filter(agente_id=agent).update(
+                estado_id=estado_en_llamada,
+                tiempo=timezone.now()
             )
             
             logger.info(f"Llamada {llamada.id} creada exitosamente con CallSid={call_sid}")
@@ -247,14 +286,13 @@ def twilio_incoming_call(request):
         
         # Buscar un agente disponible
         try:
-            estado_disponible = EstadoAgenteActual.objects.filter(
-                estado='DISPONIBLE',
-                acepta_llamadas=True,
-                tiene_audio=True,
-                conexion_activa=True
-            ).select_related('agente').first()
+            from common.estados_helper import get_estado
+            estado_disp = get_estado('ESTADO_AGENTE', 'DISPONIBLE')
+            estado_agente = EstadoAgenteActual.objects.filter(
+                estado_id=estado_disp
+            ).select_related('agente_id').first()
             
-            if not estado_disponible:
+            if not estado_agente:
                 logger.warning("No hay agentes disponibles para llamada entrante")
                 # Buzón de voz
                 twiml = twilio_client.generate_twiml_voicemail(
@@ -262,28 +300,16 @@ def twilio_incoming_call(request):
                 )
                 return HttpResponse(twiml, content_type='text/xml')
             
-            agente = estado_disponible.agente
+            agente = estado_agente.agente_id
         except Exception as e:
             logger.error(f"Error buscando agente disponible: {str(e)}")
             return HttpResponse('<Response><Say language="es-MX">No hay agentes disponibles. Por favor intente más tarde</Say></Response>', content_type='text/xml')
         
-        # Obtener o crear cliente
+        # Buscar campaña activa (necesaria para el cliente y la llamada)
         try:
-            cliente, created = Cliente.objects.get_or_create(
-                telefono=from_number,
-                defaults={
-                    'nombre': 'Cliente',
-                    'apellido': 'Entrante',
-                    'activo': True
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error creando cliente: {str(e)}")
-            return HttpResponse('<Response><Say language="es-MX">Error al procesar datos del cliente</Say></Response>', content_type='text/xml')
-        
-        # Buscar campaña activa (usar la primera disponible)
-        try:
-            campaign = Campana.objects.filter(activa=True).first()
+            from common.estados_helper import get_estado
+            estado_activa = get_estado('ESTADO_CAMPANA', 'ACTIVA')
+            campaign = Campana.objects.filter(estado=estado_activa).first()
             if not campaign:
                 logger.error("No hay campañas activas")
                 return HttpResponse('<Response><Say language="es-MX">Error de configuración. Contacte al administrador</Say></Response>', content_type='text/xml')
@@ -291,30 +317,69 @@ def twilio_incoming_call(request):
             logger.error(f"Error buscando campaña: {str(e)}")
             return HttpResponse('<Response><Say language="es-MX">Error al procesar campaña</Say></Response>', content_type='text/xml')
         
+        # Obtener o crear cliente
+        try:
+            # Buscar o crear cliente con la campaña
+            cliente, created = Cliente.objects.get_or_create(
+                telefono=from_number,
+                campana=campaign,
+                defaults={
+                    'nombre': 'Cliente Entrante',
+                    'otros_datos': {'origen': 'llamada_entrante'}
+                }
+            )
+            if created:
+                logger.info(f"Cliente nuevo creado: {cliente.cliente_id} - {from_number}")
+        except Exception as e:
+            logger.error(f"Error creando cliente: {str(e)}")
+            return HttpResponse('<Response><Say language="es-MX">Error al procesar datos del cliente</Say></Response>', content_type='text/xml')
+        
         # Crear registro de llamada
         try:
+            from common.estados_helper import get_estado
+            estado_timbrado = get_estado('ESTADO_LLAMADA', 'TIMBRADO')
+            estado_no_venta = get_estado('ESTADO_VENTA', 'NO_VENTA')
+            estado_no_reportada = get_estado('ESTADO_REPORTE', 'NO_REPORTADA')
+            
             llamada = Llamada.objects.create(
                 agente=agente,
                 cliente=cliente,
-                campana=campaign,
-                llamada_sid=call_sid,
                 twilio_call_sid=call_sid,
                 telefono_origen=from_number,
                 telefono_destino=to_number,
-                tipo_llamada='ENTRANTE',
-                estado_llamada='TIMBRADO',
-                hora_inicio_timbrado=timezone.now()
+                estado_llamada=estado_timbrado,
+                estado_venta=estado_no_venta,
+                estado_reportada=estado_no_reportada,
+                fecha_hora_inicio=timezone.now()
             )
             
             # Cambiar estado del agente a EN_LLAMADA
-            EstadoAgenteDetalle.objects.create(
-                agente=agente,
-                estado='EN_LLAMADA',
-                comentarios=f'Llamada entrante de {from_number}'
+            estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')
+            
+            # Obtener o crear el registro de detalle para hoy
+            from datetime import date
+            detalle, created = EstadoAgenteDetalle.objects.get_or_create(
+                agente_id=agente,
+                estado_id=estado_en_llamada,
+                fecha=date.today(),
+                defaults={
+                    'tiempo': '00:00:00',
+                    'cambios': f'Llamada entrante de {from_number}'
+                }
             )
-            EstadoAgenteActual.objects.filter(agente=agente).update(
-                estado='EN_LLAMADA',
-                acepta_llamadas=False
+            
+            # Si ya existía, agregar el cambio al historial
+            if not created:
+                if detalle.cambios:
+                    detalle.cambios += f', Llamada entrante de {from_number}'
+                else:
+                    detalle.cambios = f'Llamada entrante de {from_number}'
+                detalle.save()
+            
+            # Actualizar estado actual
+            EstadoAgenteActual.objects.filter(agente_id=agente).update(
+                estado_id=estado_en_llamada,
+                tiempo=timezone.now()
             )
             
             logger.info(f"Llamada entrante {llamada.id} creada exitosamente")
@@ -410,56 +475,95 @@ def twilio_call_status_webhook(request, llamada_id=None):
             if llamada_id:
                 llamada = Llamada.objects.get(id=llamada_id)
             else:
-                # Intentar buscar por llamada_sid o twilio_call_sid
-                try:
-                    llamada = Llamada.objects.get(llamada_sid=call_sid)
-                except Llamada.DoesNotExist:
-                    llamada = Llamada.objects.get(twilio_call_sid=call_sid)
+                # Buscar por twilio_call_sid
+                llamada = Llamada.objects.get(twilio_call_sid=call_sid)
             
             # Actualizar estado de Twilio
             llamada.twilio_status = call_status
+            from common.estados_helper import get_estado
             
             # Mapear estados de Twilio a nuestros estados
             if call_status == 'ringing':
-                llamada.estado_llamada = 'TIMBRADO'
+                estado_timbrado = get_estado('ESTADO_LLAMADA', 'TIMBRADO')
+                llamada.estado_llamada = estado_timbrado
                 logger.info(f"Llamada {llamada.id} cambió a TIMBRADO")
             elif call_status == 'in-progress':
-                logger.info(f"Llamada {llamada.id} en progreso. Estado actual: {llamada.estado_llamada}")
-                # Siempre establecer hora_inicio_llamada si no está establecida
-                if not llamada.hora_inicio_llamada:
-                    llamada.hora_inicio_llamada = timezone.now()
-                    logger.info(f"Llamada {llamada.id} - hora_inicio_llamada establecida: {llamada.hora_inicio_llamada}")
-                llamada.estado_llamada = 'EN_CURSO'
+                estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
+                llamada.estado_llamada = estado_en_curso
+                logger.info(f"Llamada {llamada.id} en progreso")
             elif call_status == 'completed':
-                llamada.estado_llamada = 'COMPLETADA'
-                if not llamada.hora_fin_llamada:
-                    llamada.hora_fin_llamada = timezone.now()
+                estado_completada = get_estado('ESTADO_LLAMADA', 'COMPLETADA')
+                llamada.estado_llamada = estado_completada
+                if not llamada.fecha_hora_fin:
+                    llamada.fecha_hora_fin = timezone.now()
                 if call_duration:
-                    llamada.duracion_llamada_segundos = int(call_duration)
+                    llamada.duracion = int(call_duration)
                 
-                # Cambiar estado del agente a POSTCALL
+                # Cambiar estado del agente a AFTERCALL (post llamada)
                 try:
-                    EstadoAgenteDetalle.objects.create(
-                        agente=llamada.agente,
-                        estado='POSTCALL',
-                        comentarios=f'Llamada completada - Duración: {call_duration}s'
+                    estado_aftercall = get_estado('ESTADO_AGENTE', 'AFTERCALL')
+                    
+                    # Obtener o crear el registro de detalle para hoy
+                    from datetime import date
+                    detalle, created = EstadoAgenteDetalle.objects.get_or_create(
+                        agente_id=llamada.agente,
+                        estado_id=estado_aftercall,
+                        fecha=date.today(),
+                        defaults={
+                            'tiempo': '00:00:00',
+                            'cambios': f'Llamada completada - Duración: {call_duration}s'
+                        }
                     )
-                    EstadoAgenteActual.objects.filter(agente=llamada.agente).update(
-                        estado='POSTCALL',
-                        acepta_llamadas=False
+                    
+                    # Si ya existía, agregar el cambio al historial
+                    if not created:
+                        if detalle.cambios:
+                            detalle.cambios += f', Llamada completada - Duración: {call_duration}s'
+                        else:
+                            detalle.cambios = f'Llamada completada - Duración: {call_duration}s'
+                        detalle.save()
+                    
+                    # Actualizar estado actual
+                    EstadoAgenteActual.objects.filter(agente_id=llamada.agente).update(
+                        estado_id=estado_aftercall,
+                        tiempo=timezone.now()
                     )
                 except Exception as e:
                     logger.error(f"Error actualizando estado del agente: {str(e)}")
                     
             elif call_status in ['busy', 'failed', 'no-answer', 'canceled']:
-                llamada.estado_llamada = 'NO_CONTESTADA'
-                llamada.hora_fin_llamada = timezone.now()
+                estado_no_contestada = get_estado('ESTADO_LLAMADA', 'NO_CONTESTADA')
+                llamada.estado_llamada = estado_no_contestada
+                llamada.fecha_hora_fin = timezone.now()
                 
                 # Volver agente a DISPONIBLE
                 try:
-                    EstadoAgenteActual.objects.filter(agente=llamada.agente).update(
-                        estado='DISPONIBLE',
-                        acepta_llamadas=True
+                    estado_disponible = get_estado('ESTADO_AGENTE', 'DISPONIBLE')
+                    
+                    # Obtener o crear el registro de detalle para hoy
+                    from datetime import date
+                    detalle, created = EstadoAgenteDetalle.objects.get_or_create(
+                        agente_id=llamada.agente,
+                        estado_id=estado_disponible,
+                        fecha=date.today(),
+                        defaults={
+                            'tiempo': '00:00:00',
+                            'cambios': f'Llamada no contestada - {call_status}'
+                        }
+                    )
+                    
+                    # Si ya existía, agregar el cambio al historial
+                    if not created:
+                        if detalle.cambios:
+                            detalle.cambios += f', Llamada no contestada - {call_status}'
+                        else:
+                            detalle.cambios = f'Llamada no contestada - {call_status}'
+                        detalle.save()
+                    
+                    # Actualizar estado actual
+                    EstadoAgenteActual.objects.filter(agente_id=llamada.agente).update(
+                        estado_id=estado_disponible,
+                        tiempo=timezone.now()
                     )
                 except Exception as e:
                     logger.error(f"Error actualizando estado del agente: {str(e)}")
@@ -474,7 +578,7 @@ def twilio_call_status_webhook(request, llamada_id=None):
             llamada.save()
             
             logger.info(f"Llamada {llamada.id} actualizada a estado {call_status} (Twilio: {llamada.twilio_status})")
-            logger.info(f"Llamada {llamada.id} - hora_inicio_llamada: {llamada.hora_inicio_llamada}, duracion_timbrado_segundos: {llamada.duracion_timbrado_segundos}")
+            logger.info(f"Llamada {llamada.id} - Inicio: {llamada.fecha_hora_inicio}, Duración: {llamada.duracion}s")
             
         except Llamada.DoesNotExist:
             logger.error(f"Llamada no encontrada: SID={call_sid}, ID={llamada_id}. Puede que la llamada no se haya creado correctamente en voice-request.")

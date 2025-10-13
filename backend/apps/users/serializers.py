@@ -7,11 +7,30 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializador para mostrar información de usuarios."""
     
     full_name = serializers.ReadOnlyField()
+    role = serializers.SerializerMethodField()  # Campo computado para compatibilidad con frontend
+    id = serializers.SerializerMethodField()  # Campo id para compatibilidad con frontend
     
     class Meta:
         model = User
-        fields = '__all__'
+        exclude = ['password', 'groups', 'user_permissions']  # Excluir campos sensibles
         read_only_fields = ['documento_id']
+    
+    def get_role(self, obj):
+        """Devuelve el valor del rol como string en inglés para compatibilidad con frontend."""
+        if obj.rol:
+            # Mapear valores en español a inglés para el frontend
+            role_mapping = {
+                'AGENTE': 'AGENTE',
+                'ADMIN': 'ADMIN',
+                'COORDINADOR': 'COORDINADOR',
+                'ANALISTA': 'ANALISTA'
+            }
+            return role_mapping.get(obj.rol.valor, obj.rol.valor)
+        return None
+    
+    def get_id(self, obj):
+        """Devuelve documento_id si existe, sino el email como identificador único."""
+        return obj.documento_id if obj.documento_id else obj.email
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -27,6 +46,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         required=True,
         style={'input_type': 'password'}
     )
+    # Permitir enviar 'role' como string (ej: "ADMIN", "AGENT") para compatibilidad con frontend
+    role = serializers.CharField(write_only=True, required=False, allow_null=True)
     
     class Meta:
         model = User
@@ -38,6 +59,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'documento_id',
             'foto_perfil',
             'rol',
+            'role',  # Campo adicional para aceptar string
             'password',
             'password_confirm',
             'is_active'
@@ -61,6 +83,31 @@ class UserCreateSerializer(serializers.ModelSerializer):
         except Exception as e:
             raise serializers.ValidationError({
                 "password": list(e.messages)
+            })
+        
+        # 3. Convertir 'role' (string) a 'rol' (objeto TiposParametros) si es necesario
+        role_string = attrs.pop('role', None)
+        if role_string:
+            role_mapping = {
+                'AGENTE': 'AGENTE',
+                'ADMIN': 'ADMIN',
+                'COORDINADOR': 'COORDINADOR',
+                'ANALISTA': 'ANALISTA'
+            }
+            # Convertir a español si viene en inglés, o usar el valor original
+            role_valor = role_mapping.get(role_string, role_string)
+            
+            # Buscar el TiposParametros correspondiente
+            rol_obj = get_estado('ROL_USUARIO', role_valor)
+            if not rol_obj:
+                raise serializers.ValidationError({
+                    "role": f"Rol '{role_string}' no válido. Debe ser 'ADMIN', 'AGENTE', 'COORDINADOR' o 'ANALISTA'."
+                })
+            attrs['rol'] = rol_obj
+        elif not attrs.get('rol'):
+            # Si no se envió ni 'role' ni 'rol', error
+            raise serializers.ValidationError({
+                "role": "El campo 'role' o 'rol' es requerido."
             })
         
         return attrs

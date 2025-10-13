@@ -59,12 +59,15 @@ export default function ModuleShell({ title, items, children }) {
             {title}
           </Typography>
           
-          {user?.role === "AGENT" && <AgentMinutes userId={user.id} currentStatus={agentStatus} />}
-          {user?.role === "AGENT" && (
-            <AgentStatus 
-              onStatusChange={setAgentStatus}
-              refreshInterval={30000}
-            />
+          {/* Estado y tiempo del agente - Para AGENT y AGENTE */}
+          {(user?.role === "AGENTE") && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AgentMinutes userId={user.id} currentStatus={agentStatus} />
+              <AgentStatus 
+                onStatusChange={setAgentStatus}
+                refreshInterval={30000}
+              />
+            </Box>
           )}
 
           <UserMenuButton />
