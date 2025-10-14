@@ -189,6 +189,26 @@ def poblar_tipos_parametros():
             'valor': 'NO_VENTA',
             'descripcion': 'No se realizó venta'
         },
+        
+        # ============================================================
+        # ESTADO_REPORTE - Estados de reportes de llamadas
+        # ============================================================
+        {
+            'nombre': 'ESTADO_REPORTE',
+            'valor': 'NO_REPORTADA',
+            'descripcion': 'Llamada no ha sido reportada aún'
+        },
+        {
+            'nombre': 'ESTADO_REPORTE',
+            'valor': 'REPORTADA',
+            'descripcion': 'Llamada ya fue reportada'
+        },
+        {
+            'nombre': 'ESTADO_REPORTE',
+            'valor': 'PENDIENTE_REVISION',
+            'descripcion': 'Reporte pendiente de revisión'
+        },
+        
         # ============================================================
         # MOTIVO_RECHAZO - Motivos por los que se rechaza una llamada
         # ============================================================
