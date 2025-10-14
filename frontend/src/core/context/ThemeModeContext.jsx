@@ -14,14 +14,18 @@ export function ThemeModeProvider({ children }) {
         palette: {
           mode,
           primary: {
-            main: "#0C155A", // Color principal para botones, links, etc.
+            main: mode === "light" ? "#0C155A" : "#4A8FE7", // Color principal para botones, links, etc.
           },
           secondary: {
-            main: "#BDBCC2", // Color secundario
+            main: mode === "light" ? "#BDBCC2" : "#A4A4A8", // Color secundario
           },
           background: {
-            default: mode === "light" ? "#D3E8FB" : "#121212", // Fondo general
-            paper: mode === "light" ? "#EBF5FE" : "#1E1E1E",   // Fondo de componentes (cards, drawer)
+            default: mode === "light" ? "#D3E8FB" : "#0C111B", // fondo general
+            paper: mode === "light" ? "#FFFFFF" : "#182030",   // Fondo de componentes (cards, drawer)
+          },
+          text: {
+            primary: mode === "light" ? "#0C155A" : "#E6E9EF",
+            secondary: mode === "light" ? "#4F4F4F" : "#B0B5C0",
           },
         },
         typography: {

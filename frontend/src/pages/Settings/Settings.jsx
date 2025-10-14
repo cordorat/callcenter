@@ -16,6 +16,7 @@ import {
   Divider,
   Avatar,
   Chip,
+  useTheme,
 } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
@@ -32,6 +33,7 @@ import ConfirmDialog from "@/components/forms/ConfirmDialog";
 export default function Settings() {
   const { user, logout } = useAuth();
   const { mode, toggleMode } = useThemeMode();
+  const theme = useTheme();
   const navigate = useNavigate();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
@@ -68,7 +70,10 @@ export default function Settings() {
               p: 3,
               mb: 3,
               borderRadius: 3,
-              background: "linear-gradient(135deg, #0C155A, #1E2B8B)",
+              background: (theme) =>
+                theme.palette.mode === "light"
+                  ? "linear-gradient(135deg, #0C155A, #1E2B8B)"
+                  : `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
               color: "white",
               boxShadow: "0px 2px 12px rgba(0,0,0,0.05)",
             }}
@@ -111,7 +116,7 @@ export default function Settings() {
             sx={{
               mb: 3,
               borderRadius: 3,
-              backgroundColor: "white",
+              bgcolor: "background.paper",
               boxShadow: "0px 2px 12px rgba(0,0,0,0.05)",
               overflow: "hidden",
             }}
@@ -122,7 +127,7 @@ export default function Settings() {
                 sx={{
                   fontWeight: 600,
                   fontSize: "0.8rem",
-                  color: "rgba(12,21,90,0.6)",
+                  color: "text.secondary",
                   letterSpacing: 0.5,
                 }}
               >
@@ -137,23 +142,26 @@ export default function Settings() {
                   sx={{
                     py: 2,
                     "&:hover": {
-                      bgcolor: "#F8FBFF",
+                      bgcolor: (theme) =>
+                        theme.palette.mode === "light"
+                          ? "#F8FBFF"
+                          : "rgba(255,255,255,0.05)",
                     },
                   }}
                 >
                   <ListItemIcon>
-                    <PersonIcon sx={{ color: "#0C155A" }} />
+                    <PersonIcon color="primary" />
                   </ListItemIcon>
                   <ListItemText
                     primary="Editar perfil"
                     secondary="Actualiza tu información personal"
                     primaryTypographyProps={{
                       fontWeight: 500,
-                      color: "#0C155A",
+                      color: "text.primary",
                     }}
                     secondaryTypographyProps={{ fontSize: "0.85rem" }}
                   />
-                  <ChevronRightIcon sx={{ color: "rgba(12, 21, 90, 0.4)" }} />
+                  <ChevronRightIcon sx={{ color: "text.secondary" }} />
                 </ListItemButton>
               </ListItem>
             </List>
@@ -165,7 +173,7 @@ export default function Settings() {
             sx={{
               mb: 3,
               borderRadius: 3,
-              backgroundColor: "white",
+              bgcolor: "background.paper",
               boxShadow: "0px 2px 12px rgba(0,0,0,0.05)",
               overflow: "hidden",
             }}
@@ -176,7 +184,7 @@ export default function Settings() {
                 sx={{
                   fontWeight: 600,
                   fontSize: "0.8rem",
-                  color: "rgba(12,21,90,0.6)",
+                  color: "text.secondary",
                   letterSpacing: 0.5,
                 }}
               >
@@ -186,29 +194,26 @@ export default function Settings() {
             <Divider />
             <List disablePadding>
               <ListItem>
-                <ListItemIcon sx={{ color: "#0C155A" }}>
-                  {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
+                <ListItemIcon>
+                  {darkMode ? (
+                    <Brightness7Icon color="primary" />
+                  ) : (
+                    <Brightness4Icon color="primary" />
+                  )}
                 </ListItemIcon>
                 <ListItemText
                   primary="Modo oscuro"
                   secondary="Cambia entre tema claro y oscuro"
                   primaryTypographyProps={{
                     fontWeight: 500,
-                    color: "#0C155A",
+                    color: "text.primary",
                   }}
                   secondaryTypographyProps={{ fontSize: "0.85rem" }}
                 />
                 <Switch
                   checked={darkMode}
                   onChange={handleThemeToggle}
-                  sx={{
-                    "& .MuiSwitch-switchBase.Mui-checked": {
-                      color: "#0C155A",
-                    },
-                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                      backgroundColor: "#0C155A",
-                    },
-                  }}
+                  color="primary"
                 />
               </ListItem>
             </List>
@@ -220,7 +225,7 @@ export default function Settings() {
             sx={{
               mb: 3,
               borderRadius: 3,
-              backgroundColor: "white",
+              bgcolor: "background.paper",
               boxShadow: "0px 2px 12px rgba(0,0,0,0.05)",
               overflow: "hidden",
             }}
@@ -231,7 +236,7 @@ export default function Settings() {
                 sx={{
                   fontWeight: 600,
                   fontSize: "0.8rem",
-                  color: "rgba(12,21,90,0.6)",
+                  color: "text.secondary",
                   letterSpacing: 0.5,
                 }}
               >
@@ -246,23 +251,26 @@ export default function Settings() {
                   sx={{
                     py: 2,
                     "&:hover": {
-                      bgcolor: "#F8FBFF",
+                      bgcolor: (theme) =>
+                        theme.palette.mode === "light"
+                          ? "#F8FBFF"
+                          : "rgba(255,255,255,0.05)",
                     },
                   }}
                 >
                   <ListItemIcon>
-                    <DescriptionIcon sx={{ color: "#0C155A" }} />
+                    <DescriptionIcon color="primary" />
                   </ListItemIcon>
                   <ListItemText
                     primary="Términos y condiciones"
                     secondary="Lee nuestros términos de servicio"
                     primaryTypographyProps={{
                       fontWeight: 500,
-                      color: "#0C155A",
+                      color: "text.primary",
                     }}
                     secondaryTypographyProps={{ fontSize: "0.85rem" }}
                   />
-                  <ChevronRightIcon sx={{ color: "rgba(12, 21, 90, 0.4)" }} />
+                  <ChevronRightIcon sx={{ color: "text.secondary" }} />
                 </ListItemButton>
               </ListItem>
               <Divider />
@@ -272,23 +280,26 @@ export default function Settings() {
                   sx={{
                     py: 2,
                     "&:hover": {
-                      bgcolor: "#F8FBFF",
+                      bgcolor: (theme) =>
+                        theme.palette.mode === "light"
+                          ? "#F8FBFF"
+                          : "rgba(255,255,255,0.05)",
                     },
                   }}
                 >
                   <ListItemIcon>
-                    <HelpOutlineIcon sx={{ color: "#0C155A" }} />
+                    <HelpOutlineIcon color="primary" />
                   </ListItemIcon>
                   <ListItemText
                     primary="Soporte"
                     secondary="¿Necesitas ayuda? Contáctanos"
                     primaryTypographyProps={{
                       fontWeight: 500,
-                      color: "#0C155A",
+                      color: "text.primary",
                     }}
                     secondaryTypographyProps={{ fontSize: "0.85rem" }}
                   />
-                  <ChevronRightIcon sx={{ color: "rgba(12, 21, 90, 0.4)" }} />
+                  <ChevronRightIcon sx={{ color: "text.secondary" }} />
                 </ListItemButton>
               </ListItem>
             </List>
@@ -298,9 +309,9 @@ export default function Settings() {
           <Paper
             elevation={0}
             sx={{
-              mb: 3,
+              mb: 8,
               borderRadius: 3,
-              backgroundColor: "white",
+              bgcolor: "background.paper",
               boxShadow: "0px 2px 12px rgba(0,0,0,0.05)",
               overflow: "hidden",
             }}
@@ -311,7 +322,7 @@ export default function Settings() {
                 sx={{
                   fontWeight: 600,
                   fontSize: "0.8rem",
-                  color: "rgba(12,21,90,0.6)",
+                  color: "text.secondary",
                   letterSpacing: 0.5,
                 }}
               >
@@ -326,23 +337,26 @@ export default function Settings() {
                   sx={{
                     py: 2,
                     "&:hover": {
-                      bgcolor: "#F8FBFF",
+                      bgcolor: (theme) =>
+                        theme.palette.mode === "light"
+                          ? "#F8FBFF"
+                          : "rgba(255,255,255,0.05)",
                     },
                   }}
                 >
                   <ListItemIcon>
-                    <LogoutIcon sx={{ color: "#0C155A" }} />
+                    <LogoutIcon color="primary" />
                   </ListItemIcon>
                   <ListItemText
                     primary="Cerrar sesión"
                     secondary="Sal de tu cuenta de forma segura"
                     primaryTypographyProps={{
                       fontWeight: 500,
-                      color: "#0C155A",
+                      color: "text.primary",
                     }}
                     secondaryTypographyProps={{ fontSize: "0.85rem" }}
                   />
-                  <ChevronRightIcon sx={{ color: "rgba(12, 21, 90, 0.4)" }} />
+                  <ChevronRightIcon sx={{ color: "text.secondary" }} />
                 </ListItemButton>
               </ListItem>
             </List>
@@ -368,7 +382,7 @@ export default function Settings() {
           message="¿Está seguro de que desea cerrar la sesión?"
           confirmText="Cerrar sesión"
           cancelText="Cancelar"
-          confirmColor="#0dc3545"
+          confirmColor={theme.palette.primary.main}
         />
       </Box>
     </MainLayout>
