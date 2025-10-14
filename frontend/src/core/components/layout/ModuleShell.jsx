@@ -41,9 +41,11 @@ export default function ModuleShell({ title, items, children }) {
       <AppBar
         position="fixed"
         sx={{
-          zIndex: (theme) => theme.zIndex.drawer + 1,
-          backgroundColor: "#EBF5FE",
-          color: "#0C155A",
+          zIndex: (theme) => theme.zIndex.drawer - 1,
+          backgroundColor: (theme) => theme.palette.appBar.default,
+          color: (theme) => theme.palette.appBar.text,
+          ml: `${collapsedWidth}px`,
+          width: `calc(100% - ${collapsedWidth}px)`,
         }}
       >
         <Toolbar>
@@ -57,12 +59,15 @@ export default function ModuleShell({ title, items, children }) {
             {title}
           </Typography>
           
-          {user?.role === "AGENT" && <AgentMinutes userId={user.id} currentStatus={agentStatus} />}
-          {user?.role === "AGENT" && (
-            <AgentStatus 
-              onStatusChange={setAgentStatus}
-              refreshInterval={30000}
-            />
+          {/* Estado y tiempo del agente - Para AGENT y AGENTE */}
+          {(user?.role === "AGENTE") && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AgentMinutes userId={user.id} currentStatus={agentStatus} />
+              <AgentStatus 
+                onStatusChange={setAgentStatus}
+                refreshInterval={30000}
+              />
+            </Box>
           )}
 
           <UserMenuButton />
@@ -73,11 +78,10 @@ export default function ModuleShell({ title, items, children }) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         sx={{
-          width: hovered ? expandedWidth : collapsedWidth,
+          width: collapsedWidth,
           flexShrink: 0,
           whiteSpace: "nowrap",
           boxSizing: "border-box",
-          transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           "& .MuiDrawer-paper": {
             width: hovered ? expandedWidth : collapsedWidth,
             overflowX: "hidden",
@@ -87,107 +91,12 @@ export default function ModuleShell({ title, items, children }) {
             flexDirection: "column",
             backgroundColor: "#EBF5FE",
             borderRight: "1px solid rgba(12, 21, 90, 0.1)",
-            boxShadow: "4px 0 24px rgba(12, 21, 90, 0.08)",
+            boxShadow: hovered ? "4px 0 24px rgba(12, 21, 90, 0.15)" : "4px 0 24px rgba(12, 21, 90, 0.08)",
+            zIndex: (theme) => theme.zIndex.drawer + 2,
           },
         }}
         open
       >
-        <Toolbar 
-          sx={{ 
-            justifyContent: "center",
-            py: 3,
-            background: "linear-gradient(135deg, rgba(12, 21, 90, 0.05) 0%, rgba(12, 21, 90, 0.02) 100%)",
-            backdropFilter: "blur(10px)",
-          }}
-        >
-          {hovered ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Box
-                sx={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #0C155A 0%, #1a2b7a 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(12, 21, 90, 0.3)',
-                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                  '@keyframes pulse': {
-                    '0%, 100%': {
-                      opacity: 1,
-                      transform: 'scale(1)',
-                    },
-                    '50%': {
-                      opacity: 0.9,
-                      transform: 'scale(1.05)',
-                    },
-                  },
-                }}
-              >
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    color: 'white',
-                    fontWeight: 700,
-                    fontSize: '1.1rem',
-                  }}
-                >
-                  CC
-                </Typography>
-              </Box>
-              <Typography 
-                variant="h6" 
-                noWrap
-                sx={{
-                  color: '#0C155A',
-                  fontWeight: 700,
-                  fontSize: '1rem',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                Call Center
-              </Typography>
-            </Box>
-          ) : (
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #0C155A 0%, #1a2b7a 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(12, 21, 90, 0.3)',
-                animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                '@keyframes pulse': {
-                  '0%, 100%': {
-                    opacity: 1,
-                    transform: 'scale(1)',
-                  },
-                  '50%': {
-                    opacity: 0.9,
-                    transform: 'scale(1.05)',
-                  },
-                },
-              }}
-            >
-              <Typography 
-                variant="h6"
-                sx={{ 
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: '1.2rem',
-                }}
-              >
-                CC
-              </Typography>
-            </Box>
-          )}
-        </Toolbar>
-
-        <Divider sx={{ borderColor: 'rgba(12, 21, 90, 0.1)', mx: 2 }} />
 
         <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", py: 2 }}>
           <List sx={{ width: "100%", px: 1.5 }}>
@@ -254,9 +163,7 @@ export default function ModuleShell({ title, items, children }) {
                           transform: 'translateY(-50%)',
                           width: '4px',
                           height: '60%',
-                          background: 'linear-gradient(180deg, #0C155A 0%, #1a2b7a 100%)',
                           borderRadius: '0 4px 4px 0',
-                          boxShadow: '0 0 12px rgba(12, 21, 90, 0.4)',
                         } : {},
                       }}
                     >
@@ -332,9 +239,12 @@ export default function ModuleShell({ title, items, children }) {
           minWidth: 0,
           height: "100vh",
           mt: 8,
-          p: 3,
+          ml: 0,
+          width: "100%",
+          pl: `${collapsedWidth}px`,
+          pr: 3,
+          py: 3,
           overflow: "auto",
-          transition: "all 0.3s ease",
         }}
       >
         {children || <Outlet />}

@@ -20,7 +20,7 @@ export const menuItems = [
     label: 'Dashboard',
     path: '/dashboard',
     icon: DashboardIcon, // Opcional, nombre del ícono de MUI
-    roles: ['ADMIN', 'AGENT'] 
+    roles: ['ADMIN', 'AGENTE'] 
   },
   {
     label: 'Usuarios',
@@ -38,31 +38,31 @@ export const menuItems = [
     label: 'Llamadas',
     path: '/llamadas',
     icon: PhoneIcon,
-    roles: ['AGENT']
+    roles: ['AGENTE']
   },
   {
     label: 'KPIs',
     path: '/kpis',
     icon: EqualizerIcon,
-    roles: ['AGENT']
+    roles: ['AGENTE']
   },
   {
     label: 'Historial',
     path: '/historial',
     icon: HistoryIcon,
-    roles: ['AGENT']
+    roles: ['AGENTE']
   },
   {
     label: 'Comisiones',
     path: '/comisiones',
     icon: AttachMoneyIcon,
-    roles: ['AGENT']
+    roles: ['AGENTE']
   },
   {
     label: 'Configuración',
     path: '/configuracion',
     icon: SettingsIcon,
-    roles: ['ADMIN', 'AGENT']
+    roles: ['ADMIN', 'AGENTE']
   }
 ];
 

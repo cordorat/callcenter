@@ -7,11 +7,9 @@ from apps.users.models import (
     EstadoAgenteDetalle,
     EstadoAgenteActual,
     TiposParametros,
-    Equipo,
-    EquipoAgenteDetalle,
     User
 )
-
+from apps.campaigns.models import Equipo, EquipoAgenteDetalle
 
 class TiposParametrosSerializer(serializers.ModelSerializer):
     """Serializer para tipos de parámetros del sistema."""
@@ -113,55 +111,88 @@ class EstadoAgenteActualSerializer(serializers.ModelSerializer):
     """Serializer para el estado actual de un agente."""
     
     agente_nombre = serializers.CharField(
-        source='agente.full_name',
+        source='agente_id.full_name',
         read_only=True
     )
     agente_email = serializers.EmailField(
-        source='agente.email',
+        source='agente_id.email',
+        read_only=True
+    )
+    estado_valor = serializers.CharField(
+        source='estado_id.valor',
+        read_only=True
+    )
+    # Campo para compatibilidad con frontend (mismo valor que estado_valor)
+    estado = serializers.CharField(
+        source='estado_id.valor',
         read_only=True
     )
     estado_display = serializers.CharField(
-        source='get_estado_display',
+        source='estado_id.descripcion',
         read_only=True
     )
+    duracion_actual = serializers.ReadOnlyField(source='duracion_actual_segundos')
+    # Alias para compatibilidad con frontend
+    tiempo_en_estado = serializers.ReadOnlyField(source='duracion_actual_segundos')
+    
+    # Campos relacionados con capacidad de recibir llamadas
+    # Por ahora retornamos valores basados en el estado
+    acepta_llamadas = serializers.SerializerMethodField()
+    conexion_activa = serializers.SerializerMethodField()
+    tiene_audio = serializers.SerializerMethodField()
     puede_recibir_llamadas = serializers.SerializerMethodField()
-    tiempo_en_estado = serializers.SerializerMethodField()
     
     class Meta:
         model = EstadoAgenteActual
         fields = [
-            'agente', 'agente_nombre', 'agente_email',
-            'estado', 'estado_display', 'hora_inicio_estado',
-            'ultima_actualizacion', 'acepta_llamadas', 'conexion_activa',
-            'tiene_audio', 'puede_recibir_llamadas', 'tiempo_en_estado',
-            'ip_address', 'user_agent', 'comentarios', 'created_at'
+            'agente_id', 'agente_nombre', 'agente_email',
+            'estado_id', 'estado_valor', 'estado', 'estado_display',
+            'tiempo', 'ultima_actualizacion', 
+            'duracion_actual', 'tiempo_en_estado',
+            'acepta_llamadas', 'conexion_activa', 'tiene_audio', 'puede_recibir_llamadas'
         ]
         read_only_fields = [
-            'hora_inicio_estado', 'ultima_actualizacion', 'created_at'
+            'tiempo', 'ultima_actualizacion', 'duracion_actual', 'tiempo_en_estado'
         ]
     
-    def get_puede_recibir_llamadas(self, obj):
-        """Verifica si el agente puede recibir llamadas."""
-        return obj.puede_recibir_llamadas()
+    def get_acepta_llamadas(self, obj):
+        """Un agente acepta llamadas si está DISPONIBLE."""
+        if not obj.estado_id:
+            return False
+        return obj.estado_id.valor == 'DISPONIBLE'
     
-    def get_tiempo_en_estado(self, obj):
-        """Retorna el tiempo en el estado actual en segundos."""
-        return obj.tiempo_en_estado_actual()
+    def get_conexion_activa(self, obj):
+        """Un agente tiene conexión activa si NO está DESCONECTADO."""
+        if not obj.estado_id:
+            return False
+        return obj.estado_id.valor != 'DESCONECTADO'
+    
+    def get_tiene_audio(self, obj):
+        """Por defecto asumimos que tiene audio si está conectado."""
+        if not obj.estado_id:
+            return False
+        return obj.estado_id.valor != 'DESCONECTADO'
+    
+    def get_puede_recibir_llamadas(self, obj):
+        """Un agente puede recibir llamadas solo si está DISPONIBLE."""
+        if not obj.estado_id:
+            return False
+        return obj.estado_id.valor == 'DISPONIBLE'
 
 
 class CambioEstadoSerializer(serializers.Serializer):
     """Serializer para cambiar el estado de un agente."""
     
-    # Usamos las mismas opciones que EstadoAgenteActual.EstadoAgente
+    # Estados según la base de datos actual
     ESTADO_CHOICES = [
         ('DISPONIBLE', 'Disponible'),
         ('EN_LLAMADA', 'En Llamada'),
-        ('POSTCALL', 'Post Llamada'),
+        ('AFTERCALL', 'Post Llamada'),
         ('BREAK', 'Break'),
         ('ALMUERZO', 'Almuerzo'),
         ('CAPACITACION', 'Capacitación'),
-        ('REUNION', 'Reunión'),
-        ('AUSENTE', 'Ausente'),
+        ('BAÑO', 'Baño'),
+        ('NO_DISPONIBLE', 'No Disponible'),
         ('DESCONECTADO', 'Desconectado'),
     ]
     

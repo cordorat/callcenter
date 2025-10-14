@@ -1,6 +1,9 @@
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
 import { getKpiOverview } from "@/core/api/kpis";
+import RefreshIcon from '@mui/icons-material/Refresh';
+import LoopIcon from '@mui/icons-material/Loop';
+
 import "./Kpis.css"; 
 
 import {
@@ -249,11 +252,11 @@ export default function Kpis() {
   };
 
   return (
-    <MainLayout title="KPI's">
+    <MainLayout title="KPIs">
       <div className="kpi-page">
         {/* Header */}
         <div className="kpi-header">
-          <h2>KPI personales</h2>
+          <h2></h2>
           <div className="kpi-actions">
             {updatedAt && (
               <span className="update-badge">
@@ -261,7 +264,7 @@ export default function Kpis() {
               </span>
             )}
             <button className="btn" onClick={fetchData} disabled={loading}>
-              {loading ? "Actualizando..." : "Actualizar métricas"}
+              {loading ? <RefreshIcon fontSize="small" className="spinning" /> : <RefreshIcon fontSize="small" />}
             </button>
           </div>
         </div>
@@ -437,7 +440,12 @@ export default function Kpis() {
                       tickLine={false}
                       label={{ value: 'Llamadas', angle: -90, position: 'insideLeft', style: { fill: '#4a5a82', fontWeight: 700 } }}
                     />
-                    <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(47, 118, 230, 0.1)' }} />
+                    <Tooltip 
+                      content={<CustomBarTooltip />} 
+                      cursor={{ fill: 'rgba(47, 118, 230, 0.1)' }}
+                      animationDuration={0}
+                      isAnimationActive={false}
+                    />
                     <Bar 
                       dataKey="valor" 
                       fill="url(#barGradient)"
@@ -494,7 +502,11 @@ export default function Kpis() {
                         />
                       ))}
                     </Pie>
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip 
+                      content={<CustomTooltip />}
+                      animationDuration={0}
+                      isAnimationActive={false}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               )}

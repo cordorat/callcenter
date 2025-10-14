@@ -4,7 +4,7 @@
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMTMwNzQ1LCJpYXQiOjE3NjAxMDE5NDUsImp0aSI6ImFkMmZiZTBjNmVmMTQ0MDI5OGM2NmE1M2E0ZTQ4NmZmIiwidXNlcl9pZCI6MX0.j9XlWFpJLz77ZCABS7A7ooKlfLssCXfd23gKjxIRmR0
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMzA2MDQzLCJpYXQiOjE3NjAyNzcyNDMsImp0aSI6IjVmZjNlMjA5ZWNiZDRhZTI4MjUwMzRlNzg1YzQwN2ViIiwiZG9jdW1lbnRvX2lkIjoiIn0.4Rlhe7w0p2DWoMHRd2hmbfbO6BhkXbxc16-Bn5UPvqo
 @agentToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMDk0MTEwLCJpYXQiOjE3NjAwNjUzMTAsImp0aSI6ImYwOGU5YWEwNzJmZDRhODFhNTNlNGY4N2ZjY2VjNjM0IiwidXNlcl9pZCI6Mn0.9PdfqN60ALXpylUaxb3vVo3qjCe_gaycYHySIbxtyiI
 
 ### ============================================
