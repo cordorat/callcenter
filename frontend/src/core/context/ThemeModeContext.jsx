@@ -27,6 +27,10 @@ export function ThemeModeProvider({ children }) {
             primary: mode === "light" ? "#0C155A" : "#E6E9EF",
             secondary: mode === "light" ? "#4F4F4F" : "#B0B5C0",
           },
+          appBar: {
+            default: mode === "light" ? "#EBF5FE" : "#182030",
+            text: mode === "light" ? "#0C155A" : "#E6E9EF",
+          },
         },
         typography: {
           fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
