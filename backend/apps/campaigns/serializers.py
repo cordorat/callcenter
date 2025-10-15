@@ -218,3 +218,285 @@ class BaseDatosCargadaSerializer(serializers.ModelSerializer):
     class Meta:
         model = BaseDatosCargada
         fields = '__all__'
+
+
+# ============================================================
+# SERIALIZERS PARA EQUIPOS
+# ============================================================
+
+from .models import Equipo, EquipoAgenteDetalle, Campana
+from apps.users.models import User
+from common.estados_helper import get_estado_id
+
+
+class AgenteSimpleSerializer(serializers.ModelSerializer):
+    """Serializer simple para mostrar información básica de agentes."""
+    
+    full_name = serializers.CharField(read_only=True)
+    codigo_agente = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = ['documento_id', 'first_name', 'last_name', 'full_name', 'email', 'codigo_agente']
+        read_only_fields = fields
+    
+    def get_codigo_agente(self, obj):
+        """Retorna código de agente (documento_id truncado)."""
+        return obj.documento_id[:6] if obj.documento_id else None
+
+
+class CampanaSimpleSerializer(serializers.ModelSerializer):
+    """Serializer simple para campañas."""
+    
+    estado_nombre = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Campana
+        fields = ['id', 'nombre', 'descripcion', 'estado', 'estado_nombre', 'fecha_inicio', 'fecha_fin']
+        read_only_fields = fields
+    
+    def get_estado_nombre(self, obj):
+        """Retorna el nombre del estado de la campaña."""
+        if obj.estado:
+            return obj.estado.valor
+        return None
+
+
+class EquipoSerializer(serializers.ModelSerializer):
+    """
+    Serializer para lectura de equipos.
+    Incluye información detallada de jefe de centro, campaña y agentes.
+    """
+    jefe_centro_nombre = serializers.SerializerMethodField()
+    campana_info = CampanaSimpleSerializer(source='campana', read_only=True)
+    agentes = serializers.SerializerMethodField()
+    cantidad_agentes = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Equipo
+        fields = [
+            'equipo_id', 'nombre', 'jefe_centro', 'jefe_centro_nombre',
+            'campana', 'campana_info', 'agentes', 'cantidad_agentes',
+            'is_active'
+        ]
+        read_only_fields = ['equipo_id']
+    
+    def get_jefe_centro_nombre(self, obj):
+        """Retorna el nombre completo del jefe de centro."""
+        if obj.jefe_centro:
+            return obj.jefe_centro.full_name
+        return None
+    
+    def get_agentes(self, obj):
+        """Retorna lista de agentes del equipo."""
+        agentes_ids = obj.agentes_detalle.values_list('agente_id', flat=True)
+        agentes = User.objects.filter(documento_id__in=agentes_ids)
+        return AgenteSimpleSerializer(agentes, many=True).data
+    
+    def get_cantidad_agentes(self, obj):
+        """Retorna la cantidad de agentes en el equipo."""
+        return obj.agentes_detalle.count()
+
+
+class EquipoCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer para creación de equipos.
+    Valida criterios de la HU:
+    - 4.1: Todos los campos son obligatorios
+    - 4.2: No se puede repetir un agente en un mismo equipo
+    - 4.3: Un agente no puede estar en dos equipos diferentes
+    - 4.4: El equipo solo se puede asignar a campañas activas
+    """
+    agentes_ids = serializers.ListField(
+        child=serializers.CharField(),
+        write_only=True,
+        required=True,
+        help_text='Lista de documento_id de agentes a asignar'
+    )
+    
+    class Meta:
+        model = Equipo
+        fields = ['nombre', 'campana', 'agentes_ids']
+    
+    def validate_nombre(self, value):
+        """Validar que el nombre no esté vacío y sea único."""
+        if not value or not value.strip():
+            raise serializers.ValidationError('El nombre del equipo es obligatorio.')
+        
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError('El nombre del equipo debe tener al menos 3 caracteres.')
+        
+        return value.strip()
+    
+    def validate_campana(self, value):
+        """
+        Criterio 4.4: El equipo solo se puede asignar a campañas activas.
+        """
+        if not value:
+            raise serializers.ValidationError('La campaña es obligatoria.')
+        
+        # Verificar que la campaña esté activa
+        estado_activo_id = get_estado_id('ESTADO_CAMPANA', 'ACTIVA')
+        if value.estado_id != estado_activo_id:
+            raise serializers.ValidationError(
+                f'La campaña "{value.nombre}" no está activa. Solo se pueden asignar campañas activas.'
+            )
+        
+        return value
+    
+    def validate_agentes_ids(self, value):
+        """
+        Validar lista de agentes:
+        - Criterio 4.1: No puede estar vacía
+        - Criterio 4.2: No se puede repetir un agente en un mismo equipo
+        """
+        if not value or len(value) == 0:
+            raise serializers.ValidationError('Debe seleccionar al menos un agente.')
+        
+        # Criterio 4.2: Verificar que no haya duplicados
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError('No se puede repetir un agente en el mismo equipo.')
+        
+        # Verificar que todos los documento_id existan
+        rol_agente_id = get_estado_id('ROL_USUARIO', 'AGENTE')
+        agentes_existentes = User.objects.filter(
+            documento_id__in=value,
+            rol_id=rol_agente_id,
+            is_active=True
+        )
+        
+        if agentes_existentes.count() != len(value):
+            documentos_no_encontrados = set(value) - set(agentes_existentes.values_list('documento_id', flat=True))
+            raise serializers.ValidationError(
+                f'Los siguientes documentos no corresponden a agentes activos: {", ".join(documentos_no_encontrados)}'
+            )
+        
+        return value
+    
+    def validate(self, attrs):
+        """
+        Validación cruzada:
+        - Criterio 4.3: Un agente no puede estar en dos equipos diferentes
+        """
+        agentes_ids = attrs.get('agentes_ids', [])
+        
+        # Buscar si alguno de los agentes ya está en un equipo activo
+        agentes_en_equipos = EquipoAgenteDetalle.objects.filter(
+            agente_id__documento_id__in=agentes_ids,
+            equipo_id__is_active=True
+        ).select_related('agente_id', 'equipo_id')
+        
+        if agentes_en_equipos.exists():
+            conflictos = []
+            for detalle in agentes_en_equipos:
+                conflictos.append(
+                    f"{detalle.agente_id.full_name} ya está en el equipo '{detalle.equipo_id.nombre}'"
+                )
+            
+            raise serializers.ValidationError({
+                'agentes_ids': f'Los siguientes agentes ya están asignados a otros equipos: {"; ".join(conflictos)}'
+            })
+        
+        return attrs
+    
+    def create(self, validated_data):
+        """
+        Crear equipo y asignar agentes.
+        """
+        agentes_ids = validated_data.pop('agentes_ids')
+        
+        # Obtener jefe_centro del request context
+        request = self.context.get('request')
+        if not request or not request.user:
+            raise serializers.ValidationError('No se pudo identificar al jefe de centro.')
+        
+        validated_data['jefe_centro'] = request.user
+        
+        # Crear equipo
+        equipo = Equipo.objects.create(**validated_data)
+        
+        # Asignar agentes
+        agentes = User.objects.filter(documento_id__in=agentes_ids)
+        for agente in agentes:
+            EquipoAgenteDetalle.objects.create(
+                equipo_id=equipo,
+                agente_id=agente
+            )
+        
+        return equipo
+    
+    def to_representation(self, instance):
+        """Usar EquipoSerializer para la respuesta."""
+        return EquipoSerializer(instance, context=self.context).data
+
+
+class EquipoUpdateSerializer(serializers.ModelSerializer):
+    """Serializer para actualización de equipos."""
+    
+    agentes_ids = serializers.ListField(
+        child=serializers.CharField(),
+        write_only=True,
+        required=False,
+        help_text='Lista de documento_id de agentes a asignar'
+    )
+    
+    class Meta:
+        model = Equipo
+        fields = ['nombre', 'campana', 'is_active', 'agentes_ids']
+    
+    def validate_campana(self, value):
+        """Validar que la campaña esté activa."""
+        if value:
+            estado_activo_id = get_estado_id('ESTADO_CAMPANA', 'ACTIVA')
+            if value.estado_id != estado_activo_id:
+                raise serializers.ValidationError(
+                    f'La campaña "{value.nombre}" no está activa.'
+                )
+        return value
+    
+    def validate_agentes_ids(self, value):
+        """Validar lista de agentes."""
+        if value is not None:
+            if len(value) != len(set(value)):
+                raise serializers.ValidationError('No se puede repetir un agente en el mismo equipo.')
+            
+            # Verificar que existan
+            rol_agente_id = get_estado_id('ROL_USUARIO', 'AGENTE')
+            agentes_existentes = User.objects.filter(
+                documento_id__in=value,
+                rol_id=rol_agente_id,
+                is_active=True
+            )
+            
+            if agentes_existentes.count() != len(value):
+                raise serializers.ValidationError('Algunos agentes no son válidos.')
+        
+        return value
+    
+    def update(self, instance, validated_data):
+        """Actualizar equipo y agentes si es necesario."""
+        agentes_ids = validated_data.pop('agentes_ids', None)
+        
+        # Actualizar campos del equipo
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Actualizar agentes si se proporcionaron
+        if agentes_ids is not None:
+            # Eliminar asignaciones actuales
+            instance.agentes_detalle.all().delete()
+            
+            # Crear nuevas asignaciones
+            agentes = User.objects.filter(documento_id__in=agentes_ids)
+            for agente in agentes:
+                EquipoAgenteDetalle.objects.create(
+                    equipo_id=instance,
+                    agente_id=agente
+                )
+        
+        return instance
+    
+    def to_representation(self, instance):
+        """Usar EquipoSerializer para la respuesta."""
+        return EquipoSerializer(instance, context=self.context).data

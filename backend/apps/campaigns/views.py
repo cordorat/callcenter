@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.db import models
+from django.db.models import Q
 import csv
 import random
 from rest_framework.views import APIView
@@ -7,8 +8,14 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import api_view, action
 from rest_framework.permissions import IsAuthenticated
-from .models import Cliente, BaseDatosCargada
-from .serializers import BaseDatosCargadaSerializer, ClienteSerializer, ClienteUpdateSerializer
+from .models import Cliente, BaseDatosCargada, Equipo, EquipoAgenteDetalle, Campana
+from .serializers import (
+    BaseDatosCargadaSerializer, ClienteSerializer, ClienteUpdateSerializer,
+    EquipoSerializer, EquipoCreateSerializer, EquipoUpdateSerializer,
+    AgenteSimpleSerializer, CampanaSimpleSerializer
+)
+from apps.users.models import User
+from common.estados_helper import get_estado_id
 from django.core.paginator import Paginator
 
 class CargarBaseDatosView(APIView):
@@ -240,5 +247,245 @@ class ClienteViewSet(viewsets.ModelViewSet):
             'success': True,
             'message': f'Cliente aleatorio obtenido (total disponibles: {count})',
             'cliente': serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+# ============================================================
+# VIEWSET PARA EQUIPOS
+# ============================================================
+
+class EquipoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de equipos de trabajo.
+    
+    Endpoints:
+    - GET /api/campaigns/equipos/ - Listar equipos del jefe de centro
+    - POST /api/campaigns/equipos/ - Crear equipo
+    - GET /api/campaigns/equipos/{id}/ - Obtener equipo específico
+    - PATCH /api/campaigns/equipos/{id}/ - Actualizar equipo
+    - DELETE /api/campaigns/equipos/{id}/ - Eliminar equipo (soft delete)
+    - GET /api/campaigns/equipos/agentes_disponibles/ - Buscar agentes disponibles
+    - GET /api/campaigns/equipos/campanas_activas/ - Listar campañas activas
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """
+        Criterio 1.3: Mostrar automáticamente lista de todos los equipos del centro.
+        Filtrar por jefe_centro si el usuario tiene ese rol.
+        """
+        user = self.request.user
+        
+        # Si es jefe de centro, solo mostrar sus equipos
+        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        if user.rol_id == rol_jefe_centro_id:
+            return Equipo.objects.filter(
+                jefe_centro=user,
+                is_active=True
+            ).select_related('jefe_centro', 'campana').prefetch_related('agentes_detalle')
+        
+        # Si es admin, mostrar todos
+        if user.is_admin():
+            return Equipo.objects.filter(
+                is_active=True
+            ).select_related('jefe_centro', 'campana').prefetch_related('agentes_detalle')
+        
+        # Otros roles no tienen acceso
+        return Equipo.objects.none()
+    
+    def get_serializer_class(self):
+        """Retorna el serializer apropiado según la acción."""
+        if self.action == 'create':
+            return EquipoCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return EquipoUpdateSerializer
+        return EquipoSerializer
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Criterio 2: Crear equipo.
+        Valida que el usuario sea jefe de centro.
+        """
+        # Verificar que el usuario tenga rol de jefe de centro
+        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        if request.user.rol_id != rol_jefe_centro_id and not request.user.is_admin():
+            return Response({
+                'success': False,
+                'message': 'Solo los jefes de centro pueden crear equipos'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = self.get_serializer(data=request.data)
+        
+        if serializer.is_valid():
+            equipo = serializer.save()
+            return Response({
+                'success': True,
+                'message': 'El equipo ha sido creado',  # Criterio 3.1.1
+                'equipo': serializer.data
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response({
+            'success': False,
+            'message': 'Error de validación en los datos proporcionados',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Criterio 1.3: Listar todos los equipos del centro.
+        Criterio 5.1: La lista se actualiza automáticamente.
+        """
+        queryset = self.get_queryset()
+        
+        # Filtros opcionales
+        campana_id = request.query_params.get('campana_id')
+        if campana_id:
+            queryset = queryset.filter(campana_id=campana_id)
+        
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(nombre__icontains=search) |
+                Q(campana__nombre__icontains=search)
+            )
+        
+        serializer = self.get_serializer(queryset, many=True)
+        
+        return Response({
+            'success': True,
+            'count': queryset.count(),
+            'equipos': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Obtener detalle de un equipo específico."""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        
+        return Response({
+            'success': True,
+            'equipo': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    def update(self, request, *args, **kwargs):
+        """Actualizar equipo completo."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        # Verificar permisos (solo el jefe de centro dueño o admin)
+        if instance.jefe_centro != request.user and not request.user.is_admin():
+            return Response({
+                'success': False,
+                'message': 'No tiene permisos para modificar este equipo'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'message': 'Equipo actualizado exitosamente',
+                'equipo': serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            'success': False,
+            'message': 'Error de validación',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Actualización parcial."""
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Soft delete: marcar equipo como inactivo.
+        """
+        instance = self.get_object()
+        
+        # Verificar permisos
+        if instance.jefe_centro != request.user and not request.user.is_admin():
+            return Response({
+                'success': False,
+                'message': 'No tiene permisos para eliminar este equipo'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        instance.is_active = False
+        instance.save()
+        
+        return Response({
+            'success': True,
+            'message': f'El equipo "{instance.nombre}" ha sido desactivado'
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='agentes-disponibles')
+    def agentes_disponibles(self, request):
+        """
+        Criterio 2.2: Búsqueda de agentes en tiempo real.
+        GET /api/campaigns/equipos/agentes-disponibles/?search=juan
+        
+        Retorna agentes que:
+        - Tienen rol AGENTE
+        - Están activos
+        - NO están en ningún equipo activo (Criterio 4.3)
+        - Coinciden con el término de búsqueda (nombre o código)
+        """
+        search = request.query_params.get('search', '').strip()
+        
+        # Obtener agentes que ya están en equipos activos
+        agentes_en_equipos = EquipoAgenteDetalle.objects.filter(
+            equipo_id__is_active=True
+        ).values_list('agente_id', flat=True)
+        
+        # Filtrar agentes disponibles
+        rol_agente_id = get_estado_id('ROL_USUARIO', 'AGENTE')
+        queryset = User.objects.filter(
+            rol_id=rol_agente_id,
+            is_active=True
+        ).exclude(documento_id__in=agentes_en_equipos)
+        
+        # Aplicar búsqueda
+        if search:
+            queryset = queryset.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(documento_id__icontains=search) |
+                Q(email__icontains=search)
+            )
+        
+        # Limitar resultados
+        limit = int(request.query_params.get('limit', 20))
+        queryset = queryset[:limit]
+        
+        serializer = AgenteSimpleSerializer(queryset, many=True)
+        
+        return Response({
+            'success': True,
+            'count': queryset.count(),
+            'agentes': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='campanas-activas')
+    def campanas_activas(self, request):
+        """
+        Criterio 2.2: Lista de campañas activas para seleccionar.
+        Criterio 4.4: Solo se pueden asignar campañas activas.
+        
+        GET /api/campaigns/equipos/campanas-activas/
+        """
+        estado_activo_id = get_estado_id('ESTADO_CAMPANA', 'ACTIVA')
+        queryset = Campana.objects.filter(
+            estado_id=estado_activo_id
+        ).order_by('nombre')
+        
+        serializer = CampanaSimpleSerializer(queryset, many=True)
+        
+        return Response({
+            'success': True,
+            'count': queryset.count(),
+            'campanas': serializer.data
         }, status=status.HTTP_200_OK)
 

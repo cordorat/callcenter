@@ -438,7 +438,18 @@ export default function Kpis() {
                       tick={{ fill: '#4a5a82', fontSize: 12, fontWeight: 600 }}
                       axisLine={{ stroke: '#cad4dd', strokeWidth: 1.5 }}
                       tickLine={false}
-                      label={{ value: 'Llamadas', angle: -90, position: 'insideLeft', style: { fill: '#4a5a82', fontWeight: 700 } }}
+                      label={{ 
+                        value: 'Llamadas', 
+                        angle: -90, 
+                        position: 'insideLeft',
+                        offset: 15,
+                        style: { 
+                          fill: '#4a5a82', 
+                          fontWeight: 600,
+                          fontSize: 13,
+                          textAnchor: 'middle'
+                        } 
+                      }}
                     />
                     <Tooltip 
                       content={<CustomBarTooltip />} 

@@ -1,0 +1,368 @@
+### ========================================
+### TESTS DE EQUIPOS DE TRABAJO
+### ========================================
+###
+### Prerequisitos:
+### 1. Ejecutar: python create_jefe_centro.py
+### 2. Tener al menos una campaña activa
+### 3. Tener al menos 2 agentes sin equipo asignado
+###
+### Credenciales jefe de centro:
+### Email: jefe@callcenter.com
+### Password: jefe123!
+###
+
+@baseUrl = http://localhost:8000/api
+@jefeToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwNTI4OTg3LCJpYXQiOjE3NjA1MDAxODcsImp0aSI6IjMyZTI1NjhlNjIxMjQ3MzM4ZGI4NTk3Mzg4ZWI5OTg2IiwiZG9jdW1lbnRvX2lkIjoiMTAwMDAwMDAwMSJ9.3w7X7pkalrwKe4V3u8V97FSkb5HfE6ph-1p3CURVNdA
+@equipoId = 1
+
+### ========================================
+### 1. LOGIN COMO JEFE DE CENTRO
+### ========================================
+
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+  "email": "jefe@callcenter.com",
+  "password": "jefe123!"
+}
+
+### RESPUESTA ESPERADA:
+### Status: 200
+### Body: { user: {...}, tokens: { access: "...", refresh: "..." } }
+### COPIAR el token access y reemplazar {{jefeToken}} arriba
+
+### ========================================
+### 2. OBTENER CAMPAÑAS ACTIVAS (Criterio 4.4)
+### ========================================
+
+GET {{baseUrl}}/campaigns/equipos/campanas-activas/
+Authorization: Bearer {{jefeToken}}
+
+### RESPUESTA ESPERADA:
+### Status: 200
+### Body: Array de campañas con estado 'ACTIVA'
+### Ejemplo: [
+###   {
+###     "id": 1,
+###     "nombre": "Campaña Producto X",
+###     "descripcion": "...",
+###     "estado": {"id": 1, "valor": "ACTIVA"}
+###   }
+### ]
+
+### ========================================
+### 3. BUSCAR AGENTES DISPONIBLES (Criterio 2.2)
+### ========================================
+
+### Sin filtro - Todos los agentes disponibles
+GET {{baseUrl}}/campaigns/equipos/agentes-disponibles/
+Authorization: Bearer {{jefeToken}}
+
+###
+
+### Con búsqueda - Filtrar por nombre/apellido
+GET {{baseUrl}}/campaigns/equipos/agentes-disponibles/?search=juan
+Authorization: Bearer {{jefeToken}}
+
+###
+
+### Con búsqueda - Filtrar por código de agente
+GET {{baseUrl}}/campaigns/equipos/agentes-disponibles/?search=AG-001
+Authorization: Bearer {{jefeToken}}
+
+### RESPUESTA ESPERADA:
+### Status: 200
+### Body: Array de agentes que NO están en ningún equipo activo
+### Ejemplo: [
+###   {
+###     "documento_id": "1234567890",
+###     "email": "agente1@callcenter.com",
+###     "full_name": "Juan Pérez",
+###     "codigo_agente": "AG-001"
+###   }
+### ]
+
+### ========================================
+### 4. CREAR EQUIPO - CASO EXITOSO (Criterios 2, 3.1, 4)
+### ========================================
+
+POST {{baseUrl}}/campaigns/equipos/
+Authorization: Bearer {{jefeToken}}
+Content-Type: application/json
+
+{
+  "nombre": "Equipo Ventas Alpha",
+  "campana_id": 1,
+  "agentes_ids": ["1234567890"]
+}
+
+### RESPUESTA ESPERADA:
+### Status: 201
+### Body: {
+###   "id": 1,
+###   "nombre": "Equipo Ventas Alpha",
+###   "campana": {
+###     "id": 1,
+###     "nombre": "Campaña Producto X",
+###     ...
+###   },
+###   "jefe_centro": {
+###     "documento_id": "1000000001",
+###     "full_name": "Juan Pérez",
+###     ...
+###   },
+###   "cantidad_agentes": 2,
+###   "agentes": [...]
+### }
+### Mensaje esperado (Criterio 3.1.1): "El equipo ha sido creado"
+
+### ========================================
+### 5. VALIDACIONES - CASOS DE ERROR
+### ========================================
+
+### Criterio 4.1 - Todos los campos requeridos
+POST {{baseUrl}}/campaigns/equipos/
+Authorization: Bearer {{jefeToken}}
+Content-Type: application/json
+
+{
+  "nombre": "Equipo Incompleto"
+}
+
+### RESPUESTA ESPERADA:
+### Status: 400
+### Body: { "campana_id": ["Este campo es requerido"], "agentes_ids": ["Este campo es requerido"] }
+
+###
+
+### Criterio 4.1 - Al menos un agente requerido
+POST {{baseUrl}}/campaigns/equipos/
+Authorization: Bearer {{jefeToken}}
+Content-Type: application/json
+
+{
+  "nombre": "Equipo Sin Agentes",
+  "campana_id": 1,
+  "agentes_ids": []
+}
+
+### RESPUESTA ESPERADA:
+### Status: 400
+### Body: { "agentes_ids": ["Debe seleccionar al menos un agente"] }
+
+###
+
+### Criterio 4.2 - No repetir agentes en el mismo equipo
+POST {{baseUrl}}/campaigns/equipos/
+Authorization: Bearer {{jefeToken}}
+Content-Type: application/json
+
+{
+  "nombre": "Equipo Con Duplicados",
+  "campana_id": 1,
+  "agentes_ids": ["1234567890", "1234567890", "0987654321"]
+}
+
+### RESPUESTA ESPERADA:
+### Status: 400
+### Body: { "agentes_ids": ["No se puede repetir el mismo agente en el equipo"] }
+
+###
+
+### Criterio 4.3 - Agente no puede estar en dos equipos activos
+### (Requiere que el agente "1234567890" ya esté en un equipo activo)
+POST {{baseUrl}}/campaigns/equipos/
+Authorization: Bearer {{jefeToken}}
+Content-Type: application/json
+
+{
+  "nombre": "Equipo Conflicto",
+  "campana_id": 1,
+  "agentes_ids": ["1234567890", "1111111111"]
+}
+
+### RESPUESTA ESPERADA:
+### Status: 400
+### Body: { "agentes_ids": ["El agente Juan Pérez ya está asignado a otro equipo activo"] }
+
+###
+
+### Criterio 4.4 - Solo campañas activas
+### (Requiere una campaña con estado diferente a ACTIVA)
+POST {{baseUrl}}/campaigns/equipos/
+Authorization: Bearer {{jefeToken}}
+Content-Type: application/json
+
+{
+  "nombre": "Equipo Campaña Inactiva",
+  "campana_id": 2,
+  "agentes_ids": ["1234567890"]
+}
+
+### RESPUESTA ESPERADA:
+### Status: 400
+### Body: { "campana": ["Solo se pueden asignar campañas con estado ACTIVA"] }
+
+### ========================================
+### 6. LISTAR EQUIPOS (Criterio 1.3, 5.1)
+### ========================================
+
+GET {{baseUrl}}/campaigns/equipos/
+Authorization: Bearer {{jefeToken}}
+
+### RESPUESTA ESPERADA:
+### Status: 200
+### Body: Array solo con equipos del jefe de centro autenticado
+### Ejemplo: [
+###   {
+###     "id": 1,
+###     "nombre": "Equipo Ventas Alpha",
+###     "campana": {...},
+###     "jefe_centro": {...},
+###     "cantidad_agentes": 2,
+###     "agentes": [...]
+###   }
+### ]
+
+### ========================================
+### 7. OBTENER DETALLE DE UN EQUIPO
+### ========================================
+
+GET {{baseUrl}}/campaigns/equipos/{{equipoId}}/
+Authorization: Bearer {{jefeToken}}
+
+### RESPUESTA ESPERADA:
+### Status: 200
+### Body: Objeto completo del equipo con todos los campos
+
+### ========================================
+### 8. ACTUALIZAR EQUIPO (Criterio 3.2)
+### ========================================
+
+### Actualizar nombre solamente
+PATCH {{baseUrl}}/campaigns/equipos/{{equipoId}}/
+Authorization: Bearer {{jefeToken}}
+Content-Type: application/json
+
+{
+  "nombre": "Equipo Ventas Alpha Actualizado"
+}
+
+###
+
+### Actualizar campaña
+PATCH {{baseUrl}}/campaigns/equipos/{{equipoId}}/
+Authorization: Bearer {{jefeToken}}
+Content-Type: application/json
+
+{
+  "campana_id": 2
+}
+
+###
+
+### Actualizar agentes (agregar/quitar)
+PATCH {{baseUrl}}/campaigns/equipos/{{equipoId}}/
+Authorization: Bearer {{jefeToken}}
+Content-Type: application/json
+
+{
+  "agentes_ids": ["1234567890", "0987654321", "1111111111"]
+}
+
+### RESPUESTA ESPERADA:
+### Status: 200
+### Body: Objeto actualizado del equipo
+### Las mismas validaciones (4.1-4.4) aplican en actualizaciones
+
+### ========================================
+### 9. ELIMINAR EQUIPO (Soft Delete)
+### ========================================
+
+DELETE {{baseUrl}}/campaigns/equipos/{{equipoId}}/
+Authorization: Bearer {{jefeToken}}
+
+### RESPUESTA ESPERADA:
+### Status: 204 No Content
+### El equipo se marca como is_active=False
+### Los agentes del equipo quedan disponibles para otros equipos
+
+###
+
+### Verificar que el equipo ya no aparece en el listado
+GET {{baseUrl}}/campaigns/equipos/
+Authorization: Bearer {{jefeToken}}
+
+### RESPUESTA ESPERADA:
+### Status: 200
+### Body: Array sin el equipo eliminado
+
+### ========================================
+### 10. PRUEBAS DE SEGURIDAD
+### ========================================
+
+### Intentar acceder sin autenticación
+GET {{baseUrl}}/campaigns/equipos/
+# No incluir Authorization header
+
+### RESPUESTA ESPERADA:
+### Status: 401 Unauthorized
+
+###
+
+### Jefe de centro no debe ver equipos de otro jefe
+### (Requiere crear otro jefe de centro y otro equipo)
+### El GET /equipos/ debe filtrar automáticamente por jefe_centro
+
+### ========================================
+### 11. LOGIN COMO ADMIN (Pruebas adicionales)
+### ========================================
+
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+  "email": "admin@callcenter.com",
+  "password": "admin123"
+}
+
+### RESPUESTA ESPERADA:
+### Status: 200
+### COPIAR el token y probar que admin puede ver TODOS los equipos
+
+###
+
+GET {{baseUrl}}/campaigns/equipos/
+Authorization: Bearer tu_admin_token_aqui
+
+### RESPUESTA ESPERADA:
+### Status: 200
+### Body: Array con TODOS los equipos de todos los jefes de centro
+
+### ========================================
+### NOTAS ADICIONALES
+### ========================================
+###
+### Criterio 1.1 - Acceso al módulo:
+###   Frontend debe mostrar menú "Equipos" solo para rol JEFE_CENTRO
+###
+### Criterio 1.2 - Vista principal:
+###   Frontend debe mostrar tabla con columnas: Nombre, Campaña, Cantidad Agentes
+###
+### Criterio 2.1 - Botón crear:
+###   Frontend debe tener botón "Crear Equipo" en header
+###
+### Criterio 3.1 - Botón guardar:
+###   Frontend debe tener botón "Guardar" en modal de creación
+###
+### Criterio 3.1.1 - Mensaje de éxito:
+###   Frontend debe mostrar modal/toast: "El equipo ha sido creado"
+###
+### Criterio 3.2 - Botón volver:
+###   Frontend debe tener botón "Volver" o "Cancelar" en modal
+###
+### Criterio 5.1 - Actualización de lista:
+###   Frontend debe refrescar tabla automáticamente después de crear/actualizar/eliminar
+###
