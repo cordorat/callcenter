@@ -131,6 +131,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
           sx={{ 
             backgroundColor: theme.palette.background.paper,
             borderRadius: 2,
+            overflow: 'hidden', // Importante para que las esquinas se vean redondeadas
           }}
         >
           {error && (

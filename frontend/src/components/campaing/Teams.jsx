@@ -17,12 +17,14 @@ import {
   Alert,
   Stack
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   Groups as GroupsIcon
 } from '@mui/icons-material';
 import { getEquipos } from '@/core/api/equipos';
 
 export default function Teams() {
+  const theme = useTheme();
   const [equipos, setEquipos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -66,13 +68,17 @@ export default function Teams() {
       {/* Loading */}
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
+          <CircularProgress sx={{ color: theme.palette.primary.main }} />
         </Box>
       )}
 
       {/* Estado vacío */}
       {!loading && equipos.length === 0 && (
-        <Paper sx={{ textAlign: 'center', py: 8 }}>
+        <Paper sx={{ 
+          textAlign: 'center', 
+          py: 8,
+          backgroundColor: theme.palette.background.paper,
+        }}>
           <GroupsIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
           <Typography variant="h6" color="text.secondary">
             No hay equipos creados
@@ -88,20 +94,21 @@ export default function Teams() {
         <Paper 
           elevation={0}
           sx={{ 
-            backgroundColor: 'white',
+            backgroundColor: theme.palette.background.paper,
             borderRadius: 2,
+            overflow: 'hidden', // Importante para que las esquinas se vean redondeadas
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: '#EBF5FE' }}>
+                <TableRow sx={{ backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)' }}>
                   <TableCell 
                     sx={{ 
                       fontWeight: 700,
                       fontSize: '0.9rem',
-                      color: '#0C155A',
-                      borderBottom: '2px solid #0C155A',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
                       py: 2,
                     }}
                   >
@@ -111,8 +118,8 @@ export default function Teams() {
                     sx={{ 
                       fontWeight: 700,
                       fontSize: '0.9rem',
-                      color: '#0C155A',
-                      borderBottom: '2px solid #0C155A',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
                       py: 2,
                     }}
                   >
@@ -122,8 +129,8 @@ export default function Teams() {
                     sx={{ 
                       fontWeight: 700,
                       fontSize: '0.9rem',
-                      color: '#0C155A',
-                      borderBottom: '2px solid #0C155A',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
                       py: 2,
                     }}
                   >
@@ -133,8 +140,8 @@ export default function Teams() {
                     sx={{ 
                       fontWeight: 700,
                       fontSize: '0.9rem',
-                      color: '#0C155A',
-                      borderBottom: '2px solid #0C155A',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
                       py: 2,
                     }}
                   >
@@ -148,19 +155,25 @@ export default function Teams() {
                     key={equipo.equipo_id}
                     sx={{
                       '&:hover': {
-                        backgroundColor: '#F8FBFF',
+                        backgroundColor: theme.palette.mode === 'light' 
+                          ? '#F8FBFF' 
+                          : 'rgba(255, 255, 255, 0.05)',
                       },
-                      backgroundColor: index % 2 === 0 ? 'white' : '#FAFCFE',
+                      backgroundColor: theme.palette.mode === 'light'
+                        ? (index % 2 === 0 ? 'white' : '#FAFCFE')
+                        : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
                       transition: 'background-color 0.2s ease',
                     }}
                   >
                     {/* Nombre del equipo */}
                     <TableCell 
                       sx={{ 
-                        color: '#0C155A',
+                        color: theme.palette.text.primary,
                         fontWeight: 600,
                         fontSize: '0.85rem',
-                        borderBottom: '1px solid rgba(12, 21, 90, 0.1)',
+                        borderBottom: theme.palette.mode === 'light' 
+                          ? '1px solid rgba(12, 21, 90, 0.1)'
+                          : '1px solid rgba(255, 255, 255, 0.1)',
                       }}
                     >
                       {equipo.nombre}
@@ -169,9 +182,11 @@ export default function Teams() {
                     {/* Campaña */}
                     <TableCell 
                       sx={{ 
-                        color: 'rgba(12, 21, 90, 0.7)',
+                        color: theme.palette.text.secondary,
                         fontSize: '0.85rem',
-                        borderBottom: '1px solid rgba(12, 21, 90, 0.1)',
+                        borderBottom: theme.palette.mode === 'light' 
+                          ? '1px solid rgba(12, 21, 90, 0.1)'
+                          : '1px solid rgba(255, 255, 255, 0.1)',
                       }}
                     >
                       {equipo.campana_info?.nombre || '-'}
@@ -180,9 +195,11 @@ export default function Teams() {
                     {/* Cantidad de agentes */}
                     <TableCell 
                       sx={{ 
-                        color: '#0C155A',
+                        color: theme.palette.text.primary,
                         fontSize: '0.85rem',
-                        borderBottom: '1px solid rgba(12, 21, 90, 0.1)',
+                        borderBottom: theme.palette.mode === 'light' 
+                          ? '1px solid rgba(12, 21, 90, 0.1)'
+                          : '1px solid rgba(255, 255, 255, 0.1)',
                       }}
                     >
                       {equipo.cantidad_agentes} {equipo.cantidad_agentes === 1 ? 'agente' : 'agentes'}
@@ -191,7 +208,9 @@ export default function Teams() {
                     {/* Miembros del equipo */}
                     <TableCell 
                       sx={{ 
-                        borderBottom: '1px solid rgba(12, 21, 90, 0.1)',
+                        borderBottom: theme.palette.mode === 'light' 
+                          ? '1px solid rgba(12, 21, 90, 0.1)'
+                          : '1px solid rgba(255, 255, 255, 0.1)',
                       }}
                     >
                       {equipo.agentes && equipo.agentes.length > 0 ? (
@@ -204,8 +223,8 @@ export default function Teams() {
                               variant="outlined"
                               sx={{
                                 fontWeight: 500,
-                                borderColor: '#0C155A',
-                                color: '#0C155A',
+                                borderColor: theme.palette.primary.main,
+                                color: theme.palette.primary.main,
                                 fontSize: '0.75rem',
                               }}
                             />
@@ -216,7 +235,7 @@ export default function Teams() {
                               size="small"
                               sx={{
                                 fontWeight: 600,
-                                bgcolor: '#0C155A',
+                                bgcolor: theme.palette.primary.main,
                                 color: 'white',
                                 fontSize: '0.75rem',
                               }}
@@ -227,7 +246,9 @@ export default function Teams() {
                         <Typography 
                           variant="body2" 
                           sx={{ 
-                            color: 'rgba(12, 21, 90, 0.5)',
+                            color: theme.palette.mode === 'light'
+                              ? 'rgba(12, 21, 90, 0.5)'
+                              : 'rgba(255, 255, 255, 0.5)',
                             fontSize: '0.85rem'
                           }}
                         >
