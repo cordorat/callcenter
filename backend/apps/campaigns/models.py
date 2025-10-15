@@ -242,51 +242,95 @@ class Contrato(models.Model):
 class Equipo(models.Model):
     """
     Equipos de trabajo para organizar agentes.
+    Los equipos son creados por el Jefe de Centro y asignados a campañas activas.
     """
     equipo_id = models.AutoField(primary_key=True)
+    
+    nombre = models.CharField(
+        'Nombre del Equipo', 
+        max_length=100,
+        help_text='Nombre descriptivo del equipo'
+    )
+    
+    jefe_centro = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='equipos_gestionados',
+        db_column='jefe_centro_id',
+        null=True,
+        blank=True,
+        help_text='Jefe de centro responsable del equipo'
+    )
+    
+    campana = models.ForeignKey(
+        Campana,
+        on_delete=models.PROTECT,
+        related_name='equipos',
+        db_column='campana_id',
+        null=True,
+        blank=True,
+        help_text='Campaña asignada al equipo'
+    )
+    
+    # Para mantener compatibilidad con código existente
     coordinador = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='equipos_coordinados',
-        db_column='coordinador_id'
+        db_column='coordinador_id',
+        help_text='Coordinador del equipo (opcional)'
     )
-    campana = models.ForeignKey(
-        Campana,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='equipos',
-        db_column='campania_id'
+    
+    is_active = models.BooleanField(
+        'Activo',
+        default=True,
+        help_text='Indica si el equipo está activo'
     )
-    nombre = models.CharField('Nombre del Equipo', max_length=100)
     
     class Meta:
         db_table = 'equipo'
         verbose_name = 'Equipo'
         verbose_name_plural = 'Equipos'
         ordering = ['nombre']
+        indexes = [
+            models.Index(fields=['jefe_centro', 'is_active']),
+            models.Index(fields=['campana', 'is_active']),
+        ]
     
-    def _str_(self):
-        return self.nombre
+    def __str__(self):
+        return f"{self.nombre} - {self.campana.nombre if self.campana else 'Sin campaña'}"
+    
+    @property
+    def cantidad_agentes(self):
+        """Retorna la cantidad de agentes en el equipo."""
+        return self.agentes_detalle.count()
+    
+    def get_agentes(self):
+        """Retorna queryset de agentes del equipo."""
+        return User.objects.filter(equipos_detalle__equipo_id=self)
 
 
 class EquipoAgenteDetalle(models.Model):
     """
     Relación muchos a muchos entre equipos y agentes.
+    Validación: Un agente no puede estar en dos equipos diferentes simultáneamente.
     """
     agente_id = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='equipos_detalle',
-        db_column='agente_id'
+        db_column='agente_id',
+        help_text='Agente asignado al equipo'
     )
+    
     equipo_id = models.ForeignKey(
         Equipo,
         on_delete=models.CASCADE,
         related_name='agentes_detalle',
-        db_column='equipo_id'
+        db_column='equipo_id',
+        help_text='Equipo al que pertenece el agente'
     )
     
     class Meta:
@@ -299,5 +343,30 @@ class EquipoAgenteDetalle(models.Model):
             models.Index(fields=['equipo_id']),
         ]
     
-    def _str_(self):
+    def __str__(self):
         return f"{self.agente_id.full_name} en {self.equipo_id.nombre}"
+    
+    def clean(self):
+        """
+        Validación: Un agente no puede estar en dos equipos activos simultáneamente.
+        Criterio 4.3 de la HU.
+        """
+        from django.core.exceptions import ValidationError
+        
+        # Verificar si el agente ya está en otro equipo activo
+        if self.agente_id:
+            equipos_activos = EquipoAgenteDetalle.objects.filter(
+                agente_id=self.agente_id,
+                equipo_id__is_active=True
+            ).exclude(pk=self.pk if self.pk else None)
+            
+            if equipos_activos.exists():
+                equipo_existente = equipos_activos.first().equipo_id
+                raise ValidationError(
+                    f'El agente {self.agente_id.full_name} ya está asignado al equipo "{equipo_existente.nombre}"'
+                )
+    
+    def save(self, *args, **kwargs):
+        """Override save para ejecutar validaciones."""
+        self.clean()
+        super().save(*args, **kwargs)

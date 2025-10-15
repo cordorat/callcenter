@@ -1,13 +1,14 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import CargarBaseDatosView, ClienteViewSet
+from .views import CargarBaseDatosView, ClienteViewSet, EquipoViewSet
 
 app_name = 'campaigns'
 
 # Router para ViewSets
 router = DefaultRouter()
 router.register(r'clientes', ClienteViewSet, basename='cliente')
+router.register(r'equipos', EquipoViewSet, basename='equipo')
 
 urlpatterns = [
     # Endpoints existentes de bases de datos

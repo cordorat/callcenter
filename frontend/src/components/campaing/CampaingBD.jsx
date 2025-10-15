@@ -36,7 +36,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
   }, [fetchBases]);
 
   const handleFileSelect = async (file) => {
-    const campanaId = 1; 
+    const campanaId = 1;
     const formData = new FormData();
     formData.append('file', file);
     formData.append('campana_id', campanaId);
@@ -47,17 +47,17 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
       const res = await apiClient.post(ENDPOINTS.CAMPAIGNS_UPLOAD, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-  console.info('Upload response:', res.data);
-  await fetchBases();
-  setSnackMessage('Base de datos subida correctamente');
-  setSnackSeverity('success');
-  setSnackOpen(true);
+      console.info('Upload response:', res.data);
+      await fetchBases();
+      setSnackMessage('Base de datos subida correctamente');
+      setSnackSeverity('success');
+      setSnackOpen(true);
     } catch (err) {
-  console.error('Upload error', err);
-  setError('Error al subir la base de datos');
-  setSnackMessage('Error al subir la base de datos');
-  setSnackSeverity('error');
-  setSnackOpen(true);
+      console.error('Upload error', err);
+      setError('Error al subir la base de datos');
+      setSnackMessage('Error al subir la base de datos');
+      setSnackSeverity('error');
+      setSnackOpen(true);
     } finally {
       setUploading(false);
     }
@@ -75,18 +75,18 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Snackbar 
-        open={snackOpen} 
-        autoHideDuration={4000} 
-        onClose={() => setSnackOpen(false)} 
+      <Snackbar
+        open={snackOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackOpen(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         sx={{ mt: 8 }}
       >
-        <Alert 
-          onClose={() => setSnackOpen(false)} 
+        <Alert
+          onClose={() => setSnackOpen(false)}
           severity={snackSeverity}
           variant="outlined"
-          sx={{ 
+          sx={{
             width: '100%',
             minWidth: '320px',
             borderRadius: '10px',
@@ -126,7 +126,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
           <CircularProgress sx={{ color: theme.palette.primary.main }} />
         </Box>
       ) : (
-        <Paper 
+        <Paper
           elevation={0}
           sx={{ 
             backgroundColor: theme.palette.background.paper,
@@ -139,7 +139,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
             </Box>
           )}
 
-          <Box sx={{ minHeight: 200, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)' }}>
@@ -154,8 +154,8 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                   >
                     ID
                   </TableCell>
-                  <TableCell 
-                    sx={{ 
+                  <TableCell
+                    sx={{
                       fontWeight: 700,
                       fontSize: '0.9rem',
                       color: theme.palette.text.primary,
@@ -165,8 +165,8 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                   >
                     Nombre
                   </TableCell>
-                  <TableCell 
-                    sx={{ 
+                  <TableCell
+                    sx={{
                       fontWeight: 700,
                       fontSize: '0.9rem',
                       color: theme.palette.text.primary,
@@ -182,10 +182,10 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                 {bases.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} sx={{ border: 'none' }}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
+                      <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         py: 8,
                         flexDirection: 'column',
                         gap: 2,
@@ -216,7 +216,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                   </TableRow>
                 ) : (
                   bases.map((b, index) => (
-                    <TableRow 
+                    <TableRow
                       key={b.id}
                       sx={{
                         '&:hover': {
