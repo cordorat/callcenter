@@ -7,6 +7,7 @@ import Calls from '../pages/Calls/Calls';
 import Kpis from '../pages/Kpis/Kpis';          
 import Campaing from '../pages/Campaing/Campaing';
 import PrivateRoute from './PrivateRoute';
+import Settings from '../pages/Settings/Settings';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -51,6 +52,12 @@ const AppRoutes = () => {
         <Route path="/campana" element={
           <PrivateRoute>
             <Campaing />
+          </PrivateRoute>
+        } />
+
+        <Route path="/configuracion" element={
+          <PrivateRoute>
+            <Settings />
           </PrivateRoute>
         } />
 

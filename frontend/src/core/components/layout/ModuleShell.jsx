@@ -42,8 +42,8 @@ export default function ModuleShell({ title, items, children }) {
         position="fixed"
         sx={{
           zIndex: (theme) => theme.zIndex.drawer - 1,
-          backgroundColor: "#EBF5FE",
-          color: "#0C155A",
+          backgroundColor: (theme) => theme.palette.appBar.default,
+          color: (theme) => theme.palette.appBar.text,
           ml: `${collapsedWidth}px`,
           width: `calc(100% - ${collapsedWidth}px)`,
         }}
@@ -97,9 +97,6 @@ export default function ModuleShell({ title, items, children }) {
         }}
         open
       >
-        
-          
-          
 
         <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", py: 2 }}>
           <List sx={{ width: "100%", px: 1.5 }}>

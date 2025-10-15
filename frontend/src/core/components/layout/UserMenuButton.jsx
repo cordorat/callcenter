@@ -9,13 +9,16 @@ import {
   Tooltip,
 } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from "@/core/context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import ConfirmDialog from "@/components/forms/ConfirmDialog";
 
 export default function UserMenuButton() {
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState(null);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
   const open = Boolean(anchorEl);
   const navigate = useNavigate();
 
@@ -26,10 +29,15 @@ export default function UserMenuButton() {
     handleClose();
     navigate("/perfil"); // futura ruta del perfil
   };
-  const handleLogout = () => {
+  
+  const handleLogoutClick = () => {
     handleClose();
+    setDialogOpen(true);
+  };
+
+  const handleConfirmLogout = () => {
     logout();
-  }
+  };
 
   return (
     <>
@@ -52,18 +60,28 @@ export default function UserMenuButton() {
       >
         <MenuItem onClick={handleProfile}>
           <ListItemIcon>
-            <SettingsIcon fontSize="small" />
+            <AccountCircleIcon fontSize="small" />
           </ListItemIcon>
           Editar perfil
         </MenuItem>
         <Divider />
-        <MenuItem onClick={handleLogout}>
+        <MenuItem onClick={handleLogoutClick}>
           <ListItemIcon>
             <LogoutIcon fontSize="small" />
           </ListItemIcon>
           Cerrar sesión
         </MenuItem>
       </Menu>
+
+      <ConfirmDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onConfirm={handleConfirmLogout}
+        title="Confirmar cierre de sesión"
+        message="¿Está seguro de que desea cerrar la sesión?"
+        confirmText="Cerrar sesión"
+        cancelText="Cancelar"
+      />
     </>
   );
 }

@@ -182,7 +182,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center', 
-                        height: 'calc(100vh - 400px)',
+                        py: 8,
                         flexDirection: 'column',
                         gap: 2,
                       }}>
@@ -244,7 +244,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                           borderBottom: '1px solid rgba(12, 21, 90, 0.1)',
                         }}
                       >
-                        {b.campana_id || '-'}
+                        {b.campana || '-'}
                       </TableCell>
                     </TableRow>
                   ))
