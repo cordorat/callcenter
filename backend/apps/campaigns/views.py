@@ -1,12 +1,14 @@
 from django.shortcuts import render
-
+from django.db import models
 import csv
+import random
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets, serializers
+from rest_framework.decorators import api_view, action
+from rest_framework.permissions import IsAuthenticated
 from .models import Cliente, BaseDatosCargada
-from rest_framework.decorators import api_view
-from .serializers import BaseDatosCargadaSerializer, ClienteSerializer
+from .serializers import BaseDatosCargadaSerializer, ClienteSerializer, ClienteUpdateSerializer
 from django.core.paginator import Paginator
 
 class CargarBaseDatosView(APIView):
@@ -104,4 +106,139 @@ def cargar_bd_registros(request, pk):
         "page_size": paginator.per_page,
         "results": serializer.data
     }, status=status.HTTP_200_OK)
+
+
+class ClienteViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión completa de clientes.
+    
+    Endpoints:
+    - GET /api/clientes/ - Listar clientes
+    - GET /api/clientes/{id}/ - Obtener cliente específico
+    - PUT/PATCH /api/clientes/{id}/ - Actualizar cliente
+    - GET /api/clientes/random/ - Obtener cliente aleatorio para testing
+    """
+    queryset = Cliente.objects.all()
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        """
+        Usa diferentes serializers según la acción.
+        """
+        if self.action in ['update', 'partial_update']:
+            return ClienteUpdateSerializer
+        return ClienteSerializer
+    
+    def get_queryset(self):
+        """
+        Filtra clientes según parámetros.
+        """
+        queryset = Cliente.objects.select_related('campana', 'base_datos').all()
+        
+        # Filtro por campaña
+        campana_id = self.request.query_params.get('campana_id')
+        if campana_id:
+            queryset = queryset.filter(campana_id=campana_id)
+        
+        # Filtro por base de datos
+        base_datos_id = self.request.query_params.get('base_datos_id')
+        if base_datos_id:
+            queryset = queryset.filter(base_datos_id=base_datos_id)
+        
+        # Búsqueda por nombre o teléfono
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                models.Q(nombre__icontains=search) | 
+                models.Q(telefono__icontains=search)
+            )
+        
+        return queryset.order_by('-cliente_id')
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Criterio 2.1: Obtiene información completa de un cliente.
+        """
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response({
+            'success': True,
+            'cliente': serializer.data
+        })
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Criterio 5.1: Actualizar cliente con validaciones.
+        PUT completo o PATCH parcial.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            
+            # Criterio 5.2: Notificación de confirmación
+            return Response({
+                'success': True,
+                'message': 'Los datos del cliente han sido actualizados exitosamente',
+                'cliente': serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        except serializers.ValidationError as e:
+            # Criterio 4.4: Mensaje de error claro
+            return Response({
+                'success': False,
+                'message': 'Error de validación en los datos proporcionados',
+                'errors': e.detail
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        PATCH - Actualización parcial.
+        """
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['get'], url_path='random')
+    def get_random_cliente(self, request):
+        """
+        Endpoint temporal para obtener un cliente aleatorio.
+        GET /api/clientes/random/
+        
+        Query params opcionales:
+        - campana_id: Filtrar por campaña específica
+        - base_datos_id: Filtrar por base de datos específica
+        """
+        queryset = Cliente.objects.all()
+        
+        # Aplicar filtros si se proporcionan
+        campana_id = request.query_params.get('campana_id')
+        if campana_id:
+            queryset = queryset.filter(campana_id=campana_id)
+        
+        base_datos_id = request.query_params.get('base_datos_id')
+        if base_datos_id:
+            queryset = queryset.filter(base_datos_id=base_datos_id)
+        
+        # Verificar que haya clientes disponibles
+        count = queryset.count()
+        if count == 0:
+            return Response({
+                'success': False,
+                'message': 'No hay clientes disponibles en la base de datos'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Obtener cliente aleatorio
+        random_index = random.randint(0, count - 1)
+        cliente = queryset[random_index]
+        
+        serializer = ClienteSerializer(cliente)
+        
+        return Response({
+            'success': True,
+            'message': f'Cliente aleatorio obtenido (total disponibles: {count})',
+            'cliente': serializer.data
+        }, status=status.HTTP_200_OK)
 
