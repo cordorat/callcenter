@@ -5,9 +5,10 @@ import { Box, Typography, Button, TextField, Snackbar, Alert, CircularProgress} 
 import {
     Call as CallIcon, CallEnd as CallEndIcon, Backspace as BackspaceIcon, MicOff as MicOffIcon, KeyboardVoice as KeyboardVoiceIcon, BackHand as BackHandIcon, CloseFullscreen as CloseFullscreenIcon, OpenInFull as OpenInFullIcon, PhoneInTalk as PhoneInTalkIcon
 } from '@mui/icons-material';
-import SalesSection from '@/components/sales/SalesSection';
 import useTwilioCall from '@/hooks/useTwilioCall';
 import { motion, AnimatePresence } from "framer-motion";
+import ClientInfoSection from '@/components/sales/ClientInfoSection';
+import SaleInfoSection from '@/components/sales/SaleInfoSection';
 
 const Calls = () => {
     const { user } = useAuth();
@@ -15,10 +16,25 @@ const Calls = () => {
     const [isExpanded, setIsExpanded] = React.useState(false); 
     const [showIncomingAlert, setShowIncomingAlert] = React.useState(false);
 
+    // Estados para cliente y venta
+    const [cliente, setCliente] = React.useState({
+        nombre: "",
+        documento: "",
+        telefono: "",
+        direccion: "",
+        correo: "",
+        ciudad: "",
+    });
+
+    const [venta, setVenta] = React.useState({
+        producto: "",
+        valor: "",
+    });
+
     const toggleExpand = () => setIsExpanded((prev) => !prev);
     
     // Configuración de espaciado vertical del contenedor del teclado
-    const keypadVerticalPadding = 10; // Ajusta este valor para más o menos espacio (en unidades de 8px)
+    const keypadVerticalPadding = 10; 
     
     // Hook de Twilio con toda la lógica de llamadas
     const {
@@ -102,6 +118,19 @@ const Calls = () => {
         rejectIncomingCall();
         setShowIncomingAlert(false);
     }
+
+    // Handlers para cliente y venta
+    const handleChange = (e) => {
+        setCliente({
+            ...cliente,
+            [e.target.name]: e.target.value,
+        });
+    };
+
+    const handleStartSale = () => {
+        console.log("Iniciando venta con datos:", cliente, venta);
+        // Aquí puedes agregar la lógica para iniciar la venta
+    };
 
     return (
         <MainLayout title="Llamadas">
@@ -657,26 +686,67 @@ const Calls = () => {
                     </Box>
                 </motion.div>
 
-                {/* SalesSection - Se expande cuando el teléfono se contrae */}
-                <motion.div
-                    layout
-                    transition={{ duration: 0.5, type: "spring", stiffness: 300, damping: 30 }}
-                    style={{
-                        flex: 1,
-                        minWidth: 0,
-                        display: 'flex',
-                    }}
-                >
-                    <Box sx={{
-                        flex: '1', 
-                        minWidth: 0, 
-                        display: 'flex',
-                        flexDirection: 'column',
+                {/* Secciones de Cliente y Venta - Animaciones independientes cuando está contraído */}
+                {isExpanded ? (
+                    /* Modo contraído: dos columnas lado a lado */
+                    <Box sx={{ 
+                        flex: 1, 
+                        display: 'flex', 
                         gap: 2,
+                        minWidth: 0,
                     }}>
-                        <SalesSection user={user} />
+                        <motion.div
+                            layout
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.4, delay: 0.1 }}
+                            style={{
+                                flex: 1,
+                                minWidth: 0,
+                                display: 'flex',
+                            }}
+                        >
+                            <ClientInfoSection cliente={cliente} handleChange={handleChange} />
+                        </motion.div>
+
+                        <motion.div
+                            layout
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.4, delay: 0.2 }}
+                            style={{
+                                flex: 1,
+                                minWidth: 0,
+                                display: 'flex',
+                            }}
+                        >
+                            <SaleInfoSection venta={venta} handleStartSale={handleStartSale} />
+                        </motion.div>
                     </Box>
-                </motion.div>
+                ) : (
+                    /* Modo normal: columna única */
+                    <motion.div
+                        layout
+                        transition={{ duration: 0.5, type: "spring", stiffness: 300, damping: 30 }}
+                        style={{
+                            flex: 1,
+                            minWidth: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                        }}
+                    >
+                        <Box sx={{
+                            flex: '1', 
+                            minWidth: 0, 
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                        }}>
+                            <ClientInfoSection cliente={cliente} handleChange={handleChange} />
+                            <SaleInfoSection venta={venta} handleStartSale={handleStartSale} />
+                        </Box>
+                    </motion.div>
+                )}
             </Box>
         </MainLayout>
     );
