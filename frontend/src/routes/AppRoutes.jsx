@@ -8,6 +8,7 @@ import Kpis from '../pages/Kpis/Kpis';
 import Campaing from '../pages/Campaing/Campaing';
 import PrivateRoute from './PrivateRoute';
 import Settings from '../pages/Settings/Settings';
+import CrearUsuario from '../pages/Usuario/CrearUsuario';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -54,6 +55,12 @@ const AppRoutes = () => {
             <Campaing />
           </PrivateRoute>
         } />
+
+        <Route path="/crear-usuario" element={
+          <PrivateRoute>
+            <CrearUsuario />
+          </PrivateRoute>
+        } />        
 
         <Route path="/configuracion" element={
           <PrivateRoute>
