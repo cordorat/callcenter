@@ -238,12 +238,16 @@ const Calls = () => {
                             px: 3,
                             py: isExpanded ? 2 : keypadVerticalPadding,
                             borderRadius: 3, 
-                            backgroundColor: "#F8FAFB",
+                            backgroundColor: (theme) => theme.palette.background.paper,
                             position: "relative",
-                            boxShadow: '0 2px 8px rgba(12, 21, 90, 0.08)',
+                            boxShadow: (theme) => theme.palette.mode === 'light'
+                                ? '0 2px 8px rgba(12, 21, 90, 0.08)'
+                                : '0 2px 8px rgba(0, 0, 0, 0.3)',
                             transition: 'all 0.3s ease',
                             '&:hover': {
-                                boxShadow: '0 4px 12px rgba(12, 21, 90, 0.12)',
+                                boxShadow: (theme) => theme.palette.mode === 'light'
+                                    ? '0 4px 12px rgba(12, 21, 90, 0.12)'
+                                    : '0 4px 12px rgba(0, 0, 0, 0.5)',
                             }
                         }}
                     >
@@ -255,8 +259,8 @@ const Calls = () => {
                                     top: 12,
                                     right: 12,
                                     cursor: "pointer",
-                                    color: "#0C155A",
-                                    backgroundColor: "#EBF5FE",
+                                    color: (theme) => theme.palette.primary.main,
+                                    backgroundColor: (theme) => theme.palette.appBar.default,
                                     borderRadius: "50%",
                                     width: 36,
                                     height: 36,
@@ -266,7 +270,9 @@ const Calls = () => {
                                     transition: "all 0.2s ease",
                                     zIndex: 10,
                                     "&:hover": {
-                                        backgroundColor: "#D3E8FB",
+                                        backgroundColor: (theme) => theme.palette.mode === 'light'
+                                            ? '#D3E8FB'
+                                            : 'rgba(255, 255, 255, 0.1)',
                                         transform: "scale(1.1)",
                                     },
                                     "&:active": {
@@ -310,24 +316,30 @@ const Calls = () => {
                                         width: '350px',
                                         '& .MuiOutlinedInput-root': {
                                             borderRadius: '10px',
-                                            backgroundColor: '#EBF5FE',
+                                            backgroundColor: (theme) => theme.palette.mode === 'light'
+                                                ? '#EBF5FE'
+                                                : 'rgba(255, 255, 255, 0.05)',
                                             height: '48px',
                                             '& fieldset': {
-                                                borderColor: 'rgba(12, 21, 90, 0.2)',
+                                                borderColor: (theme) => theme.palette.mode === 'light'
+                                                    ? 'rgba(12, 21, 90, 0.2)'
+                                                    : 'rgba(255, 255, 255, 0.2)',
                                                 borderWidth: '2px',
                                             },
                                             '&:hover fieldset': {
-                                                borderColor: 'rgba(12, 21, 90, 0.3)',
+                                                borderColor: (theme) => theme.palette.mode === 'light'
+                                                    ? 'rgba(12, 21, 90, 0.3)'
+                                                    : 'rgba(255, 255, 255, 0.3)',
                                             },
                                             '&.Mui-focused fieldset': {
-                                                borderColor: '#0C155A',
+                                                borderColor: (theme) => theme.palette.primary.main,
                                             },
                                         },
                                         '& input': {
                                             textAlign: 'center',
                                             fontSize: '1rem',
                                             fontWeight: 600,
-                                            color: '#0C155A',
+                                            color: (theme) => theme.palette.text.primary,
                                             letterSpacing: '1px',
                                         },
                                     }}
@@ -386,12 +398,16 @@ const Calls = () => {
                                                     borderRadius: '50%',
                                                     padding: 0,
                                                     borderWidth: '2px',
-                                                    borderColor: 'rgba(12, 21, 90, 0.2)',
-                                                    color: '#0C155A',
-                                                    backgroundColor: '#EBF5FE',
+                                                    borderColor: (theme) => theme.palette.mode === 'light'
+                                                        ? 'rgba(12, 21, 90, 0.2)'
+                                                        : 'rgba(255, 255, 255, 0.2)',
+                                                    color: (theme) => theme.palette.primary.main,
+                                                    backgroundColor: (theme) => theme.palette.appBar.default,
                                                     '&:hover': {
-                                                        borderColor: '#0C155A',
-                                                        backgroundColor: '#D3E8FB',
+                                                        borderColor: (theme) => theme.palette.primary.main,
+                                                        backgroundColor: (theme) => theme.palette.mode === 'light'
+                                                            ? '#D3E8FB'
+                                                            : 'rgba(255, 255, 255, 0.1)',
                                                         transform: 'scale(1.05)',
                                                     },
                                                 }}
@@ -430,11 +446,15 @@ const Calls = () => {
                                                     borderRadius: '50%',
                                                     padding: 0,
                                                     borderWidth: '2px',
-                                                    borderColor: isMuted ? 'transparent' : 'rgba(12, 21, 90, 0.2)',
-                                                    backgroundColor: isMuted ? '#f57c00' : '#EBF5FE',
-                                                    color: isMuted ? 'white' : '#0C155A',
+                                                    borderColor: (theme) => isMuted ? 'transparent' : theme.palette.mode === 'light'
+                                                        ? 'rgba(12, 21, 90, 0.2)'
+                                                        : 'rgba(255, 255, 255, 0.2)',
+                                                    backgroundColor: isMuted ? '#f57c00' : (theme) => theme.palette.appBar.default,
+                                                    color: (theme) => isMuted ? 'white' : theme.palette.primary.main,
                                                     '&:hover': {
-                                                        backgroundColor: isMuted ? '#e65100' : '#D3E8FB',
+                                                        backgroundColor: (theme) => isMuted ? '#e65100' : theme.palette.mode === 'light'
+                                                            ? '#D3E8FB'
+                                                            : 'rgba(255, 255, 255, 0.1)',
                                                         transform: 'scale(1.05)',
                                                     },
                                                 }}
@@ -484,23 +504,29 @@ const Calls = () => {
                                         mb: 4,
                                         '& .MuiOutlinedInput-root': {
                                             borderRadius: '10px',
-                                            backgroundColor: '#EBF5FE',
+                                            backgroundColor: (theme) => theme.palette.mode === 'light'
+                                                ? '#EBF5FE'
+                                                : 'rgba(255, 255, 255, 0.05)',
                                             '& fieldset': {
-                                                borderColor: 'rgba(12, 21, 90, 0.2)',
+                                                borderColor: (theme) => theme.palette.mode === 'light'
+                                                    ? 'rgba(12, 21, 90, 0.2)'
+                                                    : 'rgba(255, 255, 255, 0.2)',
                                                 borderWidth: '2px',
                                             },
                                             '&:hover fieldset': {
-                                                borderColor: 'rgba(12, 21, 90, 0.3)',
+                                                borderColor: (theme) => theme.palette.mode === 'light'
+                                                    ? 'rgba(12, 21, 90, 0.3)'
+                                                    : 'rgba(255, 255, 255, 0.3)',
                                             },
                                             '&.Mui-focused fieldset': {
-                                                borderColor: '#0C155A',
+                                                borderColor: (theme) => theme.palette.primary.main,
                                             },
                                         },
                                         '& input': {
                                             textAlign: 'center',
                                             fontSize: '1.1rem',
                                             fontWeight: 600,
-                                            color: '#0C155A',
+                                            color: (theme) => theme.palette.text.primary,
                                             letterSpacing: '1px',
                                         },
                                     }}
@@ -531,13 +557,17 @@ const Calls = () => {
                                                 fontWeight: 700,
                                                 borderRadius: '50%',
                                                 borderWidth: '2px',
-                                                borderColor: 'rgba(12, 21, 90, 0.15)',
-                                                color: '#0C155A',
-                                                backgroundColor: '#EBF5FE',
+                                                borderColor: (theme) => theme.palette.mode === 'light'
+                                                    ? 'rgba(12, 21, 90, 0.15)'
+                                                    : 'rgba(255, 255, 255, 0.15)',
+                                                color: (theme) => theme.palette.primary.main,
+                                                backgroundColor: (theme) => theme.palette.appBar.default,
                                                 transition: 'all 0.2s ease',
                                                 '&:hover': {
-                                                    borderColor: '#0C155A',
-                                                    backgroundColor: '#D3E8FB',
+                                                    borderColor: (theme) => theme.palette.primary.main,
+                                                    backgroundColor: (theme) => theme.palette.mode === 'light'
+                                                        ? '#D3E8FB'
+                                                        : 'rgba(255, 255, 255, 0.1)',
                                                     transform: 'translateY(-2px)',
                                                     boxShadow: '0 4px 8px rgba(12, 21, 90, 0.15)',
                                                 },
@@ -607,13 +637,17 @@ const Calls = () => {
                                                     borderRadius: '50%',
                                                     padding: 0,
                                                     borderWidth: '2px',
-                                                    borderColor: 'rgba(12, 21, 90, 0.2)',
-                                                    color: '#0C155A',
-                                                    backgroundColor: '#EBF5FE',
+                                                    borderColor: (theme) => theme.palette.mode === 'light'
+                                                        ? 'rgba(12, 21, 90, 0.2)'
+                                                        : 'rgba(255, 255, 255, 0.2)',
+                                                    color: (theme) => theme.palette.primary.main,
+                                                    backgroundColor: (theme) => theme.palette.appBar.default,
                                                     transition: 'all 0.2s ease',
                                                     '&:hover': {
-                                                        borderColor: '#0C155A',
-                                                        backgroundColor: '#D3E8FB',
+                                                        borderColor: (theme) => theme.palette.primary.main,
+                                                        backgroundColor: (theme) => theme.palette.mode === 'light'
+                                                            ? '#D3E8FB'
+                                                            : 'rgba(255, 255, 255, 0.1)',
                                                         transform: 'scale(1.05)',
                                                     },
                                                     '&:active': {
@@ -660,14 +694,18 @@ const Calls = () => {
                                                     borderRadius: '50%',
                                                     padding: 0,
                                                     borderWidth: '2px',
-                                                    borderColor: isMuted ? 'transparent' : 'rgba(12, 21, 90, 0.2)',
-                                                    backgroundColor: isMuted ? '#f57c00' : '#EBF5FE',
-                                                    color: isMuted ? 'white' : '#0C155A',
+                                                    borderColor: (theme) => isMuted ? 'transparent' : theme.palette.mode === 'light'
+                                                        ? 'rgba(12, 21, 90, 0.2)'
+                                                        : 'rgba(255, 255, 255, 0.2)',
+                                                    backgroundColor: isMuted ? '#f57c00' : (theme) => theme.palette.appBar.default,
+                                                    color: (theme) => isMuted ? 'white' : theme.palette.primary.main,
                                                     boxShadow: isMuted ? '0 4px 12px rgba(245, 124, 0, 0.3)' : 'none',
                                                     transition: 'all 0.2s ease',
                                                     '&:hover': {
-                                                        borderColor: isMuted ? 'transparent' : '#0C155A',
-                                                        backgroundColor: isMuted ? '#e65100' : '#D3E8FB',
+                                                        borderColor: (theme) => isMuted ? 'transparent' : theme.palette.primary.main,
+                                                        backgroundColor: (theme) => isMuted ? '#e65100' : theme.palette.mode === 'light'
+                                                            ? '#D3E8FB'
+                                                            : 'rgba(255, 255, 255, 0.1)',
                                                         transform: 'scale(1.05)',
                                                         boxShadow: isMuted ? '0 6px 16px rgba(245, 124, 0, 0.4)' : '0 4px 8px rgba(12, 21, 90, 0.15)',
                                                     },

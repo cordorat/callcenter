@@ -144,7 +144,7 @@ export default function Settings() {
                     "&:hover": {
                       bgcolor: (theme) =>
                         theme.palette.mode === "light"
-                          ? "#F8FBFF"
+                          ? "#eaf3ffff"
                           : "rgba(255,255,255,0.05)",
                     },
                   }}
@@ -253,7 +253,7 @@ export default function Settings() {
                     "&:hover": {
                       bgcolor: (theme) =>
                         theme.palette.mode === "light"
-                          ? "#F8FBFF"
+                          ? "#eaf3ffff"
                           : "rgba(255,255,255,0.05)",
                     },
                   }}
@@ -282,7 +282,7 @@ export default function Settings() {
                     "&:hover": {
                       bgcolor: (theme) =>
                         theme.palette.mode === "light"
-                          ? "#F8FBFF"
+                          ? "#eaf3ffff"
                           : "rgba(255,255,255,0.05)",
                     },
                   }}
@@ -339,7 +339,7 @@ export default function Settings() {
                     "&:hover": {
                       bgcolor: (theme) =>
                         theme.palette.mode === "light"
-                          ? "#F8FBFF"
+                          ? "#eaf3ffff"
                           : "rgba(255,255,255,0.05)",
                     },
                   }}

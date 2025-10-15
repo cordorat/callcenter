@@ -11,20 +11,24 @@ export default function SaleInfoSection({ venta, handleStartSale }) {
                 height: "100%",
                 display: "flex",
                 flexDirection: "column",
-                backgroundColor: "#F8FAFB",
+                backgroundColor: (theme) => theme.palette.background.paper,
                 borderRadius: 3,
                 p: 3,
-                boxShadow: '0 2px 8px rgba(12, 21, 90, 0.06)',
+                boxShadow: (theme) => theme.palette.mode === 'light'
+                    ? '0 2px 8px rgba(12, 21, 90, 0.06)'
+                    : '0 2px 8px rgba(0, 0, 0, 0.3)',
                 transition: 'box-shadow 0.2s ease',
                 '&:hover': {
-                    boxShadow: '0 4px 12px rgba(12, 21, 90, 0.1)',
+                    boxShadow: (theme) => theme.palette.mode === 'light'
+                        ? '0 4px 12px rgba(12, 21, 90, 0.1)'
+                        : '0 4px 12px rgba(0, 0, 0, 0.5)',
                 }
             }}
         >
            <Typography
                 variant="h5"
                 fontWeight={700}
-                color="#0C155A"
+                color="text.primary"
                 mb={5}
                 sx={{
 
@@ -43,19 +47,23 @@ export default function SaleInfoSection({ venta, handleStartSale }) {
                         InputProps={{ readOnly: true }}
                         sx={{
                             '& .MuiOutlinedInput-root': {
-                                backgroundColor: '#EBF5FE',
+                                backgroundColor: (theme) => theme.palette.mode === 'light'
+                                    ? '#EBF5FE'
+                                    : 'rgba(255, 255, 255, 0.05)',
                                 borderRadius: '10px',
                                 '& fieldset': {
-                                    borderColor: 'rgba(12, 21, 90, 0.15)',
+                                    borderColor: (theme) => theme.palette.mode === 'light'
+                                        ? 'rgba(12, 21, 90, 0.15)'
+                                        : 'rgba(255, 255, 255, 0.15)',
                                     borderWidth: '1.5px',
                                 },
                             },
                             '& .MuiInputLabel-root': {
-                                color: 'rgba(12, 21, 90, 0.7)',
+                                color: 'text.secondary',
                                 fontWeight: 500,
                             },
                             '& .MuiInputBase-input': {
-                                color: '#0C155A',
+                                color: 'text.primary',
                                 fontWeight: 500,
                             },
                         }}
@@ -69,19 +77,23 @@ export default function SaleInfoSection({ venta, handleStartSale }) {
                         InputProps={{ readOnly: true }}
                         sx={{
                             '& .MuiOutlinedInput-root': {
-                                backgroundColor: '#EBF5FE',
+                                backgroundColor: (theme) => theme.palette.mode === 'light'
+                                    ? '#EBF5FE'
+                                    : 'rgba(255, 255, 255, 0.05)',
                                 borderRadius: '10px',
                                 '& fieldset': {
-                                    borderColor: 'rgba(12, 21, 90, 0.15)',
+                                    borderColor: (theme) => theme.palette.mode === 'light'
+                                        ? 'rgba(12, 21, 90, 0.15)'
+                                        : 'rgba(255, 255, 255, 0.15)',
                                     borderWidth: '1.5px',
                                 },
                             },
                             '& .MuiInputLabel-root': {
-                                color: 'rgba(12, 21, 90, 0.7)',
+                                color: 'text.secondary',
                                 fontWeight: 500,
                             },
                             '& .MuiInputBase-input': {
-                                color: '#0C155A',
+                                color: 'text.primary',
                                 fontWeight: 500,
                             },
                         }}
@@ -93,18 +105,24 @@ export default function SaleInfoSection({ venta, handleStartSale }) {
                         variant="contained"
                         onClick={handleStartSale}
                         sx={{
-                            backgroundColor: "#0C155A",
+                            backgroundColor: (theme) => theme.palette.primary.main,
                             color: 'white',
                             height: "56px",
                             fontWeight: 600,
                             fontSize: '0.95rem',
                             borderRadius: '10px',
                             textTransform: 'none',
-                            boxShadow: '0 2px 8px rgba(12, 21, 90, 0.25)',
+                            boxShadow: (theme) => theme.palette.mode === 'light'
+                                ? '0 2px 8px rgba(12, 21, 90, 0.25)'
+                                : '0 2px 8px rgba(0, 0, 0, 0.5)',
                             transition: 'all 0.2s ease',
                             '&:hover': {
-                                backgroundColor: "#1a2b7a",
-                                boxShadow: '0 4px 12px rgba(12, 21, 90, 0.35)',
+                                backgroundColor: (theme) => theme.palette.mode === 'light'
+                                    ? '#1a2b7a'
+                                    : theme.palette.primary.dark,
+                                boxShadow: (theme) => theme.palette.mode === 'light'
+                                    ? '0 4px 12px rgba(12, 21, 90, 0.35)'
+                                    : '0 4px 12px rgba(0, 0, 0, 0.7)',
                                 transform: 'translateY(-2px)',
                             },
                             '&:active': {

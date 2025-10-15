@@ -11,23 +11,26 @@ export default function ClientInfoSection({ cliente, handleChange }) {
                 height: "100%",
                 display: "flex",
                 flexDirection: "column",
-                backgroundColor: "#F8FAFB",
+                backgroundColor: (theme) => theme.palette.background.paper,
                 borderRadius: 3,
                 p: 3,
-                boxShadow: '0 2px 8px rgba(12, 21, 90, 0.08)',
+                boxShadow: (theme) => theme.palette.mode === 'light' 
+                    ? '0 2px 8px rgba(12, 21, 90, 0.08)' 
+                    : '0 2px 8px rgba(0, 0, 0, 0.3)',
                 transition: 'box-shadow 0.2s ease',
                 '&:hover': {
-                    boxShadow: '0 4px 12px rgba(12, 21, 90, 0.12)',
+                    boxShadow: (theme) => theme.palette.mode === 'light'
+                        ? '0 4px 12px rgba(12, 21, 90, 0.12)'
+                        : '0 4px 12px rgba(0, 0, 0, 0.5)',
                 }
             }}
         >
             <Typography
                 variant="h5"
                 fontWeight={700}
-                color="#0C155A"
+                color="text.primary"
                 mb={5}
                 sx={{
-
                     letterSpacing: '0.5px',
                 }}
             >
@@ -52,34 +55,42 @@ export default function ClientInfoSection({ cliente, handleChange }) {
                             onChange={handleChange}
                             sx={{
                                 '& .MuiOutlinedInput-root': {
-                                    backgroundColor: '#EBF5FE',
+                                    backgroundColor: (theme) => theme.palette.mode === 'light' 
+                                        ? '#EBF5FE' 
+                                        : 'rgba(255, 255, 255, 0.05)',
                                     borderRadius: '10px',
                                     transition: 'all 0.2s ease',
                                     '& fieldset': {
-                                        borderColor: 'rgba(12, 21, 90, 0.15)',
+                                        borderColor: (theme) => theme.palette.mode === 'light'
+                                            ? 'rgba(12, 21, 90, 0.15)'
+                                            : 'rgba(255, 255, 255, 0.15)',
                                         borderWidth: '1.5px',
                                     },
                                     '&:hover fieldset': {
-                                        borderColor: 'rgba(12, 21, 90, 0.3)',
+                                        borderColor: (theme) => theme.palette.mode === 'light'
+                                            ? 'rgba(12, 21, 90, 0.3)'
+                                            : 'rgba(255, 255, 255, 0.3)',
                                     },
                                     '&.Mui-focused fieldset': {
-                                        borderColor: '#0C155A',
+                                        borderColor: (theme) => theme.palette.primary.main,
                                         borderWidth: '2px',
                                     },
                                     '&.Mui-focused': {
-                                        backgroundColor: '#EBF5FE',
+                                        backgroundColor: (theme) => theme.palette.mode === 'light'
+                                            ? '#EBF5FE'
+                                            : 'rgba(255, 255, 255, 0.08)',
                                     },
                                 },
                                 '& .MuiInputLabel-root': {
-                                    color: 'rgba(12, 21, 90, 0.7)',
+                                    color: 'text.secondary',
                                     fontWeight: 500,
                                     '&.Mui-focused': {
-                                        color: '#0C155A',
+                                        color: (theme) => theme.palette.primary.main,
                                         fontWeight: 600,
                                     },
                                 },
                                 '& .MuiInputBase-input': {
-                                    color: '#0C155A',
+                                    color: 'text.primary',
                                     fontWeight: 500,
                                 },
                             }}

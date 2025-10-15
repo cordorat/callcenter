@@ -1,7 +1,7 @@
 
 .kpi-page {
   padding: 20px 24px;
-  color: #0C155A;
+  color: var(--text-primary, #0C155A);
 }
 
 .kpi-header {
@@ -14,7 +14,7 @@
 .kpi-header h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #0C155A;
+  color: var(--text-primary, #0C155A);
 }
 
 .kpi-actions {
@@ -24,7 +24,7 @@
 }
 
 .btn {
-  background: #0C155A;
+  background: var(--primary-main, #0C155A);
   color: #fff;
   border: none;
   border-radius: 50%;
@@ -41,7 +41,7 @@
   transition: all 0.2s ease;
 }
 .btn:hover {
-  background: #1a2b7a;
+  background: var(--primary-dark, #1a2b7a);
   box-shadow: 0 4px 12px rgba(12, 21, 90, 0.3);
   transform: translateY(-2px);
 }
@@ -66,8 +66,8 @@
 
 .update-badge {
   font-size: 12px;
-  color: #0C155A;
-  background: #F8FAFB;
+  color: var(--text-primary, #0C155A);
+  background: var(--background-paper, #F8FAFB);
   padding: 10px 16px;
   border-radius: 10px;
   font-weight: 600;
@@ -93,7 +93,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: #F8FAFB;
+  background: var(--background-paper, #F8FAFB);
   border-radius: 12px;
   padding: 16px 20px;
   margin-bottom: 20px;
@@ -102,8 +102,8 @@
 
 .segmented {
   display: inline-flex;
-  background: #F0F4F8;
-  border: 1px solid rgba(12, 21, 90, 0.12);
+  background: var(--segmented-bg, #F0F4F8);
+  border: 1px solid var(--segmented-border, rgba(12, 21, 90, 0.12));
   border-radius: 10px;
   overflow: hidden;
   padding: 4px;
@@ -114,19 +114,19 @@
   background: transparent;
   cursor: pointer;
   font-weight: 600;
-  color: rgba(12, 21, 90, 0.7);
+  color: var(--text-secondary, rgba(12, 21, 90, 0.7));
   border-radius: 8px;
   transition: all 0.2s ease;
   font-size: 0.9rem;
 }
 .segmented button:hover {
-  color: #0C155A;
-  background: rgba(12, 21, 90, 0.05);
+  color: var(--text-primary, #0C155A);
+  background: var(--segmented-hover, rgba(12, 21, 90, 0.05));
 }
 .segmented button.active {
-  background: #0C155A;
+  background: var(--primary-main, #0C155A);
   color: #fff;
-  box-shadow: 0 2px 4px rgba(12, 21, 90, 0.2);
+  box-shadow: var(--segmented-active-shadow, 0 2px 4px rgba(12, 21, 90, 0.2));
 }
 
 .dates {
@@ -136,24 +136,30 @@
 }
 .dates label {
   font-size: 13px;
-  color: #0C155A;
+  color: var(--text-primary, #0C155A);
   font-weight: 600;
   display: grid;
   gap: 6px;
 }
 .dates input[type="date"]{
-  border: 1px solid rgba(12, 21, 90, 0.15);
+  border: 1px solid var(--date-border, rgba(12, 21, 90, 0.15));
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 0.9rem;
-  color: #0C155A;
-  background: #F0F4F8;
+  color: var(--text-primary, #0C155A);
+  background: var(--date-bg, #F0F4F8);
   transition: all 0.2s ease;
 }
 .dates input[type="date"]:focus{
   outline: none;
-  border-color: #0C155A;
-  box-shadow: 0 0 0 3px rgba(12, 21, 90, 0.1);
+  border-color: var(--primary-main, #0C155A);
+  box-shadow: var(--date-focus-shadow, 0 0 0 3px rgba(12, 21, 90, 0.1));
+}
+
+/* Estilos para el calendario del input date en modo oscuro */
+.dates input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: var(--date-icon-filter, none);
+  cursor: pointer;
 }
 
 .kpi-grid {
@@ -170,7 +176,7 @@
 }
 
 .kpi-card {
-  background: #F8FAFB;
+  background: var(--background-paper, #F8FAFB);
   border-radius: 12px;
   padding: 18px;
   box-shadow: 0 2px 8px rgba(12, 21, 90, 0.06);
@@ -183,13 +189,13 @@
 }
 
 .kpi-highlight { 
-  background: linear-gradient(135deg, #EFF6FB 0%, #E0EDF9 100%);
-  border: 2px solid rgba(12, 21, 90, 0.5);
+  background: var(--kpi-highlight-bg, linear-gradient(135deg, #EFF6FB 0%, #E0EDF9 100%));
+  border: 2px solid var(--primary-main, rgba(12, 21, 90, 0.5));
 }
 
 .kpi-label { 
   font-size: 13px;
-  color: rgba(12, 21, 90, 0.7);
+  color: var(--text-secondary, rgba(12, 21, 90, 0.7));
   margin-bottom: 10px;
   font-weight: 600;
   text-transform: uppercase;
@@ -205,7 +211,7 @@
 .kpi-value { 
   font-size: 28px;
   font-weight: 800;
-  color: #0C155A;
+  color: var(--text-primary, #0C155A);
 }
 
 .kpi-chip {
@@ -237,7 +243,7 @@
 }
 
 .chart-card {
-  background: #F8FAFB;
+  background: var(--background-paper, #F8FAFB);
   border-radius: 12px;
   padding: 20px;
   position: relative;
@@ -251,7 +257,7 @@
 
 .chart-title { 
   font-weight: 700;
-  color: #0C155A;
+  color: var(--text-primary, #0C155A);
   margin-bottom: 12px;
   font-size: 16px;
 }
@@ -268,7 +274,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  color:#132051;
+  color: var(--text-primary, #132051);
   font-weight: 800;
   pointer-events: none; /* ⬅️ Permite que el cursor pase a través del texto */
   z-index: 1; /* ⬅️ Mantiene el texto visible pero debajo del tooltip */
@@ -290,7 +296,7 @@
 .donut-center div {
   font-size: 32px;
   line-height: 1.2;
-  background: linear-gradient(135deg, #132051 0%, #2f76e6 100%);
+  background: var(--donut-gradient, linear-gradient(135deg, #132051 0%, #2f76e6 100%));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -300,7 +306,7 @@
 .donut-center small { 
   display:block;
   font-weight:600;
-  color:#4a5a82;
+  color: var(--text-secondary, #4a5a82);
   font-size: 11px;
   opacity: 0.9;
 }
