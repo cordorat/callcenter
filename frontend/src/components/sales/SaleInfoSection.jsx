@@ -29,13 +29,13 @@ export default function SaleInfoSection({ venta, handleStartSale }) {
                 variant="h5"
                 fontWeight={700}
                 color="text.primary"
-                mb={5}
+                mb={6}
                 sx={{
 
                     letterSpacing: '0.5px',
                 }}
             >
-                Información de la venta
+                Información de la Venta
             </Typography>
 
             <Grid container spacing={2.5} alignItems="center">

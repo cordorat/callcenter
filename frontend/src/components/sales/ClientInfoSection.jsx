@@ -266,7 +266,7 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                mb: 3 
+                mb: 6 
             }}>
                 <Typography
                     variant="h5"
@@ -342,14 +342,14 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
                                 onClick={handleCancelEdit}
                                 disabled={isSaving}
                                 sx={{
-                                    borderColor: '#d32f2f',
-                                    color: '#d32f2f',
+                                    borderColor: (theme) => theme.palette.primary.main,
+                                    color: (theme) => theme.palette.primary.secondary,
                                     fontWeight: 600,
                                     textTransform: 'none',
                                     borderRadius: '8px',
                                     px: 2.5,
                                     '&:hover': {
-                                        borderColor: '#c62828',
+                                        borderColor: (theme) => theme.palette.primary.dark,
                                         backgroundColor: 'rgba(211, 47, 47, 0.04)',
                                     },
                                 }}
@@ -362,14 +362,16 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
                                 onClick={handleSaveEdit}
                                 disabled={isSaving}
                                 sx={{
-                                    backgroundColor: '#2e7d32',
+                                    backgroundColor: (theme) => theme.palette.primary.main,
                                     fontWeight: 600,
                                     textTransform: 'none',
                                     borderRadius: '8px',
                                     px: 2.5,
-                                    boxShadow: '0 2px 6px rgba(46, 125, 50, 0.2)',
+                                    boxShadow: (theme) => theme.palette.mode === 'light'
+                                        ? '0 2px 6px rgba(46, 125, 50, 0.2)'
+                                        : '0 2px 6px rgba(0, 0, 0, 0.5)',
                                     '&:hover': {
-                                        backgroundColor: '#1b5e20',
+                                        backgroundColor: (theme) => theme.palette.primary.main,
                                         boxShadow: '0 3px 8px rgba(46, 125, 50, 0.3)',
                                     },
                                 }}
@@ -391,7 +393,11 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
                     { label: "Correo Electrónico", name: "email" },
                     { label: "Observaciones", name: "observaciones", multiline: true },
                 ].map((field) => (
-                    <Grid item xs={12} sm={6} md={field.name === 'observaciones' ? 12 : 4} key={field.name}>
+                    <Grid item 
+                        xs={12}
+                        md={6}
+                        key={field.name}
+                    >
                         <TextField
                             fullWidth
                             label={field.label}
@@ -407,6 +413,9 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
                                 readOnly: field.readOnly || (!isEditing && hasCliente),
                             }}
                             sx={{
+                                ...(field.name === 'observaciones' && {
+                                    width: '250px'
+                                }),
                                 '& .MuiOutlinedInput-root': {
                                     backgroundColor: (theme) => theme.palette.mode === 'light' 
                                         ? '#EBF5FE' 

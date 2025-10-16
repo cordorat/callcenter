@@ -209,7 +209,7 @@ const Calls = () => {
                     height: "calc(100vh - 120px)",
                     width: "100%",
                     position: "relative",
-                    overflow: "hidden",
+                    overflow: "auto",
                 }}
             >
                 {/* Sección del teléfono */}
