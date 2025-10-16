@@ -58,6 +58,11 @@ def poblar_tipos_parametros():
             'valor': 'ANALISTA',
             'descripcion': 'Analista de datos y reportes'
         },
+        {
+            'nombre': 'ROL_USUARIO',
+            'valor': 'JEFE_CENTRO',
+            'descripcion': 'Jefe de centro que gestiona equipos de trabajo'
+        },
         
         # ============================================================
         # ESTADO_AGENTE - Estados en los que puede estar un agente

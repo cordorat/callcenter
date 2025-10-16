@@ -1,31 +1,41 @@
-# Instrucciones para Agentes de IA - Call Center Backend
+# Instrucciones para Agentes de IA - Sistema Call Center
 
 ## Arquitectura del Proyecto
 
-Este es un **monolito modular Django REST Framework** para gestión de call center. La estructura sigue el patrón de apps independientes bajo `backend/apps/`:
+Este es un sistema full-stack para gestión de call center con **backend Django REST Framework** y **frontend React + Vite**. El backend es un monolito modular con apps independientes bajo `backend/apps/`:
 
 ```
 backend/
 ├── apps/
 │   ├── authn/         # Autenticación JWT (login/logout/refresh)
-│   ├── users/         # Gestión de usuarios con RBAC
-│   ├── campaigns/     # (Futuro) Campañas y listas CSV
-│   ├── calls/         # (Futuro) Llamadas salientes
-│   ├── recordings/    # (Futuro) Grabaciones con TTL 60 días
-│   ├── kpis/          # (Futuro) Métricas y dashboards
-│   └── integrations/  # (Futuro) Twilio y CRM
-├── callcenter/        # Configuración Django
-├── common/            # Utilidades compartidas
-├── webhooks/          # (Futuro) Webhooks Twilio
-└── tasks/             # (Futuro) Celery tasks
+│   ├── users/         # Gestión de usuarios con RBAC + Estados de agentes
+│   ├── campaigns/     # Campañas, productos, ventas
+│   ├── calls/         # Llamadas, clientes, iteraciones
+│   ├── recordings/    # Metadatos de grabaciones
+│   ├── kpis/          # Métricas en tiempo real y reportes
+│   └── integrations/  # Cliente Twilio y webhooks
+├── common/            # estados_helper.py (acceso a TiposParametros)
+└── callcenter/        # Settings, URLs principales
+
+frontend/
+├── src/
+│   ├── components/    # Componentes reutilizables UI
+│   ├── pages/         # Vistas principales (Dashboard, Llamadas, KPIs)
+│   ├── hooks/         # useAgentState, useTwilioCall, etc.
+│   ├── core/
+│   │   ├── api/       # Clientes API (agentStates, calls, etc.)
+│   │   └── context/   # AuthContext, estado global
+│   └── services/      # twilioClient (integración Device SDK)
 ```
 
 ### Decisiones Arquitecturales Clave
 
 1. **Apps con namespace completo**: Cada app se registra como `apps.{nombre}` en `apps.py` para evitar conflictos de importación
-2. **Usuario personalizado basado en email**: No usa `username`, solo `email` como USERNAME_FIELD
-3. **Roles en el modelo User**: `ADMIN` y `AGENT` como choices de Django, no grupos ni permisos separados
-4. **Desactivación vs eliminación**: `DELETE` en usuarios solo marca `is_active=False`, nunca borra datos
+2. **Usuario personalizado basado en email**: No usa `username`, solo `email` como USERNAME_FIELD. El campo `documento_id` es la primary key.
+3. **Sistema parametrizable con `TiposParametros`**: Tabla central para configuración (roles, estados de agente/llamada/campaña). Evita hardcodear valores.
+4. **Estados de agente con tracking temporal**: Tabla `EstadoAgenteActual` (1 registro por agente) con campo `tiempo` (timestamp) para calcular `tiempo_en_estado` dinámicamente.
+5. **Soft delete**: `DELETE` en usuarios solo marca `is_active=False`, nunca borra datos
+6. **Frontend con persistencia de estado**: Usa `sessionStorage` para mantener estado del agente entre cambios de módulo/pestaña
 
 ## Sistema de Autenticación JWT
 
@@ -39,6 +49,21 @@ backend/
 - `POST /api/auth/login/` → Devuelve `{user: {...}, tokens: {access, refresh}}`
 - `POST /api/auth/logout/` → Body: `{refresh: "token"}`, requiere auth
 - `POST /api/auth/refresh/` → Body: `{refresh: "token"}`, devuelve nuevo access
+
+## Sistema de Estados de Agente
+
+**Arquitectura**:
+- `EstadoAgenteActual`: 1 registro por agente con estado actual y timestamp de inicio
+- `EstadoAgenteDetalle`: Historial diario con acumuladores de tiempo por estado
+- `tiempo_en_estado`: Calculado dinámicamente en el backend como `(timezone.now() - estado.tiempo).total_seconds()`
+
+**Workflow Frontend**:
+1. Componente `AgentStatus` cambia estado → llama API → actualiza prop `currentStatus`
+2. Componente `AgentMinutes` recibe prop → resetea timer a 0 inmediatamente
+3. Hook `useAgentState` sincroniza cada 30s con backend para ajustar drift
+4. Timer usa `requestAnimationFrame` + `sessionStorage` para persistencia entre módulos
+
+**Estados requieren comentarios**: Definidos en `STATES_REQUIRING_COMMENTS` en `frontend/src/core/api/agentStates.js`
 
 ## Sistema de Permisos RBAC
 
@@ -106,6 +131,24 @@ class NuevaAppConfig(AppConfig):
     name = "apps.nueva_app"  # Debe incluir "apps."
 ```
 
+## Acceso a TiposParametros (Sistema Parametrizable)
+
+**Nunca hardcodear valores de estados/roles**. Usar helpers en `common/estados_helper.py`:
+
+```python
+from common.estados_helper import get_estado, get_estado_id
+
+# Obtener objeto completo
+estado_disponible = get_estado('ESTADO_AGENTE', 'DISPONIBLE')
+rol_admin = get_estado('ROL_USUARIO', 'ADMIN')
+
+# Obtener solo el ID (más eficiente para queries)
+estado_id = get_estado_id('ESTADO_AGENTE', 'DISPONIBLE')
+User.objects.filter(rol_id=get_estado_id('ROL_USUARIO', 'AGENTE'))
+```
+
+**Categorías disponibles**: `ROL_USUARIO`, `ESTADO_AGENTE`, `ESTADO_LLAMADA`, `ESTADO_CAMPANA`, `ESTADO_VENTA`, `MOTIVO_RECHAZO`, `TIPO_LLAMADA`, `TIPO_CAMPANA`
+
 ## Convenciones del Proyecto
 
 ### Idioma
@@ -147,6 +190,18 @@ ChangePasswordSerializer # POST /change_password/ - validación de old_password
 - `apps.users` define el modelo User y gestión CRUD
 - Login en `authn` importa `UserSerializer` de `users` para respuesta
 - Ambas apps comparten el mismo modelo: `from apps.users.models import User`
+
+### Frontend: Hooks y Componentes de Estado
+- **`useAgentState`**: Hook centralizado para estado del agente. Auto-refresca cada 30s, notifica cambios via `subscribeToAgentStateChanges`
+- **`useTwilioCall`**: Hook para llamadas Twilio. Cambia automáticamente estado a `EN_LLAMADA` al conectar
+- **`AgentStatus` + `AgentMinutes`**: Componentes hermanos que comparten estado via props. `AgentStatus` notifica cambios a `AgentMinutes` inmediatamente
+- **Persistencia**: Usar `sessionStorage` para estados que deben sobrevivir cambios de módulo (NO `localStorage` para datos sensibles)
+
+### Backend: ViewSets Modulares
+Los estados de agente están en `apps/users/states/views_estado.py` (no en `apps/users/views.py`):
+- `EstadoAgenteViewSet`: CRUD de estados, endpoints `current`, `change_state`, `historial`
+- Serializers en `apps/users/states/serializers_estado.py`
+- Patrón: ViewSets grandes se dividen en submódulos por funcionalidad
 
 ### URLs
 Patrón centralizado en `callcenter/urls.py`:
@@ -196,9 +251,58 @@ if request and request.user.is_authenticated:
 3. **Permission denied**: Verificar rol del usuario y permisos del ViewSet
 4. **CORS errors**: Configurado `CORS_ALLOW_ALL_ORIGINS = True` (solo desarrollo)
 
+## Patrones de Componentes Frontend
+
+### Estado y Props en Componentes de Tiempo Real
+**Problema común**: Timer que se reinicia al cambiar de módulo
+**Solución implementada en `AgentMinutes.jsx`**:
+1. Inicializar estado desde `sessionStorage` en la función inicializadora de `useState`
+2. Usar `requestAnimationFrame` en lugar de `setInterval` para precisión
+3. Detectar cambios inmediatos desde props (`currentStatus`) antes que desde hooks
+4. Sincronizar con backend solo si diferencia > 2 segundos (evitar ajustes espurios)
+
+```javascript
+// ✅ CORRECTO: Inicializar con función
+const [displayTime, setDisplayTime] = useState(() => {
+  const saved = sessionStorage.getItem('timer_start');
+  return saved ? calculateElapsed(saved) : 0;
+});
+
+// ❌ INCORRECTO: Inicializar en useEffect (llega tarde)
+const [displayTime, setDisplayTime] = useState(0);
+useEffect(() => { /* recuperar de storage */ }, []);
+```
+
+### Mapeo de Estados Backend ↔ Frontend
+Estados en backend usan nombres descriptivos (`DISPONIBLE`, `EN_LLAMADA`), frontend usa constantes cortas (`AVAILABLE`, `CALL`):
+- **Mapeo**: `frontend/src/core/api/agentStates.js` → `STATE_MAPPING` y `STATE_MAPPING_REVERSE`
+- **Funciones**: `mapBackendToFrontend()`, `mapFrontendToBackend()`
+- **Siempre mapear** antes de enviar al backend o después de recibir datos
+
+## Debugging y Troubleshooting
+
+### Backend: Timestamps con Timezone
+- Campo `tiempo` en `EstadoAgenteActual`: `DateTimeField` con `default=timezone.now`
+- Formato en DB: `2025-10-13 22:36:50.000 -0500` (timestamp + zona horaria)
+- `TIME_ZONE = "America/Bogota"` en `settings.py`
+- Cálculo de duración: `(timezone.now() - estado.tiempo).total_seconds()`
+
+### Frontend: Sincronización de Estado
+Si el timer se desincroniza:
+1. Verificar que `sessionStorage` se actualiza en cada cambio de estado
+2. Revisar que `startTimeRef.current` se calcula correctamente: `now - (backendSeconds * 1000)`
+3. Confirmar que `isInitializedRef` previene reinicios prematuros
+4. Logs en consola: buscar `[AgentMinutes]` para debugging
+
+### Testing con api_tests.http
+Usar VS Code REST Client. Variables disponibles:
+- `{{baseUrl}}`: `http://localhost:8000/api`
+- `{{adminToken}}`: Copiar manualmente después de login
+- `{{agentToken}}`: Copiar después de login como agente
+
 ## Próximos Módulos Planificados
 
-Según `Estructura_Proyecto.md`, estos módulos siguen el mismo patrón:
+Módulos implementados siguen el mismo patrón:
 - **campaigns**: CSV upload, asignación de agentes
 - **calls**: Estados, disposiciones, marcador predictivo
 - **recordings**: Metadatos, tarea celery para borrado a 60 días
@@ -207,4 +311,4 @@ Según `Estructura_Proyecto.md`, estos módulos siguen el mismo patrón:
 
 ---
 
-**Última actualización**: Sistema de usuarios con roles ADMIN/AGENT completamente funcional (octubre 2025)
+**Última actualización**: Sistema de estados de agente con persistencia y sincronización completa (octubre 2025)

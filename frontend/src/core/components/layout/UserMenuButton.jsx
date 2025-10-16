@@ -8,6 +8,7 @@ import {
   Divider,
   Tooltip,
 } from "@mui/material";
+import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from "@/core/context/AuthContext";
