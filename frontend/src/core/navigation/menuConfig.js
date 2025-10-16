@@ -12,7 +12,8 @@ import{
   AttachMoney as AttachMoneyIcon,
   Settings as SettingsIcon,
   Equalizer as EqualizerIcon,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Groups as GroupsIcon
 } from '@mui/icons-material';
 
 export const menuItems = [
@@ -20,7 +21,13 @@ export const menuItems = [
     label: 'Dashboard',
     path: '/dashboard',
     icon: DashboardIcon, // Opcional, nombre del ícono de MUI
-    roles: ['ADMIN', 'AGENTE'] 
+    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO'] 
+  },
+  {
+    label: 'Equipos',
+    path: '/equipos',
+    icon: GroupsIcon,
+    roles: ['JEFE_CENTRO']
   },
   {
     label: 'Usuarios',

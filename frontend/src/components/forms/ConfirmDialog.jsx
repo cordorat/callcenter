@@ -37,8 +37,8 @@ const ConfirmDialog = ({
   message,
   confirmText = 'Confirmar',
   cancelText = 'Cancelar',
-  confirmColor = '#0C155A',
-  cancelColor = '#777986',
+  confirmColor = (theme) => theme.palette.primary.main,
+  cancelColor = (theme) => theme.palette.primary.secondary,
   disableBackdropClick = true,
   disableEscapeKeyDown = true
 }) => {

@@ -1,10 +1,19 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState, useEffect } from "react";
 import { ThemeProvider, CssBaseline, createTheme } from "@mui/material";
 
 const ThemeModeContext = createContext();
 
 export function ThemeModeProvider({ children }) {
-  const [mode, setMode] = useState("light");
+  // Intentar leer el modo guardado del localStorage, si no existe usar "light"
+  const [mode, setMode] = useState(() => {
+    const savedMode = localStorage.getItem("themeMode");
+    return savedMode || "light";
+  });
+
+  // Guardar el modo en localStorage cada vez que cambie
+  useEffect(() => {
+    localStorage.setItem("themeMode", mode);
+  }, [mode]);
 
   const toggleMode = () => setMode((prev) => (prev === "light" ? "dark" : "light"));
 
@@ -15,13 +24,14 @@ export function ThemeModeProvider({ children }) {
           mode,
           primary: {
             main: mode === "light" ? "#0C155A" : "#4A8FE7", // Color principal para botones, links, etc.
+            secondary: mode === "light" ? "#777986" : "#A4A4A8", // Color secundario
           },
           secondary: {
             main: mode === "light" ? "#BDBCC2" : "#A4A4A8", // Color secundario
           },
           background: {
             default: mode === "light" ? "#D3E8FB" : "#0C111B", // fondo general
-            paper: mode === "light" ? "#FFFFFF" : "#182030",   // Fondo de componentes (cards, drawer)
+            paper: mode === "light" ? "#F8FAFB" : "#182030",   // Fondo de componentes (cards, drawer)
           },
           text: {
             primary: mode === "light" ? "#0C155A" : "#E6E9EF",

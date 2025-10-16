@@ -2,9 +2,12 @@
 
 import React from "react";
 import { Button, Tooltip, Typography } from "@mui/material";
+import { useTheme } from '@mui/material/styles';
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 
 const UploadButton = ({ onFileSelect }) => {
+  const theme = useTheme();
+  
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -34,7 +37,7 @@ const UploadButton = ({ onFileSelect }) => {
           slotProps={{
             tooltip: {
               sx: {
-                bgcolor: '#0C155A',
+                bgcolor: (theme) => theme.palette.primary.main,
                 fontSize: '0.875rem',
                 fontWeight: 500,
                 py: 1,
@@ -46,7 +49,7 @@ const UploadButton = ({ onFileSelect }) => {
             },
             arrow: {
               sx: {
-                color: '#0C155A',
+                color: (theme) => theme.palette.primary.main,
               }
             }
           }}
@@ -55,10 +58,10 @@ const UploadButton = ({ onFileSelect }) => {
             variant="outlined"
             component="label"
             sx={{
-              borderColor: '#0C155A',
+              borderColor: (theme) => theme.palette.primary.main,
               borderWidth: '2px',
               color: 'white',
-              backgroundColor: '#0C155A',
+              backgroundColor: (theme) => theme.palette.primary.main,
               borderRadius: '50%',
               minWidth: '56px',
               width: '56px',
@@ -67,12 +70,16 @@ const UploadButton = ({ onFileSelect }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(12, 21, 90, 0.2)',
+              boxShadow: theme.palette.mode === 'light' 
+                ? '0 2px 8px rgba(12, 21, 90, 0.2)' 
+                : '0 2px 8px rgba(0, 0, 0, 0.5)',
               '&:hover': {
                 borderWidth: '2px',
-                borderColor: '#0C155A',
-                backgroundColor: '#1a2b7a',
-                boxShadow: '0 4px 12px rgba(12, 21, 90, 0.3)',
+                borderColor: (theme) => theme.palette.primary.main,
+                backgroundColor: (theme) => theme.palette.primary.dark,
+                boxShadow: theme.palette.mode === 'light' 
+                  ? '0 4px 12px rgba(12, 21, 90, 0.3)' 
+                  : '0 4px 12px rgba(0, 0, 0, 0.7)',
                 transform: 'translateY(-2px)',
               },
               transition: 'all 0.2s ease',

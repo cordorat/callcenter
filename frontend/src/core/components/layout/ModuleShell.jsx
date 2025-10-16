@@ -51,7 +51,6 @@ export default function ModuleShell({ title, items, children }) {
         <Toolbar>
           <Typography
             variant="h6"
-            fontFamily={"Poppins, sans-serif"}
             fontWeight={600}
             noWrap
             sx={{ flexGrow: 1 }}
@@ -89,9 +88,17 @@ export default function ModuleShell({ title, items, children }) {
             transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             display: "flex",
             flexDirection: "column",
-            backgroundColor: "#EBF5FE",
-            borderRight: "1px solid rgba(12, 21, 90, 0.1)",
-            boxShadow: hovered ? "4px 0 24px rgba(12, 21, 90, 0.15)" : "4px 0 24px rgba(12, 21, 90, 0.08)",
+            backgroundColor: (theme) => theme.palette.appBar.default,
+            borderRight: (theme) => theme.palette.mode === 'light'
+              ? "1px solid rgba(12, 21, 90, 0.1)"
+              : "1px solid rgba(255, 255, 255, 0.1)",
+            boxShadow: (theme) => hovered 
+              ? theme.palette.mode === 'light'
+                ? "4px 0 24px rgba(12, 21, 90, 0.15)"
+                : "4px 0 24px rgba(0, 0, 0, 0.5)"
+              : theme.palette.mode === 'light'
+                ? "4px 0 24px rgba(12, 21, 90, 0.08)"
+                : "4px 0 24px rgba(0, 0, 0, 0.3)",
             zIndex: (theme) => theme.zIndex.drawer + 2,
           },
         }}
@@ -115,7 +122,7 @@ export default function ModuleShell({ title, items, children }) {
                     slotProps={{
                       tooltip: {
                         sx: {
-                          bgcolor: '#0C155A',
+                          bgcolor: (theme) => theme.palette.primary.main,
                           fontSize: '0.875rem',
                           fontWeight: 500,
                           py: 1,
@@ -126,7 +133,7 @@ export default function ModuleShell({ title, items, children }) {
                       },
                       arrow: {
                         sx: {
-                          color: '#0C155A',
+                          color: (theme) => theme.palette.primary.main,
                         }
                       }
                     }}
@@ -142,18 +149,28 @@ export default function ModuleShell({ title, items, children }) {
                         width: "100%",
                         position: 'relative',
                         overflow: 'hidden',
-                        backgroundColor: isActive 
-                          ? "rgba(12, 21, 90, 0.12)" 
+                        backgroundColor: (theme) => isActive 
+                          ? theme.palette.mode === 'light'
+                            ? "rgba(12, 21, 90, 0.12)"
+                            : "rgba(255, 255, 255, 0.08)"
                           : "transparent",
                         backdropFilter: isActive ? 'blur(10px)' : 'none',
                         "&:hover": { 
-                          backgroundColor: isActive 
-                            ? "rgba(12, 21, 90, 0.18)" 
-                            : "rgba(12, 21, 90, 0.06)",
+                          backgroundColor: (theme) => isActive 
+                            ? theme.palette.mode === 'light'
+                              ? "rgba(12, 21, 90, 0.18)"
+                              : "rgba(255, 255, 255, 0.12)"
+                            : theme.palette.mode === 'light'
+                              ? "rgba(12, 21, 90, 0.06)"
+                              : "rgba(255, 255, 255, 0.04)",
                           transform: 'translateX(4px)',
-                          boxShadow: isActive 
-                            ? '0 4px 20px rgba(12, 21, 90, 0.15)'
-                            : '0 4px 12px rgba(12, 21, 90, 0.08)',
+                          boxShadow: (theme) => isActive 
+                            ? theme.palette.mode === 'light'
+                              ? '0 4px 20px rgba(12, 21, 90, 0.15)'
+                              : '0 4px 20px rgba(0, 0, 0, 0.5)'
+                            : theme.palette.mode === 'light'
+                              ? '0 4px 12px rgba(12, 21, 90, 0.08)'
+                              : '0 4px 12px rgba(0, 0, 0, 0.3)',
                         },
                         "&::before": isActive ? {
                           content: '""',
@@ -172,11 +189,15 @@ export default function ModuleShell({ title, items, children }) {
                           minWidth: 0,
                           mr: hovered ? 2 : "auto",
                           justifyContent: "center",
-                          color: isActive ? "#0C155A" : "rgba(12, 21, 90, 0.6)",
+                          color: (theme) => isActive 
+                            ? theme.palette.primary.main 
+                            : theme.palette.text.secondary,
                           transition: 'all 0.3s ease',
                           transform: isActive ? 'scale(1.1)' : 'scale(1)',
-                          filter: isActive 
-                            ? 'drop-shadow(0 2px 8px rgba(12, 21, 90, 0.3))'
+                          filter: (theme) => isActive 
+                            ? theme.palette.mode === 'light'
+                              ? 'drop-shadow(0 2px 8px rgba(12, 21, 90, 0.3))'
+                              : 'drop-shadow(0 2px 8px rgba(74, 143, 231, 0.4))'
                             : 'none',
                           '& svg': {
                             fontSize: '1.5rem',
@@ -190,7 +211,9 @@ export default function ModuleShell({ title, items, children }) {
                           primary={item.label}
                           sx={{
                             "& .MuiListItemText-primary": {
-                              color: isActive ? "#0C155A" : "rgba(12, 21, 90, 0.75)",
+                              color: (theme) => isActive 
+                                ? theme.palette.primary.main 
+                                : theme.palette.text.secondary,
                               fontWeight: isActive ? 600 : 500,
                               fontSize: '0.95rem',
                               letterSpacing: '0.3px',
@@ -207,19 +230,25 @@ export default function ModuleShell({ title, items, children }) {
           </List>
         </Box>
 
-        <Divider sx={{ borderColor: 'rgba(12, 21, 90, 0.1)', mx: 2, mb: 1 }} />
+        <Divider sx={{ 
+          borderColor: (theme) => theme.palette.mode === 'light'
+            ? 'rgba(12, 21, 90, 0.1)'
+            : 'rgba(255, 255, 255, 0.1)', 
+          mx: 2, 
+          mb: 1 
+        }} />
         <Box 
           sx={{ 
             p: 2, 
             textAlign: "center",
-            background: 'linear-gradient(135deg, rgba(12, 21, 90, 0.05) 0%, rgba(12, 21, 90, 0.02) 100%)',
+            background: themed => themed.palette.appBar.default,
             backdropFilter: 'blur(10px)',
           }}
         >
           <Typography 
             variant="caption" 
             sx={{
-              color: 'rgba(12, 21, 90, 0.5)',
+              color: (theme) => theme.palette.appBar.text,
               fontWeight: 500,
               letterSpacing: '0.5px',
             }}
