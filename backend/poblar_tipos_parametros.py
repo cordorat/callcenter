@@ -45,16 +45,6 @@ def poblar_tipos_parametros():
         },
         {
             'nombre': 'ROL_USUARIO',
-            'valor': 'JEFE DE CAMPAÑA',
-            'descripcion': 'Jefe encargado de una campaña específica'
-        },
-        {
-            'nombre': 'ROL_USUARIO',
-            'valor': 'JEFE DE CENTRO',
-            'descripcion': 'Jefe encargado de un centro específico'
-        },
-        {
-            'nombre': 'ROL_USUARIO',
             'valor': 'ANALISTA',
             'descripcion': 'Analista de datos y reportes'
         },
@@ -62,6 +52,11 @@ def poblar_tipos_parametros():
             'nombre': 'ROL_USUARIO',
             'valor': 'JEFE_CENTRO',
             'descripcion': 'Jefe de centro que gestiona equipos de trabajo'
+        },
+        {
+            'nombre': 'ROL_USUARIO',
+            'valor': 'JEFE_CAMPAÑA',
+            'descripcion': 'Jefe de campaña que supervisa campañas específicas'
         },
         
         # ============================================================
