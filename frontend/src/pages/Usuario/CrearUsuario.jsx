@@ -117,7 +117,7 @@ export default function CrearUsuario() {
     
     try {
       const userData = {
-        documento_id: formData.documento_id,
+        documento_id: parseInt(formData.documento_id, 10), // Convertir a entero
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email,
@@ -135,6 +135,12 @@ export default function CrearUsuario() {
 
     } catch (error) {
       console.error("Error al crear usuario:", error);
+      
+      // Mostrar errores del backend
+      if (error.response && error.response.data) {
+        const backendErrors = error.response.data;
+        setErrors(backendErrors);
+      }
     } finally {
       setLoading(false);
     }
