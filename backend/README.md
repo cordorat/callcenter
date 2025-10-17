@@ -245,16 +245,13 @@ redis-cli ping
 
 **Terminal 2 - Celery Worker (Procesador de Tareas Asíncronas):**
 ```powershell
-# Windows
-celery -A callcenter worker -l info --pool=solo
 
-# Linux/Mac
-celery -A callcenter worker -l info --pool=gevent --concurrency=20
+python -m celery -A callcenter worker --pool=threads --concurrency=10 -Q llamadas,celery --loglevel=info
 ```
 
 **Terminal 3 - Celery Beat (Programador de Tareas):**
 ```powershell
-celery -A callcenter beat -l info
+python -m celery -A callcenter beat --loglevel=info
 ```
 
 **Terminal 4 - Django Server (Backend API):**

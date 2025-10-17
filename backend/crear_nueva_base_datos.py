@@ -23,7 +23,7 @@ def crear_base_datos_con_clientes():
     
     try:
         # Buscar la campaña (ID 2)
-        campana = Campana.objects.get(id=2)
+        campana = Campana.objects.get(id=1)
         print(f"✅ Campaña encontrada: {campana.nombre}")
     except Campana.DoesNotExist:
         print("❌ Error: No se encontró la campaña con ID 2")
@@ -43,7 +43,7 @@ def crear_base_datos_con_clientes():
     print(f"   Estado: INACTIVA (no se activará automáticamente)")
     
     # Número de teléfono de prueba
-    telefono = "+573204150881"
+    telefono = "+573006228400"
     
     # Nombres de ejemplo
     nombres = [
