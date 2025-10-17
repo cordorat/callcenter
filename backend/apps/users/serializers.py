@@ -93,7 +93,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
                 'ADMIN': 'ADMIN',
                 'COORDINADOR': 'COORDINADOR',
                 'BACKOFFICE': 'BACKOFFICE',
-                'JEFE DE CENTRO': 'JEFE DE CENTRO',
+                'JEFE DE CENTRO': 'JEFE_CENTRO',
                 'JEFE DE CAMPAÑA': 'JEFE DE CAMPAÑA'
             }
             # Convertir a español si viene en inglés, o usar el valor original

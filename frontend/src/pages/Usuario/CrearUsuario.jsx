@@ -20,10 +20,11 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { usersService } from '@/core/api/users';
+import { useTheme } from '@mui/material/styles';
 
 export default function CrearUsuario() {
   const navigate = useNavigate();
-  
+  const theme = useTheme();
   const [formData, setFormData] = useState({
     documento_id: "",
     first_name: "",
@@ -158,6 +159,7 @@ export default function CrearUsuario() {
           mt: 6,
           borderRadius: 4,
           bgcolor: "#fafafa",
+          background: theme.palette.background.paper
         }}
       >
         {successMessage && (
@@ -309,7 +311,7 @@ export default function CrearUsuario() {
                   <MenuItem value="COORDINADOR">COORDINADOR</MenuItem>
                   <MenuItem value="AGENTE">AGENTE</MenuItem>
                   <MenuItem value="JEFE DE CAMPAÑA">JEFE DE CAMPAÑA</MenuItem>
-                  <MenuItem value="JEFE DE CENTRO">JEFE DE CENTRO</MenuItem>
+                  <MenuItem value="JEFE_CENTRO">JEFE DE CENTRO</MenuItem>
                   <MenuItem value="BACKOFFICE">BACKOFFICE</MenuItem>
                 </Select>
                 {errors.role && (
@@ -330,9 +332,8 @@ export default function CrearUsuario() {
               <Grid item xs={12} sm={6} textAlign="center">
                 <Button 
                   type="button" 
-                  variant="outlined" 
-                  color="secondary" 
-                  size="large" 
+                  size="large"
+                  variant="contained" 
                   onClick={handleCancel}
                   disabled={loading}
                   sx={{
@@ -340,7 +341,8 @@ export default function CrearUsuario() {
                     borderRadius:2,
                     py: 1.5, 
                     fontSize: '1rem',
-                    fontWeight: "bold"
+                    fontWeight: "bold",
+                    backgroundColor: theme.palette.primary.secondary
                   }}
                 >
                   Cancelar
@@ -350,7 +352,6 @@ export default function CrearUsuario() {
                 <Button 
                   type="submit" 
                   variant="contained" 
-                  color="primary" 
                   size="large" 
                   disabled={loading}
                   sx={{
@@ -358,7 +359,8 @@ export default function CrearUsuario() {
                     borderRadius:2,
                     py: 1.5, 
                     fontSize: '1rem',
-                    fontWeight: "bold"
+                    fontWeight: "bold",
+                    backgroundColor: theme.palette.primary.main
                   }}
                 >
                   {loading ? <CircularProgress size={24} color="inherit" /> : 'Guardar'}

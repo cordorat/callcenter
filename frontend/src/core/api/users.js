@@ -25,9 +25,11 @@ export const usersService = {
    * Obtiene la lista de usuarios
    * @returns {Promise} - Promesa con la lista de usuarios
    */
-  getUsers: async () => {
+  getUsers: async ({ page = 1, page_size = 10 } = {}) => {
     try {
-      const response = await apiClient.get(ENDPOINTS.USERS);
+      const response = await apiClient.get(ENDPOINTS.USERS, {
+        params: { page, page_size }
+      });
       return response.data;
     } catch (error) {
       throw error;

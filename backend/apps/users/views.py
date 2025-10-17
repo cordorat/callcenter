@@ -18,9 +18,17 @@ from .serializers import (
 from .permissions import IsAdmin, IsAdminOrOwner
 from common.estados_helper import get_estado
 User = get_user_model()
+from django.core.paginator import Paginator
+from rest_framework.pagination import PageNumberPagination
 
+class UsuarioPagination(PageNumberPagination):
+    page_size = 10  # 👈 cantidad de registros por página
+    page_size_query_param = 'page_size'  # permite al front modificar el tamaño
+    max_page_size = 100  # límite máximo permitido
 
 class UserViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    pagination_class = UsuarioPagination 
     """
     ViewSet para gestionar usuarios.
     
@@ -61,7 +69,7 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         if user.rol==get_estado('ROL_USUARIO', 'ADMIN'):
-            return User.objects.all()
+            return User.objects.all().order_by('documento_id')
         return User.objects.filter(pk=user.pk)
     
     def create(self, request, *args, **kwargs):
