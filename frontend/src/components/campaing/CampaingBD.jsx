@@ -3,10 +3,11 @@
 
 import * as React from "react";
 import { useEffect, useState, useCallback } from "react";
-import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert, Button } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import apiClient from '@/core/api/apiClient';
 import { ENDPOINTS } from '@/core/api/endpoints';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function Campaing({ selectedFile = null, onClearFile = null }) {
   const theme = useTheme();
@@ -145,6 +146,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
               <TableHead>
                 <TableRow sx={{ backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)' }}>
                   <TableCell 
+                    align="center"
                     sx={{ 
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -156,6 +158,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                     ID
                   </TableCell>
                   <TableCell
+                    align="center"
                     sx={{
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -167,6 +170,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                     Nombre
                   </TableCell>
                   <TableCell
+                    align="center"
                     sx={{
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -176,6 +180,30 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                     }}
                   >
                     Campaña
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
+                      py: 2,
+                    }}
+                  >
+                    Fecha de iteración
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
+                      py: 2,
+                    }}
+                  >
+                    Acciones
                   </TableCell>
                 </TableRow>
               </TableHead>
@@ -232,6 +260,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                       }}
                     >
                       <TableCell 
+                        align="center"
                         sx={{ 
                           color: theme.palette.text.primary,
                           fontWeight: 600,
@@ -244,6 +273,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                         {b.id}
                       </TableCell>
                       <TableCell 
+                        align="center"
                         sx={{ 
                           color: theme.palette.text.primary,
                           fontSize: '0.85rem',
@@ -255,6 +285,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                         {b.nombre_bd}
                       </TableCell>
                       <TableCell 
+                        align="center"
                         sx={{ 
                           color: theme.palette.text.secondary,
                           fontSize: '0.85rem',
@@ -264,6 +295,32 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                         }}
                       >
                         {b.campana || '-'}
+                      </TableCell>
+                      <TableCell 
+                        align="center"
+                        sx={{ 
+                          color: theme.palette.text.secondary,
+                          fontSize: '0.85rem',
+                          borderBottom: theme.palette.mode === 'light' 
+                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
+                        }}
+                      >
+                        
+                      </TableCell>
+                      <TableCell 
+                        align="center"
+                        sx={{ 
+                          color: theme.palette.text.secondary,
+                          fontSize: '0.85rem',
+                          borderBottom: theme.palette.mode === 'light' 
+                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
+                        }}
+                      >
+                        <Button>
+                          <DeleteIcon />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

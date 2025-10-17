@@ -104,6 +104,7 @@ export default function Teams() {
               <TableHead>
                 <TableRow sx={{ backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)' }}>
                   <TableCell 
+                    align="center"
                     sx={{ 
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -115,6 +116,7 @@ export default function Teams() {
                     Nombre del Equipo
                   </TableCell>
                   <TableCell 
+                    align="center"
                     sx={{ 
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -126,6 +128,7 @@ export default function Teams() {
                     Campaña Asignada
                   </TableCell>
                   <TableCell 
+                    align="center"
                     sx={{ 
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -137,6 +140,7 @@ export default function Teams() {
                     Cantidad de Agentes
                   </TableCell>
                   <TableCell 
+                    align="center"
                     sx={{ 
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -167,6 +171,7 @@ export default function Teams() {
                   >
                     {/* Nombre del equipo */}
                     <TableCell 
+                      align="center"
                       sx={{ 
                         color: theme.palette.text.primary,
                         fontWeight: 600,
@@ -181,6 +186,7 @@ export default function Teams() {
 
                     {/* Campaña */}
                     <TableCell 
+                      align="center"
                       sx={{ 
                         color: theme.palette.text.secondary,
                         fontSize: '0.85rem',
@@ -194,6 +200,7 @@ export default function Teams() {
 
                     {/* Cantidad de agentes */}
                     <TableCell 
+                      align="center"
                       sx={{ 
                         color: theme.palette.text.primary,
                         fontSize: '0.85rem',
@@ -207,6 +214,7 @@ export default function Teams() {
 
                     {/* Miembros del equipo */}
                     <TableCell 
+                      align="center"
                       sx={{ 
                         borderBottom: theme.palette.mode === 'light' 
                           ? '1px solid rgba(12, 21, 90, 0.1)'
@@ -214,7 +222,7 @@ export default function Teams() {
                       }}
                     >
                       {equipo.agentes && equipo.agentes.length > 0 ? (
-                        <Stack direction="row" flexWrap="wrap" gap={0.5}>
+                        <Stack direction="row" flexWrap="wrap" gap={0.5} justifyContent="center">
                           {equipo.agentes.slice(0, 3).map((agente) => (
                             <Chip
                               key={agente.documento_id}
