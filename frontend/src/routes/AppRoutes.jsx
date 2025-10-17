@@ -8,6 +8,7 @@ import Kpis from '../pages/Kpis/Kpis';
 import Campaing from '../pages/Campaing/Campaing';
 import PrivateRoute from './PrivateRoute';
 import Settings from '../pages/Settings/Settings';
+import Usuarios from '../pages/Usuario/Usuarios';
 import CrearUsuario from '../pages/Usuario/CrearUsuario';
 
 const AppRoutes = () => {
@@ -53,6 +54,12 @@ const AppRoutes = () => {
         <Route path="/campana" element={
           <PrivateRoute>
             <Campaing />
+          </PrivateRoute>
+        } />
+
+        <Route path="/usuarios" element={
+          <PrivateRoute>
+            <Usuarios />
           </PrivateRoute>
         } />
 

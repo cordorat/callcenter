@@ -60,7 +60,7 @@ class UserViewSet(viewsets.ModelViewSet):
         Los agentes solo ven su propia información.
         """
         user = self.request.user
-        if user.rol==get_estado('ROL_USUARIO', 'AGENTE'):
+        if user.rol==get_estado('ROL_USUARIO', 'ADMIN'):
             return User.objects.all()
         return User.objects.filter(pk=user.pk)
     

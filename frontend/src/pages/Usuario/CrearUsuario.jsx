@@ -16,8 +16,6 @@ import {
   Grid,
   Paper,
   Typography,
-  Alert,
-  Snackbar,
   CircularProgress
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
@@ -40,11 +38,8 @@ export default function CrearUsuario() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
+  const [successMessage, setSuccessMessage] = useState('');
+
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -53,7 +48,6 @@ export default function CrearUsuario() {
       [name]: type === "checkbox" ? checked : value,
     });
     
-    // Limpiar error del campo modificado
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -66,51 +60,43 @@ export default function CrearUsuario() {
   const validateForm = () => {
     const newErrors = {};
 
-    // Validación de documento
     if (!formData.documento_id) {
       newErrors.documento_id = "El documento es requerido";
     }
 
-    // Validación de nombre
     if (!formData.first_name) {
       newErrors.first_name = "El nombre es requerido";
     }
 
-    // Validación de apellido
     if (!formData.last_name) {
       newErrors.last_name = "El apellido es requerido";
     }
 
-    // Validación de email - Formato @dominio.com
     if (!formData.email) {
       newErrors.email = "El email es requerido";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "El correo debe tener el formato válido '@dominio.com'";
+      newErrors.email = "Debe tener el formato válido '@dominio.com'";
     }
 
-    // Validación de teléfono - Exactamente 10 números
     if (!formData.phone) {
       newErrors.phone = "El teléfono es requerido";
     } else if (!/^\d{10}$/.test(formData.phone)) {
-      newErrors.phone = "El teléfono debe tener exactamente 10 números";
+      newErrors.phone = "Debe tener 10 dígitos";
     }
 
-    // Validación de rol
     if (!formData.role) {
       newErrors.role = "El rol es requerido";
     }
 
-    // Validación de contraseña - 8-16 caracteres, mayúscula, minúscula, número y carácter especial
     if (!formData.password) {
       newErrors.password = "La contraseña es requerida";
     } else {
       const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,16}$/;
       if (!passwordRegex.test(formData.password)) {
-        newErrors.password = "La contraseña debe tener 8-16 caracteres, incluyendo mayúscula, minúscula, número y carácter especial (@$!%*?&)";
+        newErrors.password = "Debe tener el formato valido";
       }
     }
 
-    // Validación de confirmación de contraseña
     if (!formData.password_confirm) {
       newErrors.password_confirm = "Debes confirmar la contraseña";
     } else if (formData.password !== formData.password_confirm) {
@@ -124,19 +110,11 @@ export default function CrearUsuario() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) {
-      setSnackbar({
-        open: true,
-        message: 'Por favor, corrige los errores en el formulario',
-        severity: 'error'
-      });
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
     
     try {
-      // Preparar datos para enviar al backend (sin foto_perfil ni is_active)
       const userData = {
         documento_id: formData.documento_id,
         first_name: formData.first_name,
@@ -148,58 +126,25 @@ export default function CrearUsuario() {
         phone: formData.phone
       };
 
-      const response = await usersService.createUser(userData);
-      
-      setSnackbar({
-        open: true,
-        message: 'Usuario creado exitosamente',
-        severity: 'success'
-      });
-
-      // Limpiar formulario después de 1.5 segundos y redirigir
+      await usersService.createUser(userData);
+      setSuccessMessage('Usuario creado correctamente');
       setTimeout(() => {
-        navigate('/usuarios'); // Ajusta la ruta según tu aplicación
-      }, 1500);
+        navigate('/usuarios');
+      }, 1000);
 
     } catch (error) {
       console.error("Error al crear usuario:", error);
-      
-      let errorMessage = 'Error al crear el usuario';
-      
-      if (error.response?.data) {
-        // Si hay errores específicos del backend, mostrarlos
-        const backendErrors = error.response.data;
-        
-        if (typeof backendErrors === 'object' && !Array.isArray(backendErrors)) {
-          setErrors(backendErrors);
-          errorMessage = 'Por favor, corrige los errores señalados';
-        } else if (backendErrors.detail) {
-          errorMessage = backendErrors.detail;
-        } else if (typeof backendErrors === 'string') {
-          errorMessage = backendErrors;
-        }
-      }
-      
-      setSnackbar({
-        open: true,
-        message: errorMessage,
-        severity: 'error'
-      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    navigate(-1); // Volver a la página anterior
+    navigate(-1);
   };
 
   const handleTogglePassword = () => {
     setShowPassword((prev) => !prev);
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
   };
 
   return (
@@ -215,6 +160,22 @@ export default function CrearUsuario() {
           bgcolor: "#fafafa",
         }}
       >
+        {successMessage && (
+          <Box
+            sx={{
+              p: 2,
+              mb: 3,
+              borderRadius: 2,
+              backgroundColor: '#e6f4ea',
+              border: '1px solid #2e7d32',
+              color: '#2e7d32',
+              fontWeight: 600,
+              textAlign: 'center',
+            }}
+          >
+            {successMessage}
+          </Box>
+        )}
         <Typography variant="h5" fontWeight="bold" mb={3} textAlign="center">
           Ingresa los datos del nuevo usuario
         </Typography>
@@ -226,11 +187,10 @@ export default function CrearUsuario() {
                 fullWidth
                 label="Número de documento"
                 name="documento_id"
-                type="text"
+                type="number"
                 value={formData.documento_id}
                 onChange={handleChange}
                 variant="outlined"
-                required
                 error={!!errors.documento_id}
                 helperText={errors.documento_id}
                 disabled={loading}
@@ -244,7 +204,6 @@ export default function CrearUsuario() {
                 value={formData.first_name}
                 onChange={handleChange}
                 variant="outlined"
-                required
                 error={!!errors.first_name}
                 helperText={errors.first_name}
                 disabled={loading}
@@ -258,7 +217,6 @@ export default function CrearUsuario() {
                 value={formData.last_name}
                 onChange={handleChange}
                 variant="outlined"
-                required
                 error={!!errors.last_name}
                 helperText={errors.last_name}
                 disabled={loading}
@@ -269,11 +227,9 @@ export default function CrearUsuario() {
                 fullWidth
                 label="Correo electrónico"
                 name="email"
-                type="email"
                 value={formData.email}
                 onChange={handleChange}
                 variant="outlined"
-                required
                 error={!!errors.email}
                 helperText={errors.email}
                 disabled={loading}
@@ -284,11 +240,10 @@ export default function CrearUsuario() {
                 fullWidth
                 label="Número de teléfono"
                 name="phone"
-                type="tel"
+                type="number"
                 value={formData.phone}
                 onChange={handleChange}
                 variant="outlined"
-                required
                 error={!!errors.phone}
                 helperText={errors.phone}
                 disabled={loading}
@@ -312,9 +267,8 @@ export default function CrearUsuario() {
                   ),
                 }}
                 variant="outlined"
-                required
                 error={!!errors.password}
-                helperText={errors.password || "8-16 caracteres, con mayúscula, minúscula, número y carácter especial"}
+                helperText={errors.password || "8-16 caracteres (M,m,9-0,@$!%*?&)"}
                 disabled={loading}
               />
             </Grid>
@@ -336,7 +290,6 @@ export default function CrearUsuario() {
                   ),
                 }}
                 variant="outlined"
-                required
                 error={!!errors.password_confirm}
                 helperText={errors.password_confirm}
                 disabled={loading}
@@ -350,7 +303,6 @@ export default function CrearUsuario() {
                   value={formData.role}
                   onChange={handleChange}
                   label="Rol"
-                  required
                   disabled={loading}
                 >
                   <MenuItem value="ADMIN">ADMIN</MenuItem>
@@ -415,22 +367,6 @@ export default function CrearUsuario() {
             </Grid>
         </Box>
       </Paper>
-
-      {/* Snackbar para mensajes de éxito/error */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </MainLayout>
   );
 }
