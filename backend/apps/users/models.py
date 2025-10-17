@@ -76,9 +76,10 @@ class User(AbstractUser):
     last_name = models.CharField('Apellido', max_length=150)
     phone = models.CharField('Teléfono', max_length=20, blank=True)
     # Documento de identidad (opcional)
-    documento_id = models.IntegerField(
+    documento_id = models.CharField(
         'Documento de Identidad',
         primary_key=True,
+        max_length=20,
         unique=True,
         help_text='Numero de documento de indentidad'
     )

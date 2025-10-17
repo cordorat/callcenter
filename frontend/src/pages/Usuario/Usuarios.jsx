@@ -41,11 +41,11 @@ export default function Usuarios() {
 
   // Mapeo de roles para mostrar en español
   const rolesMap = {
-    'ADMIN': 'Administrador',
+    'ADMIN': 'ADMIN',
     'COORDINADOR': 'Coordinador',
-    'AGENTE': 'Agente',
+    'AGENTE': 'AGENTE',
     'JEFE DE CAMPAÑA': 'Jefe de Campaña',
-    'JEFE DE CENTRO': 'Jefe de Centro',
+    'JEFE_CENTRO': 'JEFE DE CENTRO',
     'BACKOFFICE': 'Backoffice'
   };
 
