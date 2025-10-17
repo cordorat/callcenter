@@ -6,6 +6,7 @@ import Dashboard from '../pages/Dashboard/Dashboard';
 import Calls from '../pages/Calls/Calls';
 import Kpis from '../pages/Kpis/Kpis';          
 import Campaing from '../pages/Campaing/Campaing';
+import Teams from '../pages/Teams/Teams';
 import PrivateRoute from './PrivateRoute';
 import Settings from '../pages/Settings/Settings';
 import Usuarios from '../pages/Usuario/Usuarios';
@@ -68,6 +69,12 @@ const AppRoutes = () => {
             <CrearUsuario />
           </PrivateRoute>
         } />        
+
+        <Route path="/equipos" element={
+          <PrivateRoute>
+            <Teams />
+          </PrivateRoute>
+        } />
 
         <Route path="/configuracion" element={
           <PrivateRoute>

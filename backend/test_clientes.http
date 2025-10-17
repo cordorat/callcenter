@@ -1,0 +1,211 @@
+### Test de Funcionalidad de Clientes
+### Basado en HU: Modificar información de cliente
+
+### Variables
+@baseUrl = http://localhost:8000/api
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwNTE5MjIyLCJpYXQiOjE3NjA0OTA0MjIsImp0aSI6IjJkMzQ0NmM4ZDQ2YjQzZDdiN2ZlM2U4ZDlhNDI1NWEzIiwiZG9jdW1lbnRvX2lkIjoiMTIzNDU2Nzg5MCJ9.81glXioayNbT5-70X-23byrvpsPK8ruiaNh990q8rkc
+
+### ============================================
+### 1. Login como Agente
+### ============================================
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+  "email": "agente1@callcenter.com",
+  "password": "agente123!"
+}
+
+### ============================================
+### 2. Obtener Cliente Aleatorio (ENDPOINT TEMPORAL)
+### Criterio 1.3: Interfaz de llamada activa con información del cliente
+### ============================================
+GET {{baseUrl}}/campaigns/clientes/random/
+Authorization: Bearer {{token}}
+
+### Con filtro por campaña (opcional)
+GET {{baseUrl}}/campaigns/clientes/random/?campana_id=1
+Authorization: Bearer {{token}}
+
+### Con filtro por base de datos (opcional)
+GET {{baseUrl}}/campaigns/clientes/random/?base_datos_id=1
+Authorization: Bearer {{token}}
+
+### ============================================
+### 3. Obtener Cliente Específico
+### Criterio 2.1: Visualizar información del cliente
+### ============================================
+GET {{baseUrl}}/campaigns/clientes/2/
+Authorization: Bearer {{token}}
+
+### ============================================
+### 4. Actualizar Cliente (PATCH - Actualización Parcial)
+### Criterios 3.1, 4.x, 5.1: Modificar datos con validaciones
+### ============================================
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Juan Pérez Actualizado",
+  "telefono": "+57 300 123 4567",
+  "email": "juan.perez@example.com",
+  "direccion": "Calle 123 # 45-67, Bogotá",
+  "observaciones": "Cliente actualizado correctamente. Prefiere contacto por email."
+}
+
+### ============================================
+### 5. Actualizar Cliente (PUT - Actualización Completa)
+### ============================================
+PUT {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "María González",
+  "telefono": "+57 301 987 6543",
+  "email": "maria.gonzalez@example.com",
+  "direccion": "Carrera 45 # 12-34, Medellín",
+  "observaciones": "Cliente preferencial. Llamar después de las 2 PM."
+}
+
+### ============================================
+### 6. TESTS DE VALIDACIÓN
+### ============================================
+
+### Test 6.1: Email inválido (Criterio 4.1)
+### Debe retornar error: "El formato del correo electrónico no es válido"
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "email": "email_invalido"
+}
+
+### Test 6.2: Teléfono con caracteres inválidos (Criterio 4.2)
+### Debe retornar error: "El teléfono solo puede contener dígitos y símbolos válidos"
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "telefono": "300-ABC-1234"
+}
+
+### Test 6.3: Nombre con números (Criterio 4.3)
+### Debe retornar error: "El nombre solo puede contener letras"
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Juan123"
+}
+
+### Test 6.4: Nombre con caracteres especiales inválidos (Criterio 4.3)
+### Debe retornar error: "El nombre solo puede contener letras"
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Juan@Pérez"
+}
+
+### Test 6.5: Nombre muy corto
+### Debe retornar error: "El nombre debe tener al menos 3 caracteres"
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Jo"
+}
+
+### Test 6.6: Teléfono muy corto
+### Debe retornar error: "El teléfono debe tener al menos 7 dígitos"
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "telefono": "123"
+}
+
+### ============================================
+### 7. TESTS DE CASOS VÁLIDOS
+### ============================================
+
+### Test 7.1: Nombre con tildes y caracteres latinos
+### Debe funcionar correctamente
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "José María Ñoño"
+}
+
+### Test 7.2: Teléfono con formato internacional
+### Debe funcionar correctamente
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "telefono": "+57 (301) 123-4567"
+}
+
+### Test 7.3: Solo actualizar observaciones
+### Debe funcionar correctamente (actualización parcial)
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "observaciones": "Cliente contactado el 14/10/2025. Solicitó llamar nuevamente el próximo lunes."
+}
+
+### ============================================
+### 8. Listar Clientes
+### ============================================
+GET {{baseUrl}}/campaigns/clientes/
+Authorization: Bearer {{token}}
+
+### Con paginación
+GET {{baseUrl}}/campaigns/clientes/?page=1&page_size=10
+Authorization: Bearer {{token}}
+
+### Con filtro por campaña
+GET {{baseUrl}}/campaigns/clientes/?campana_id=1
+Authorization: Bearer {{token}}
+
+### Con búsqueda por nombre o teléfono
+GET {{baseUrl}}/campaigns/clientes/?search=Juan
+Authorization: Bearer {{token}}
+
+### ============================================
+### 9. Verificar Campos de Solo Lectura
+### ============================================
+
+### Test 9.1: Intentar modificar documento_id (Criterio 3.2)
+### El campo documento_id debe ser ignorado (solo lectura)
+PATCH {{baseUrl}}/campaigns/clientes/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "documento_id": "999999999",
+  "nombre": "Nombre Actualizado"
+}
+
+### ============================================
+### NOTAS IMPORTANTES:
+### ============================================
+# 1. Reemplaza {{token}} con el token JWT obtenido del login
+# 2. Reemplaza el ID del cliente (1) con un ID válido de tu base de datos
+# 3. El endpoint /random/ es temporal para testing (criterio 1.3)
+# 4. El documento_id es de solo lectura (criterio 3.2)
+# 5. Todas las validaciones retornan mensajes claros (criterio 4.4)
+# 6. Las actualizaciones exitosas retornan mensaje de confirmación (criterio 5.2)

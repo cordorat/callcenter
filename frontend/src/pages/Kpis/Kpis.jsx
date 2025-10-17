@@ -3,6 +3,7 @@ import MainLayout from "@/core/components/layout/MainLayout";
 import { getKpiOverview } from "@/core/api/kpis";
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LoopIcon from '@mui/icons-material/Loop';
+import { useTheme } from '@mui/material/styles';
 
 import "./Kpis.css"; 
 
@@ -77,6 +78,8 @@ const fmtPct = (x) => `${Math.round(Number(x || 0) * 100)}%`;
 const DONUT_COLORS = ["#2f76e6", "#9ec9ff"];
 
 export default function Kpis() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
 
   const [mode, setMode] = React.useState("day"); // day|week|month|custom
   const [from, setFrom] = React.useState(todayRange().from);
@@ -163,16 +166,16 @@ export default function Kpis() {
       if (data.name === "Completado") {
         return (
           <div style={{ 
-            background: '#fff', 
+            background: theme.palette.background.paper, 
             padding: '8px 12px', 
-            border: '1px solid #ccc', 
+            border: `1px solid ${theme.palette.divider}`, 
             borderRadius: '4px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            boxShadow: isDark ? '0 2px 4px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.1)'
           }}>
             <p style={{ margin: 0, fontWeight: 'bold', color: '#2f76e6' }}>
               {data.name}: {porcentaje}%
             </p>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: theme.palette.text.secondary }}>
               {data.ventas} ventas realizadas
             </p>
           </div>
@@ -180,16 +183,16 @@ export default function Kpis() {
       } else {
         return (
           <div style={{ 
-            background: '#fff', 
+            background: theme.palette.background.paper, 
             padding: '8px 12px', 
-            border: '1px solid #ccc', 
+            border: `1px solid ${theme.palette.divider}`, 
             borderRadius: '4px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            boxShadow: isDark ? '0 2px 4px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.1)'
           }}>
             <p style={{ margin: 0, fontWeight: 'bold', color: '#9ec9ff' }}>
               {data.name}: {porcentaje}%
             </p>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: theme.palette.text.secondary }}>
               {data.faltante} ventas faltantes
             </p>
           </div>
@@ -210,25 +213,25 @@ export default function Kpis() {
       
       return (
         <div style={{ 
-          background: '#fff', 
+          background: theme.palette.background.paper, 
           padding: '10px 14px', 
-          border: '2px solid #2f76e6', 
+          border: `2px solid ${theme.palette.primary.main}`, 
           borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.15)',
           minWidth: '160px'
         }}>
-          <p style={{ margin: 0, fontWeight: 'bold', color: '#132051', fontSize: '14px' }}>
+          <p style={{ margin: 0, fontWeight: 'bold', color: theme.palette.text.primary, fontSize: '14px' }}>
             {data.hora}
           </p>
-          <p style={{ margin: '8px 0 4px 0', fontSize: '20px', fontWeight: '800', color: '#2f76e6' }}>
+          <p style={{ margin: '8px 0 4px 0', fontSize: '20px', fontWeight: '800', color: theme.palette.primary.main }}>
             {total} llamada(s)
           </p>
           <div style={{ 
             marginTop: '8px', 
             paddingTop: '8px', 
-            borderTop: '1px solid #e0e0e0',
+            borderTop: `1px solid ${theme.palette.divider}`,
             fontSize: '12px',
-            color: '#4a5a82'
+            color: theme.palette.text.secondary
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
               <span>Promedio:</span>
@@ -253,7 +256,37 @@ export default function Kpis() {
 
   return (
     <MainLayout title="KPIs">
-      <div className="kpi-page">
+      <div 
+        className="kpi-page"
+        style={{
+          '--text-primary': theme.palette.text.primary,
+          '--text-secondary': theme.palette.text.secondary,
+          '--background-paper': theme.palette.background.paper,
+          '--primary-main': theme.palette.primary.main,
+          '--primary-dark': isDark ? theme.palette.primary.dark : '#1a2b7a',
+          '--appbar-default': theme.palette.appBar.default,
+          '--kpi-highlight-bg': isDark 
+            ? 'linear-gradient(135deg, #1E2A3F 0%, #2A3B5C 100%)' 
+            : 'linear-gradient(135deg, #EFF6FB 0%, #E0EDF9 100%)',
+          '--donut-gradient': isDark
+            ? 'linear-gradient(135deg, #4A8FE7 0%, #6BA8FF 100%)'
+            : 'linear-gradient(135deg, #132051 0%, #2f76e6 100%)',
+          // Variables para el segmented control (Día/Semana/Mes)
+          '--segmented-bg': isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F4F8',
+          '--segmented-border': isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(12, 21, 90, 0.12)',
+          '--segmented-hover': isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(12, 21, 90, 0.05)',
+          '--segmented-active-shadow': isDark 
+            ? '0 2px 8px rgba(74, 143, 231, 0.3)' 
+            : '0 2px 4px rgba(12, 21, 90, 0.2)',
+          // Variables para los inputs de fecha
+          '--date-bg': isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F4F8',
+          '--date-border': isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(12, 21, 90, 0.15)',
+          '--date-focus-shadow': isDark 
+            ? '0 0 0 3px rgba(74, 143, 231, 0.2)' 
+            : '0 0 0 3px rgba(12, 21, 90, 0.1)',
+          '--date-icon-filter': isDark ? 'invert(1) brightness(1.2)' : 'none',
+        }}
+      >
         {/* Header */}
         <div className="kpi-header">
           <h2></h2>
@@ -424,25 +457,45 @@ export default function Kpis() {
                   >
                     <defs>
                       <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2f76e6" stopOpacity={1} />
-                        <stop offset="100%" stopColor="#5a96ff" stopOpacity={0.9} />
+                        {isDark ? (
+                          <>
+                            <stop offset="0%" stopColor="#4A8FE7" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#2f76e6" stopOpacity={0.9} />
+                          </>
+                        ) : (
+                          <>
+                            <stop offset="0%" stopColor="#2f76e6" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#5a96ff" stopOpacity={0.9} />
+                          </>
+                        )}
                       </linearGradient>
                     </defs>
                     <XAxis 
                       dataKey="hora" 
-                      tick={{ fill: '#4a5a82', fontSize: 12, fontWeight: 600 }}
-                      axisLine={{ stroke: '#cad4dd', strokeWidth: 1.5 }}
+                      tick={{ fill: theme.palette.text.secondary, fontSize: 12, fontWeight: 600 }}
+                      axisLine={{ stroke: theme.palette.divider, strokeWidth: 1.5 }}
                       tickLine={false}
                     />
                     <YAxis 
-                      tick={{ fill: '#4a5a82', fontSize: 12, fontWeight: 600 }}
-                      axisLine={{ stroke: '#cad4dd', strokeWidth: 1.5 }}
+                      tick={{ fill: theme.palette.text.secondary, fontSize: 12, fontWeight: 600 }}
+                      axisLine={{ stroke: theme.palette.divider, strokeWidth: 1.5 }}
                       tickLine={false}
-                      label={{ value: 'Llamadas', angle: -90, position: 'insideLeft', style: { fill: '#4a5a82', fontWeight: 700 } }}
+                      label={{ 
+                        value: 'Llamadas', 
+                        angle: -90, 
+                        position: 'insideLeft',
+                        offset: 15,
+                        style: { 
+                          fill: '#4a5a82', 
+                          fontWeight: 600,
+                          fontSize: 13,
+                          textAnchor: 'middle'
+                        } 
+                      }}
                     />
                     <Tooltip 
                       content={<CustomBarTooltip />} 
-                      cursor={{ fill: 'rgba(47, 118, 230, 0.1)' }}
+                      cursor={{ fill: isDark ? 'rgba(74, 143, 231, 0.1)' : 'rgba(47, 118, 230, 0.1)' }}
                       animationDuration={0}
                       isAnimationActive={false}
                     />
@@ -470,16 +523,36 @@ export default function Kpis() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <defs>
+                      {/* Degradado de completado - Verde en light, Azul celeste en dark */}
                       <linearGradient id="completadoGradient" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#0a6b2b" stopOpacity={1} />
-                        <stop offset="100%" stopColor="#0f8d3a" stopOpacity={1} />
+                        {isDark ? (
+                          <>
+                            <stop offset="0%" stopColor="#4A8FE7" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#6BA8FF" stopOpacity={1} />
+                          </>
+                        ) : (
+                          <>
+                            <stop offset="0%" stopColor="#0a6b2b" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#0f8d3a" stopOpacity={1} />
+                          </>
+                        )}
                       </linearGradient>
+                      {/* Degradado de pendiente */}
                       <linearGradient id="pendienteGradient" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#e0e0e0" stopOpacity={1} />
-                        <stop offset="100%" stopColor="#f5f5f5" stopOpacity={1} />
+                        {isDark ? (
+                          <>
+                            <stop offset="0%" stopColor="#2A3B5C" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#3D5270" stopOpacity={1} />
+                          </>
+                        ) : (
+                          <>
+                            <stop offset="0%" stopColor="#e0e0e0" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#f5f5f5" stopOpacity={1} />
+                          </>
+                        )}
                       </linearGradient>
                       <filter id="donutShadow">
-                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15"/>
+                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity={isDark ? "0.3" : "0.15"}/>
                       </filter>
                     </defs>
                     <Pie 

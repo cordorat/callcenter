@@ -203,7 +203,7 @@ export default function AgentMinutes({ userId, currentStatus }) {
             minHeight: 40,
         }}
     >
-      <AccessTimeIcon sx={{ fontSize: 18, color: '#0C155A' }} />
+      <AccessTimeIcon sx={{ fontSize: 18, color: (theme) => theme.palette.primary.main }} />
       <Typography variant="body2" sx={{ fontWeight: 500 }}>
         {formatTime(displayTime)}
       </Typography>

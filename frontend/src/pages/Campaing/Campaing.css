@@ -2,7 +2,7 @@
 
 .campaign-page {
     padding: 20px 24px;
-    color: #0C155A;
+    color: var(--text-primary, #0C155A);
 }
 
 .campaign-header {
@@ -23,17 +23,17 @@
     align-items: center;
     justify-content: center;
     gap: 16px;
-    background: #F8FAFB;
+    background: var(--campaign-filter-bg, #F8FAFB);
     border-radius: 12px;
     padding: 16px 20px;
     margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(12, 21, 90, 0.06);
+    box-shadow: var(--campaign-filter-shadow, 0 2px 8px rgba(12, 21, 90, 0.06));
 }
 
 .campaign-segmented {
     display: inline-flex;
-    background: #F0F4F8;
-    border: 1px solid rgba(12, 21, 90, 0.12);
+    background: var(--segmented-bg, #F0F4F8);
+    border: 1px solid var(--segmented-border, rgba(12, 21, 90, 0.12));
     border-radius: 10px;
     overflow: hidden;
     padding: 4px;
@@ -45,7 +45,7 @@
     background: transparent;
     cursor: pointer;
     font-weight: 600;
-    color: rgba(12, 21, 90, 0.7);
+    color: var(--segmented-text, rgba(12, 21, 90, 0.7));
     border-radius: 8px;
     transition: all 0.2s ease;
     font-size: 0.95rem;
@@ -54,22 +54,22 @@
 }
 
 .campaign-segmented button:hover {
-    color: #0C155A;
-    background: rgba(12, 21, 90, 0.05);
+    color: var(--text-primary, #0C155A);
+    background: var(--segmented-hover, rgba(12, 21, 90, 0.05));
 }
 
 .campaign-segmented button.active {
-    background: #0C155A;
+    background: var(--primary-main, #0C155A);
     color: #fff;
-    box-shadow: 0 2px 4px rgba(12, 21, 90, 0.2);
+    box-shadow: var(--segmented-active-shadow, 0 2px 4px rgba(12, 21, 90, 0.2));
 }
 
 .campaign-content {
-    background: #F8FAFB;
+    background: var(--campaign-content-bg, #F8FAFB);
     border-radius: 12px;
     padding: 24px;
     min-height: auto;
-    box-shadow: 0 2px 8px rgba(12, 21, 90, 0.06);
+    box-shadow: var(--campaign-content-shadow, 0 2px 8px rgba(12, 21, 90, 0.06));
 }
 
 .campaign-tab-panel {

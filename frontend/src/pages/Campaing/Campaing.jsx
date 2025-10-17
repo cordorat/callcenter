@@ -4,6 +4,7 @@
 import * as React from "react";
 import { Box, Button, Tooltip } from '@mui/material';
 import { useState } from 'react';
+import { useTheme } from '@mui/material/styles';
 import MainLayout from '@/core/components/layout/MainLayout';
 import UploadButton from "@/components/campaing/UploadButton";
 import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
@@ -16,12 +17,34 @@ import Teams from '@/components/campaing/Teams';
 import "./Campaing.css";
 
 export default function Campaing() {
+  const theme = useTheme();
   const [currentTab, setCurrentTab] = useState("database"); // "database" | "teams"
   const [selectedFile, setSelectedFile] = useState(null);
 
+  // Variables CSS dinámicas según el tema
+  const cssVariables = {
+    '--text-primary': theme.palette.text.primary,
+    '--primary-main': theme.palette.primary.main,
+    '--campaign-filter-bg': theme.palette.mode === 'light' ? '#F8FAFB' : 'rgba(255,255,255,0.03)',
+    '--campaign-filter-shadow': theme.palette.mode === 'light' 
+      ? '0 2px 8px rgba(12, 21, 90, 0.06)' 
+      : '0 2px 8px rgba(0, 0, 0, 0.3)',
+    '--segmented-bg': theme.palette.mode === 'light' ? '#F0F4F8' : 'rgba(255,255,255,0.05)',
+    '--segmented-border': theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.12)' : 'rgba(255,255,255,0.1)',
+    '--segmented-text': theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.7)' : 'rgba(255,255,255,0.7)',
+    '--segmented-hover': theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.05)' : 'rgba(255,255,255,0.08)',
+    '--segmented-active-shadow': theme.palette.mode === 'light' 
+      ? '0 2px 4px rgba(12, 21, 90, 0.2)' 
+      : '0 2px 4px rgba(0, 0, 0, 0.5)',
+    '--campaign-content-bg': theme.palette.mode === 'light' ? '#F8FAFB' : 'rgba(255,255,255,0.03)',
+    '--campaign-content-shadow': theme.palette.mode === 'light' 
+      ? '0 2px 8px rgba(12, 21, 90, 0.06)' 
+      : '0 2px 8px rgba(0, 0, 0, 0.3)',
+  };
+
   return (
     <MainLayout title="Campaña">
-      <div className="campaign-page">
+      <div className="campaign-page" style={cssVariables}>
         {/* Header con botones de acción */}
         <div className="campaign-header">
           <h2></h2>
@@ -33,7 +56,7 @@ export default function Campaing() {
               slotProps={{
                 tooltip: {
                   sx: {
-                    bgcolor: '#0C155A',
+                    bgcolor: (theme) => theme.palette.primary.main,
                     fontSize: '0.875rem',
                     fontWeight: 500,
                     py: 1,
@@ -44,7 +67,7 @@ export default function Campaing() {
                 },
                 arrow: {
                   sx: {
-                    color: '#0C155A',
+                    color: (theme) => theme.palette.primary.main,
                   }
                 }
               }}
@@ -52,7 +75,7 @@ export default function Campaing() {
               <Button
                 variant="contained"
                 sx={{
-                  backgroundColor: '#0C155A',
+                  backgroundColor: (theme) => theme.palette.primary.main,
                   color: 'white',
                   borderRadius: '50%',
                   minWidth: '56px',
@@ -62,10 +85,14 @@ export default function Campaing() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 2px 8px rgba(12, 21, 90, 0.2)',
+                  boxShadow: theme.palette.mode === 'light' 
+                    ? '0 2px 8px rgba(12, 21, 90, 0.2)' 
+                    : '0 2px 8px rgba(0, 0, 0, 0.5)',
                   '&:hover': {
-                    backgroundColor: '#1a2b7a',
-                    boxShadow: '0 4px 12px rgba(12, 21, 90, 0.3)',
+                    backgroundColor: (theme) => theme.palette.primary.dark,
+                    boxShadow: theme.palette.mode === 'light' 
+                      ? '0 4px 12px rgba(12, 21, 90, 0.3)' 
+                      : '0 4px 12px rgba(0, 0, 0, 0.7)',
                     transform: 'translateY(-2px)',
                   },
                   transition: 'all 0.2s ease',

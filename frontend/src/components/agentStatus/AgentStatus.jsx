@@ -197,7 +197,7 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
         sx={{ 
           minWidth: 150, 
           minHeight: 40, 
-          backgroundColor: '#D3E8FB', 
+          backgroundColor: (theme) => theme.palette.background.default, 
           borderRadius: 2, 
           paddingX: 1, 
           justifyContent: 'center',
