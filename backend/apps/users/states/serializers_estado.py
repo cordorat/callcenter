@@ -73,25 +73,21 @@ class EstadoAgenteDetalleSerializer(serializers.ModelSerializer):
     """Serializer para historial de estados de agente."""
     
     estado_display = serializers.CharField(
-        source='get_estado_display',
+        source='estado_id.valor',
         read_only=True
     )
     agente_nombre = serializers.CharField(
-        source='agente.full_name',
+        source='agente_id.full_name',
         read_only=True
     )
-    duracion_formateada = serializers.ReadOnlyField()
-    esta_activo = serializers.ReadOnlyField()
     
     class Meta:
         model = EstadoAgenteDetalle
         fields = [
-            'id', 'agente', 'agente_nombre', 'estado', 'estado_display',
-            'estado_parametro', 'fecha', 'hora_inicio', 'hora_fin',
-            'duracion_segundos', 'duracion_formateada', 'esta_activo',
-            'comentarios', 'ip_address', 'user_agent', 'created_at'
+            'id', 'agente_id', 'agente_nombre', 'estado_id', 'estado_display',
+            'tiempo', 'fecha', 'cambios'
         ]
-        read_only_fields = ['created_at', 'duracion_segundos']
+        read_only_fields = []
 
 
 

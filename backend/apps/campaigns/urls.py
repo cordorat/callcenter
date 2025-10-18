@@ -17,6 +17,9 @@ urlpatterns = [
     path('base-datos/<int:pk>/', views.detalle_base_datos, name='detalle-base-datos'),
     path('cargar-bd-registros/<int:pk>/', views.cargar_bd_registros, name='cargar-bd-registros'),
     
+    # Endpoint para iteración de bases de datos
+    path('base-datos/<int:pk>/programar-iteracion/', views.programar_iteracion_bd, name='programar-iteracion-bd'),
+    
     # Incluir rutas del router
     path('', include(router.urls)),
 ]

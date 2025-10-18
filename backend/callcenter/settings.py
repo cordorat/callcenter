@@ -43,6 +43,10 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
+    "drf_spectacular",  # Documentación API
+    # Celery apps
+    "django_celery_beat",
+    "django_celery_results",
     # Local apps
     "apps.authn",
     "apps.users",
@@ -153,7 +157,45 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    # Configuración para drf-spectacular (Swagger/OpenAPI)
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
+# Configuración de drf-spectacular para documentación API
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Call Center API",
+    "DESCRIPTION": "API REST para sistema de Call Center con gestión de agentes, campañas, llamadas y KPIs. Incluye integración con Twilio para VoIP.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],  # Documentación pública
+    "CONTACT": {
+        "name": "Equipo de Desarrollo",
+        "email": "dev@callcenter.com",
+    },
+    "LICENSE": {
+        "name": "Proprietary",
+    },
+    # Configuración de seguridad (JWT) - opcional para testing
+    "SECURITY": [{"bearerAuth": []}, {}],  # {} permite requests sin autenticación en Swagger
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": "/api",
+    "SERVERS": [
+        {"url": "http://localhost:8000", "description": "Servidor de Desarrollo"},
+        {"url": config('SITE_URL', default='http://localhost:8000'), "description": "Servidor de Producción"},
+    ],
+    # Mejoras de UI
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": True,
+        "filter": True,
+    },
+    "REDOC_UI_SETTINGS": {
+        "hideDownloadButton": False,
+        "expandResponses": "200,201",
+    },
+}
+
 
 # Simple JWT
 from datetime import timedelta
@@ -181,6 +223,13 @@ TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER', default='')
 TWILIO_API_KEY = config('TWILIO_API_KEY', default='')
 TWILIO_API_SECRET = config('TWILIO_API_SECRET', default='')
 TWILIO_TWIML_APP_SID = config('TWILIO_TWIML_APP_SID', default='')
+
+# Site URL (para webhooks de Twilio)
+SITE_URL = config('SITE_URL', default='http://localhost:8000')
+
+# Configuración de Iteración Automática
+MAX_INTENTOS = config('MAX_INTENTOS', default=3, cast=int)
+TIEMPO_ESPERA_REASIGNACION = config('TIEMPO_ESPERA_REASIGNACION', default=30, cast=int)
 
 # Validar configuración de Twilio en producción
 if not DEBUG:
@@ -242,3 +291,33 @@ LOGGING = {
         },
     },
 }
+
+# =============================================================================
+# CELERY CONFIGURATION
+# =============================================================================
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Optimizaciones para call center
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4  # Prefetch 4 tareas por worker
+CELERY_TASK_ACKS_LATE = True  # Acknowledge solo cuando termine la tarea
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Reciclar workers cada 1000 tareas
+CELERY_TASK_TIME_LIMIT = 300  # Timeout de 5 minutos por tarea
+CELERY_TASK_SOFT_TIME_LIMIT = 270  # Soft timeout de 4.5 minutos
+
+# Configuración de colas
+CELERY_TASK_ROUTES = {
+    'apps.campaigns.tasks.verificar_bases_programadas': {'queue': 'celery'},
+    'apps.campaigns.tasks.iniciar_iteracion_base': {'queue': 'celery'},
+    'apps.campaigns.tasks.asignar_llamadas_pendientes': {'queue': 'celery'},
+    'apps.campaigns.tasks.procesar_llamada_automatica': {'queue': 'celery'},
+}
+
+# Configuración para almacenar resultados en la DB (opcional)
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'

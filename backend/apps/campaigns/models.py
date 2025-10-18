@@ -167,6 +167,19 @@ class BaseDatosCargada(models.Model):
         auto_now_add=True
     )
     
+    # Control de iteración
+    iteracion_activa = models.BooleanField(
+        'Iteración Activa',
+        default=False,
+        help_text='Indica si la base está actualmente en proceso de iteración'
+    )
+    fecha_hora_inicio_iteracion = models.DateTimeField(
+        'Inicio de Iteración',
+        null=True,
+        blank=True,
+        help_text='Fecha/hora programada o real de inicio de iteración'
+    )
+    
     created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
     updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
     

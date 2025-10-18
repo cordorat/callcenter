@@ -10,6 +10,9 @@ urlpatterns = [
     # Webhooks de Twilio para llamadas
     path('twilio/voice-request/', views.twilio_voice_request, name='twilio_voice_request'),
     path('twilio/incoming-call/', views.twilio_incoming_call, name='twilio_incoming_call'),
+    path('twilio/handle-call/', views.twilio_automated_call_handler, name='twilio_automated_call_handler'),
+    path('twilio/agent-wait-conference/', views.twilio_agent_wait_conference, name='twilio_agent_wait_conference'),
+    path('twilio/join-conference/', views.twilio_join_conference, name='twilio_join_conference'),
     path('twilio/call-status/<int:llamada_id>/', views.twilio_call_status_webhook, name='twilio_call_status_webhook'),
     path('twilio/call-status/', views.twilio_call_status_webhook, name='twilio_call_status_webhook_no_id'),
     path('twilio/recording/', views.twilio_recording_webhook, name='twilio_recording_webhook'),
