@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useEffect, useState, useCallback } from "react";
-import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert, Button } from '@mui/material';
+import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert, Button, Pagination } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import apiClient from '@/core/api/apiClient';
 import { ENDPOINTS } from '@/core/api/endpoints';
