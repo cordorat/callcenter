@@ -9,7 +9,7 @@ import apiClient from '@/core/api/apiClient';
 import { ENDPOINTS } from '@/core/api/endpoints';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-export default function Campaing({ selectedFile = null, onClearFile = null }) {
+export default function Campaing({ selectedFile = null, onClearFile = null, onSelectBase = null, selectedBaseId = null }) {
   const theme = useTheme();
   const [bases, setBases] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -73,6 +73,19 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFile]);
+
+  // Selección de base
+  const [internalSelectedBaseId, setInternalSelectedBaseId] = useState(null);
+
+  // Si el padre controla la selección, usar ese valor
+  const selectedId = selectedBaseId !== undefined && selectedBaseId !== null ? selectedBaseId : internalSelectedBaseId;
+
+  const handleRowClick = (id) => {
+    setInternalSelectedBaseId(id);
+    if (typeof onSelectBase === 'function') {
+      onSelectBase(id);
+    }
+  };
 
   return (
     <Box sx={{ p: 2 }}>
@@ -210,7 +223,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
               <TableBody>
                 {bases.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} sx={{ border: 'none' }}>
+                    <TableCell colSpan={5} sx={{ border: 'none' }}>
                       <Box sx={{
                         display: 'flex',
                         alignItems: 'center',
@@ -247,15 +260,17 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                   bases.map((b, index) => (
                     <TableRow
                       key={b.id}
+                      hover
+                      selected={selectedId === b.id}
+                      onClick={() => handleRowClick(b.id)}
                       sx={{
-                        '&:hover': {
-                          backgroundColor: theme.palette.mode === 'light' 
-                            ? '#F8FBFF' 
-                            : 'rgba(255, 255, 255, 0.05)',
-                        },
-                        backgroundColor: theme.palette.mode === 'light'
-                          ? (index % 2 === 0 ? 'white' : '#FAFCFE')
-                          : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
+                        cursor: 'pointer',
+                        backgroundColor:
+                          selectedId === b.id
+                            ? (theme.palette.mode === 'light' ? '#D2E4FC' : '#223A5A')
+                            : theme.palette.mode === 'light'
+                              ? (index % 2 === 0 ? 'white' : '#FAFCFE')
+                              : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
                         transition: 'background-color 0.2s ease',
                       }}
                     >
@@ -306,7 +321,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                             : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
                       >
-                        
+                        {b.fecha_hora_inicio_iteracion ? new Date(b.fecha_hora_inicio_iteracion).toLocaleString() : '-'}
                       </TableCell>
                       <TableCell 
                         align="center"

@@ -32,3 +32,18 @@ export const updateSalesGoal = async (campaignId, objetivo_ventas) => {
     throw error;
   }
 };
+
+/**
+ * Programar o iniciar iteración de una base de datos
+ * @param {number} baseId - ID de la base de datos
+ * @param {object} payload - { fecha_hora_inicio_iteracion: string } o { iteracion_activa: true }
+ */
+export const programarIteracionBase = async (baseId, payload) => {
+  try {
+    const response = await apiClient.put(`/api/campaigns/base-datos/${baseId}/programar-iteracion/`, payload);
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al programar/iniciar iteración:', error);
+    throw error;
+  }
+};

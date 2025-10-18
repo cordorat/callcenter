@@ -2,7 +2,7 @@
 //Pantalla para gestionar campañas
 
 import * as React from "react";
-import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl } from '@mui/material';
+import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { useTheme } from '@mui/material/styles';
 import MainLayout from '@/core/components/layout/MainLayout';
@@ -17,7 +17,7 @@ import CampaingBD from '@/components/campaing/CampaingBD';
 import Teams from '@/components/campaing/Teams';
 
 // Importar API
-import { getActiveCampaigns, updateSalesGoal } from '@/core/api/campaigns';
+import { getActiveCampaigns, updateSalesGoal, programarIteracionBase } from '@/core/api/campaigns';
 
 // Importar estilos
 import "./Campaing.css";
@@ -48,6 +48,13 @@ export default function Campaing() {
   const [campaigns, setCampaigns] = useState([]);
   const [selectedCampaign, setSelectedCampaign] = useState('');
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  // Snackbar
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const handleCloseSnackbar = () => {
+    setSnackbar(s => ({ ...s, open: false }));
+  };
+  // Selección de base de datos
+  const [selectedBaseId, setSelectedBaseId] = useState(null);
   
   // Estados para meta de ventas
   const [salesGoal, setSalesGoal] = useState('');
@@ -120,6 +127,62 @@ export default function Campaing() {
     setIsEditingSalesGoal(false);
   };
 
+  // Convierte string tipo 'YYYY-MM-DDTHH:mm' a ISO con zona horaria local
+  function toLocalISOStringWithTZ(str) {
+    const date = new Date(str);
+    const tzOffset = -date.getTimezoneOffset();
+    const diff = tzOffset >= 0 ? '+' : '-';
+    const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
+    return (
+      date.getFullYear() +
+      '-' + pad(date.getMonth() + 1) +
+      '-' + pad(date.getDate()) +
+      'T' + pad(date.getHours()) +
+      ':' + pad(date.getMinutes()) +
+      ':' + pad(date.getSeconds()) +
+      diff + pad(tzOffset / 60) + ':' + pad(tzOffset % 60)
+    );
+  }
+
+  // Handler para iniciar la iteración
+  const handleIniciarIteracion = async () => {
+    if (!selectedBaseId) {
+      setSnackbar({
+        open: true,
+        message: 'Selecciona una base de datos de la tabla para iniciar la iteración.',
+        severity: 'warning'
+      });
+      return;
+    }
+    const baseId = selectedBaseId;
+    const fechaISO = toLocalISOStringWithTZ(from); // ahora incluye zona horaria
+    try {
+      await programarIteracionBase(baseId, { fecha_hora_inicio_iteracion: fechaISO });
+      setSnackbar({
+        open: true,
+        message: '¡La iteración de la base de datos fue programada exitosamente! Puedes ver la fecha en la columna correspondiente.',
+        severity: 'success'
+      });
+    } catch (error) {
+      let backendMsg = 'No se pudo programar la iteración. Por favor verifica la campaña y la fecha seleccionada.';
+      if (error && error.response && error.response.data) {
+        if (typeof error.response.data === 'string') {
+          backendMsg = error.response.data;
+        } else if (error.response.data.detail) {
+          backendMsg = error.response.data.detail;
+        } else if (typeof error.response.data === 'object') {
+          backendMsg = Object.values(error.response.data).join(' ');
+        }
+      }
+      setSnackbar({
+        open: true,
+        message: 'No se pudo programar la iteración. Por favor verifica la campaña y la fecha seleccionada.',
+        severity: 'error'
+      });
+      console.error('Error al programar iteración:', error);
+    }
+  };
+
   // Variables CSS dinámicas según el tema
   const cssVariables = {
     '--text-primary': theme.palette.text.primary,
@@ -143,6 +206,42 @@ export default function Campaing() {
 
   return (
     <MainLayout title="Campaña">
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={4000} 
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        sx={{ mt: 8 }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ 
+            width: '100%',
+            minWidth: '320px',
+            borderRadius: '10px',
+            backgroundColor: snackbar.severity === 'success' ? '#0f9d58' : 
+                            snackbar.severity === 'error' ? '#d32f2f' : 
+                            snackbar.severity === 'warning' ? '#f57c00' : '#1976d2',
+            color: '#fff',
+            boxShadow: '0 4px 12px rgba(12, 21, 90, 0.15)',
+            fontWeight: 500,
+            fontSize: '0.95rem',
+            '& .MuiAlert-icon': {
+              fontSize: '1.3rem',
+              color: '#fff',
+            },
+            '& .MuiAlert-message': {
+              fontSize: '0.95rem',
+              fontWeight: 500,
+              color: '#fff',
+            },
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
       <div className="campaign-page" style={cssVariables}>
         {/* Header con controles */}
         <div className="campaign-header">
@@ -351,6 +450,7 @@ export default function Campaing() {
                     fontSize: '1.8rem',
                   },
                 }}
+                onClick={handleIniciarIteracion}
               >
                 <PlayCircleFilledIcon />
               </Button>
@@ -381,7 +481,12 @@ export default function Campaing() {
         <div className="campaign-content">
           {currentTab === "database" && (
             <div className="campaign-tab-panel">
-              <CampaingBD selectedFile={selectedFile} onClearFile={() => setSelectedFile(null)} />
+              <CampaingBD
+                selectedFile={selectedFile}
+                onClearFile={() => setSelectedFile(null)}
+                onSelectBase={setSelectedBaseId}
+                selectedBaseId={selectedBaseId}
+              />
             </div>
           )}
 
