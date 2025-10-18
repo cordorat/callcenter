@@ -18,12 +18,23 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
   const [snackOpen, setSnackOpen] = useState(false);
   const [snackMessage, setSnackMessage] = useState('');
   const [snackSeverity, setSnackSeverity] = useState('success');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 10; // cantidad de registros por página
 
-  const fetchBases = useCallback(async (page = 1) => {
+  const fetchBases = useCallback(async (pageNumber = 1) => {
     try {
       setLoading(true);
-      const { data } = await apiClient.get(ENDPOINTS.CAMPAIGNS_LIST, { params: { page } });
+      const { data } = await apiClient.get(ENDPOINTS.CAMPAIGNS_LIST, { 
+        params: { 
+          page: pageNumber,
+          page_size: pageSize 
+        } 
+      });
       setBases(data.results || []);
+      setTotalCount(data.count || 0);
+      setTotalPages(Math.ceil((data.count || 0) / pageSize));
     } catch (err) {
       console.error('Error fetching bases:', err);
       setError('No se pudieron obtener las bases de datos');
@@ -33,8 +44,12 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
   }, []);
 
   useEffect(() => {
-    fetchBases();
-  }, [fetchBases]);
+    fetchBases(page);
+  }, [page]);
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+  };
 
   const handleFileSelect = async (file) => {
     const campanaId = 1;
@@ -49,7 +64,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       console.info('Upload response:', res.data);
-      await fetchBases();
+      await fetchBases(page);
       setSnackMessage('Base de datos subida correctamente');
       setSnackSeverity('success');
       setSnackOpen(true);
@@ -145,7 +160,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
           sx={{ 
             backgroundColor: theme.palette.background.paper,
             borderRadius: 2,
-            overflow: 'hidden', // Importante para que las esquinas se vean redondeadas
+            overflow: 'hidden',
           }}
         >
           {error && (
@@ -342,6 +357,23 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
                 )}
               </TableBody>
             </Table>
+
+            {/* Paginación */}
+            {bases.length > 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Mostrando {bases.length} de {totalCount} bases de datos
+                </Typography>
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={handlePageChange}
+                  color="primary"
+                  shape="rounded"
+                  size="medium"
+                />
+              </Box>
+            )}
           </Box>
         </Paper>
       )}

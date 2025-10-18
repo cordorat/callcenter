@@ -15,24 +15,33 @@ import {
   Chip,
   CircularProgress,
   Alert,
-  Stack
+  Stack,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
-  Groups as GroupsIcon
+  Groups as GroupsIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { getEquipos } from '@/core/api/equipos';
 
-export default function Teams() {
+export default function Teams({ 
+  searchTerm = '', 
+  onEditTeam, 
+  onDeleteTeam, 
+  showActions = false 
+}) {
   const theme = useTheme();
   const [equipos, setEquipos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Cargar equipos al montar el componente
+  // Cargar equipos al montar el componente o cuando cambie searchTerm
   useEffect(() => {
     loadEquipos();
-  }, []);
+  }, [searchTerm]);
 
   /**
    * Carga la lista de equipos desde el backend
@@ -41,7 +50,8 @@ export default function Teams() {
     try {
       setLoading(true);
       setError(null);
-      const response = await getEquipos();
+      const params = searchTerm ? { search: searchTerm } : {};
+      const response = await getEquipos(params);
       
       if (response.success) {
         setEquipos(response.equipos || []);
@@ -78,13 +88,17 @@ export default function Teams() {
           textAlign: 'center', 
           py: 8,
           backgroundColor: theme.palette.background.paper,
+          borderRadius: 2,
         }}>
           <GroupsIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
           <Typography variant="h6" color="text.secondary">
-            No hay equipos creados
+            {searchTerm ? 'No se encontraron equipos' : 'No hay equipos creados'}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Los equipos se crean desde el módulo de "Equipos" por el Jefe de Centro
+            {searchTerm 
+              ? 'Intenta con otro criterio de búsqueda'
+              : 'Los equipos se crean desde el módulo de "Equipos" por el Jefe de Centro'
+            }
           </Typography>
         </Paper>
       )}
@@ -96,7 +110,7 @@ export default function Teams() {
           sx={{ 
             backgroundColor: theme.palette.background.paper,
             borderRadius: 2,
-            overflow: 'hidden', // Importante para que las esquinas se vean redondeadas
+            overflow: 'hidden',
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -151,6 +165,21 @@ export default function Teams() {
                   >
                     Miembros
                   </TableCell>
+                  {showActions && (
+                    <TableCell 
+                      sx={{ 
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        color: theme.palette.text.primary,
+                        borderBottom: `2px solid ${theme.palette.primary.main}`,
+                        py: 2,
+                        width: 120,
+                        textAlign: 'center'
+                      }}
+                    >
+                      Acciones
+                    </TableCell>
+                  )}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -264,6 +293,53 @@ export default function Teams() {
                         </Typography>
                       )}
                     </TableCell>
+
+                    {/* Acciones */}
+                    {showActions && (
+                      <TableCell 
+                        sx={{ 
+                          borderBottom: theme.palette.mode === 'light' 
+                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <Stack direction="row" spacing={0.5} justifyContent="center">
+                          <Tooltip title="Editar equipo" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => onEditTeam && onEditTeam(equipo)}
+                              sx={{
+                                bgcolor: 'action.hover',
+                                '&:hover': {
+                                  bgcolor: 'primary.main',
+                                  color: 'white',
+                                },
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Eliminar equipo" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => onDeleteTeam && onDeleteTeam(equipo)}
+                              sx={{
+                                bgcolor: 'action.hover',
+                                '&:hover': {
+                                  bgcolor: 'error.main',
+                                  color: 'white',
+                                },
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
