@@ -312,6 +312,7 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
         <Button 
           onClick={handleClose}
           disabled={loading || !!successMessage}
+          variant="outlined"
         >
           {successMessage ? 'Cerrar' : 'Cancelar'}
         </Button>

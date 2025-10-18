@@ -1,64 +1,20 @@
-import * as react from 'react';
-import { useState } from 'react';
-import './Dashboard.css';
-import MainLayout from '@/core/components/layout/MainLayout';
-import { useAuth } from '@/core/context/AuthContext';
-import ConfirmDialog from '@/components/forms/ConfirmDialog';
-import { Typography, Box } from '@mui/material';
+// PATH: src/pages/Dashboard/Dashboard.jsx
+import * as React from "react";
+import { useAuth } from "@/core/context/AuthContext";
+import AdminDashboard from "./AdminDashboard";
+import AgenteDashboard from "./AgenteDashboard";
 
-const Dashboard = () => {
-  const { user, logout } = useAuth();
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  const handleLogoutClick = () => {
-    setDialogOpen(true);
-  };
-
-  const handleConfirmLogout = () => {
-    logout();
-  };
-
-  const handleStatusChange = (newStatus) => {
-    setCurrentStatus(newStatus);
-  };
-
-  return (
-    <MainLayout title="Dashboard">
-      <Box className="dashboard-container">
-        <Typography variant="h3" color="text.primary" gutterBottom>
-          Panel de Control
-        </Typography>
-        <Typography variant="h6" color="text.secondary">
-          Has iniciado sesión correctamente
-        </Typography>
-        
-        {user && (
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="h6" color="text.secondary">
-              <strong>Usuario:</strong> {user.email}
-            </Typography>
-            <Typography variant="h6" color="text.secondary">
-              <strong>Nombre:</strong> {user.first_name} {user.last_name}
-            </Typography>
-            <Typography variant="h6" color="text.secondary">
-              <strong>Rol:</strong> {user.role}
-            </Typography>
-          </Box>
-        )}
-
-        {/* Diálogo de confirmación para cerrar sesión */}
-        <ConfirmDialog
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          onConfirm={handleConfirmLogout}
-          title="Confirmar cierre de sesión"
-          message="¿Está seguro de que desea cerrar la sesión?"
-          confirmText="Cerrar sesión"
-          cancelText="Cancelar"
-        />
-      </Box>
-    </MainLayout>
-  );
+// Mapeo de componentes por rol (Patrón moderno)
+const DASHBOARD_BY_ROLE = {
+  ADMIN: AdminDashboard,
+  AGENTE: AgenteDashboard,
 };
 
-export default Dashboard;
+export default function Dashboard() {
+  const { user } = useAuth();
+  
+  // Seleccionar el componente correcto según el rol
+  const DashboardComponent = DASHBOARD_BY_ROLE[user?.role] || AgenteDashboard;
+  
+  return <DashboardComponent />;
+}

@@ -9,6 +9,8 @@ import Campaing from '../pages/Campaing/Campaing';
 import Teams from '../pages/Teams/Teams';
 import PrivateRoute from './PrivateRoute';
 import Settings from '../pages/Settings/Settings';
+import Usuarios from '../pages/Usuario/Usuarios';
+import CrearUsuario from '../pages/Usuario/CrearUsuario';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -55,6 +57,18 @@ const AppRoutes = () => {
             <Campaing />
           </PrivateRoute>
         } />
+
+        <Route path="/usuarios" element={
+          <PrivateRoute>
+            <Usuarios />
+          </PrivateRoute>
+        } />
+
+        <Route path="/crear-usuario" element={
+          <PrivateRoute>
+            <CrearUsuario />
+          </PrivateRoute>
+        } />        
 
         <Route path="/equipos" element={
           <PrivateRoute>
