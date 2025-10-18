@@ -49,7 +49,6 @@ coverage.xml
 # !*/migrations/__init__.py
 
 trash/
-
 celerybeat-schedule
 celerybeat-schedule-shm
 celerybeat-schedule-wal
