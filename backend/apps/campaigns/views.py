@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 import csv
 import random
 from rest_framework.views import APIView
@@ -113,6 +114,112 @@ def cargar_bd_registros(request, pk):
         "page_size": paginator.per_page,
         "results": serializer.data
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['PUT'])
+def programar_iteracion_bd(request, pk):
+    """
+    PUT /api/campaigns/base-datos/<pk>/programar-iteracion/
+    
+    Programa o inicia la iteración de una base de datos.
+    
+    Opciones:
+    1. Iniciar AHORA: { "iteracion_activa": true }
+    2. Programar: { "fecha_hora_inicio_iteracion": "2025-10-20T14:30:00-05:00" }
+    
+    Solo se puede enviar UNO de los dos parámetros a la vez.
+    """
+    try:
+        base = BaseDatosCargada.objects.get(pk=pk)
+        
+        iteracion_activa = request.data.get('iteracion_activa')
+        fecha_hora = request.data.get('fecha_hora_inicio_iteracion')
+        
+        # Validar que solo se envíe uno
+        if iteracion_activa is not None and fecha_hora is not None:
+            return Response(
+                {'error': 'Solo puede enviar iteracion_activa O fecha_hora_inicio_iteracion, no ambos.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if iteracion_activa is None and fecha_hora is None:
+            return Response(
+                {'error': 'Debe enviar iteracion_activa o fecha_hora_inicio_iteracion.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Opción 1: Iniciar AHORA
+        if iteracion_activa is True:
+            if base.iteracion_activa:
+                return Response(
+                    {'error': 'La iteración ya está activa.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Importar la tarea de Celery
+            from apps.campaigns.tasks import iniciar_iteracion_base
+            
+            # Guardar hora actual y marcar como activa
+            base.fecha_hora_inicio_iteracion = timezone.now()
+            base.iteracion_activa = True
+            base.save()
+            
+            # Lanzar tarea asíncrona
+            iniciar_iteracion_base.delay(base.id)
+            
+            return Response({
+                'mensaje': 'Iteración iniciada correctamente.',
+                'base_datos_id': base.id,
+                'fecha_hora_inicio': base.fecha_hora_inicio_iteracion,
+                'iteracion_activa': base.iteracion_activa
+            }, status=status.HTTP_200_OK)
+        
+        # Opción 2: Programar para después
+        if fecha_hora is not None:
+            from datetime import datetime
+            
+            try:
+                # Parsear fecha
+                if isinstance(fecha_hora, str):
+                    fecha_hora_obj = datetime.fromisoformat(fecha_hora.replace('Z', '+00:00'))
+                else:
+                    fecha_hora_obj = fecha_hora
+                
+                # Validar que sea futura
+                if fecha_hora_obj <= timezone.now():
+                    return Response(
+                        {'error': 'La fecha debe ser futura.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Guardar fecha programada (sin activar todavía)
+                base.fecha_hora_inicio_iteracion = fecha_hora_obj
+                base.iteracion_activa = False  # No se activa hasta que llegue la hora
+                base.save()
+                
+                return Response({
+                    'mensaje': 'Iteración programada correctamente.',
+                    'base_datos_id': base.id,
+                    'fecha_hora_inicio_programada': base.fecha_hora_inicio_iteracion,
+                    'iteracion_activa': base.iteracion_activa
+                }, status=status.HTTP_200_OK)
+                
+            except (ValueError, TypeError) as e:
+                return Response(
+                    {'error': f'Formato de fecha inválido: {str(e)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+    except BaseDatosCargada.DoesNotExist:
+        return Response(
+            {'error': 'Base de datos no encontrada.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 class ClienteViewSet(viewsets.ModelViewSet):

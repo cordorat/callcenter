@@ -21,6 +21,7 @@ const useTwilioCall = () => {
   const [error, setError] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
   const [callStatus, setCallStatus] = useState('idle'); // idle, connecting, ringing, in-call
+  const [currentCallInfo, setCurrentCallInfo] = useState(null); // Información de la llamada activa (registro del backend)
   
   const timerRef = useRef(null);
 
@@ -46,10 +47,18 @@ const useTwilioCall = () => {
         });
 
         twilioClient.onIncoming((call) => {
-          console.log('[useTwilioCall] Llamada entrante');
+          console.log('[useTwilioCall] Llamada entrante - Auto-aceptando para llamadas automáticas');
           setIncomingCall(call);
           setCallStatus('ringing');
           setIsRinging(true);
+          
+          // AUTO-ACEPTAR llamadas entrantes (para llamadas automáticas)
+          // El sistema de llamadas automáticas ya conectó al cliente,
+          // solo falta que el agente acepte para unirse a la conversación
+          setTimeout(() => {
+            console.log('[useTwilioCall] Auto-aceptando llamada entrante');
+            twilioClient.acceptIncomingCall();
+          }, 100); // Pequeño delay para que los eventos se registren correctamente
         });
 
         twilioClient.onRinging(() => {
@@ -60,52 +69,56 @@ const useTwilioCall = () => {
 
         twilioClient.onConnect(async (call) => {
           console.log('[useTwilioCall] Llamada conectada');
+          console.log('[useTwilioCall] Call parameters:', call.parameters);
+          
           setIsInCall(true);
           setIsRinging(false);
           setCallStatus('in-call');
           setIncomingCall(null);
           
+          // Obtener información de la llamada del backend (si es llamada automática)
+          try {
+            const callSid = call.parameters.CallSid;
+            if (callSid) {
+              console.log('[useTwilioCall] Obteniendo información de llamada con CallSid:', callSid);
+              
+              // TODO: Hacer request al backend para obtener registro de Llamada
+              // const response = await apiClient.get(`/api/calls/by-sid/${callSid}/`);
+              // setCurrentCallInfo(response.data);
+              // console.log('[useTwilioCall] Información de llamada obtenida:', response.data);
+            }
+          } catch (err) {
+            console.error('[useTwilioCall] Error obteniendo información de llamada:', err);
+          }
+          
           // Iniciar contador de duración
           startCallTimer();
           
-          // Cambiar automáticamente el estado del agente a EN_LLAMADA
-          try {
-            console.log('[useTwilioCall] Cambiando estado del agente a EN_LLAMADA');
-            const backendState = mapFrontendToBackend('CALL');
-            
-            // Esperamos la respuesta del servidor antes de notificar
-            await changeState(backendState, 'Llamada conectada automáticamente');
-            
-            console.log('[useTwilioCall] Estado cambiado exitosamente a EN_LLAMADA, notificando listeners...');
-            
-            // Notificar a los listeners DESPUÉS de que el cambio fue exitoso
-            stateChangeListeners.forEach(listener => {
-              try {
-                listener();
-              } catch (err) {
-                console.error('[useTwilioCall] Error en listener:', err);
-              }
-            });
-          } catch (err) {
-            console.error('[useTwilioCall] Error al cambiar estado del agente:', err);
-            // Aún así notificar para que intenten refrescar
-            stateChangeListeners.forEach(listener => {
-              try {
-                listener();
-              } catch (listenerErr) {
-                console.error('[useTwilioCall] Error en listener:', listenerErr);
-              }
-            });
-          }
+          // NO cambiar estado aquí para llamadas automáticas
+          // El backend ya cambió el estado a EN_LLAMADA cuando inició la llamada
+          // Solo notificar a los listeners para refrescar UI
+          console.log('[useTwilioCall] Llamada conectada, notificando listeners para refrescar UI...');
+          stateChangeListeners.forEach(listener => {
+            try {
+              listener();
+            } catch (err) {
+              console.error('[useTwilioCall] Error en listener:', err);
+            }
+          });
         });
 
-        twilioClient.onDisconnect(async () => {
+        twilioClient.onDisconnect(async (call) => {
           console.log('[useTwilioCall] Llamada desconectada');
+          console.log('[useTwilioCall] Call info:', call);
+          console.log('[useTwilioCall] Was in call:', isInCall);
+          console.log('[useTwilioCall] Call duration:', callDuration);
+          
           setIsInCall(false);
           setIsRinging(false);
           setCallStatus('idle');
           setIsMuted(false);
           setIncomingCall(null);
+          setCurrentCallInfo(null); // Limpiar información de llamada
           
           // Detener contador de duración primero
           stopCallTimer();
@@ -307,6 +320,7 @@ const useTwilioCall = () => {
     callStatus,
     error,
     incomingCall,
+    currentCallInfo, // Información de la llamada activa
     
     // Acciones
     makeCall,

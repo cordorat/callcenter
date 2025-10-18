@@ -48,9 +48,9 @@ class FormularioVentaSerializer(serializers.ModelSerializer):
     class Meta:
         model = FormularioVenta
         fields = [
-            'formulario_id', 'llamada_id', 'cliente_id', 'venta_id',
-            'datos_formulario'
+            'id', 'llamada', 'agente', 'campos_json'
         ]
+        read_only_fields = ['id']
     
     def validate_datos_formulario(self, value):
         """Valida que datos_formulario sea un diccionario válido."""
@@ -76,15 +76,15 @@ class IteracionClienteSerializer(serializers.ModelSerializer):
     class Meta:
         model = IteracionCliente
         fields = [
-            'id', 'campana_id', 'cliente_id',
-            'estado_interacion_llamada_id', 'intento'
+            'id', 'campana', 'cliente',
+            'estado_iteracion', 'intento'
         ]
     
     def validate_estado_interacion_llamada_id(self, value):
         """Valida que el estado sea de tipo ESTADO_INTERACION_LLAMADA."""
         if value:
             estados_validos = EstadosHelper.get_estados_por_categoria('ESTADO_INTERACION_LLAMADA')
-            if value not in estados_validos:
+            if value.id not in [e.id for e in estados_validos]:
                 raise serializers.ValidationError(
                     'El estado debe ser de tipo ESTADO_INTERACION_LLAMADA.'
                 )
@@ -99,11 +99,7 @@ class LlamadaSerializer(serializers.ModelSerializer):
         read_only=True
     )
     cliente_nombre = serializers.CharField(
-        source='cliente_id.nombre_completo',
-        read_only=True
-    )
-    campana_nombre = serializers.CharField(
-        source='campana_id.nombre',
+        source='cliente.nombre',
         read_only=True
     )
     duracion_total_formateada = serializers.ReadOnlyField()
@@ -111,22 +107,26 @@ class LlamadaSerializer(serializers.ModelSerializer):
         source='estado_venta.valor',
         read_only=True
     )
+    estado_llamada_valor = serializers.CharField(
+        source='estado_llamada.valor',
+        read_only=True
+    )
     
     class Meta:
         model = Llamada
         fields = [
-            'llamada_sid', 'agente', 'agente_nombre', 'cliente_id',
-            'cliente_nombre', 'campana_id', 'campana_nombre',
-            'telefono_origen', 'telefono_destino', 'hora_inicio_timbrado',
-            'hora_inicio_llamada', 'hora_fin_llamada', 'duracion_timbrado_segundos',
-            'duracion_llamada_segundos', 'duracion_total_formateada', 
-            'grabacion_url', 'grabacion_duracion',
+            'id', 'agente', 'agente_nombre', 'cliente', 'cliente_nombre',
+            'venta', 'telefono_origen', 'telefono_destino',
+            'fecha_hora_inicio', 'fecha_hora_fin', 'duracion',
+            'duracion_total_formateada', 'grabacion_url',
             'twilio_call_sid', 'twilio_status', 'twilio_recording_sid',
-            'twilio_recording_url', 'agente_anterior', 
-            'estado_venta', 'estado_venta_valor', 'estado_recibida'
+            'twilio_recording_url', 'transcipcion',
+            'estado_llamada', 'estado_llamada_valor',
+            'estado_venta', 'estado_venta_valor',
+            'estado_reportada', 'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'duracion_timbrado_segundos', 'duracion_llamada_segundos'
+            'id', 'duracion', 'created_at', 'updated_at'
         ]
 
 

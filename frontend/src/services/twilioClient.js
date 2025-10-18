@@ -11,6 +11,7 @@ class TwilioClientService {
     this.activeCall = null;
     this.token = null;
     this.isReady = false;
+    this.processedCallSids = new Set(); // Para deduplicar llamadas
     
     // Callbacks para eventos
     this.onReadyCallback = null;
@@ -84,7 +85,19 @@ class TwilioClientService {
 
     // Llamada entrante
     this.device.on('incoming', (call) => {
+      const callSid = call.parameters.CallSid;
       console.log('[Twilio] Llamada entrante:', call.parameters);
+      
+      // Deduplicar: Ignorar si ya procesamos esta llamada
+      if (this.processedCallSids.has(callSid)) {
+        console.log('[Twilio] ⚠️ Llamada duplicada detectada, ignorando:', callSid);
+        return;
+      }
+      
+      // Marcar como procesada
+      this.processedCallSids.add(callSid);
+      console.log('[Twilio] ✓ Primera vez que recibimos esta llamada:', callSid);
+      
       this.activeCall = call;
       
       // Registrar listeners de la llamada
@@ -137,6 +150,14 @@ class TwilioClientService {
     // Llamada desconectada
     call.on('disconnect', () => {
       console.log('[Twilio] Llamada desconectada');
+      
+      // Limpiar del Set de llamadas procesadas
+      const callSid = call.parameters?.CallSid;
+      if (callSid) {
+        this.processedCallSids.delete(callSid);
+        console.log('[Twilio] ✓ CallSid removido del Set:', callSid);
+      }
+      
       this.activeCall = null;
       if (this.onDisconnectCallback) {
         this.onDisconnectCallback(call);
@@ -146,6 +167,14 @@ class TwilioClientService {
     // Llamada cancelada
     call.on('cancel', () => {
       console.log('[Twilio] Llamada cancelada');
+      
+      // Limpiar del Set de llamadas procesadas
+      const callSid = call.parameters?.CallSid;
+      if (callSid) {
+        this.processedCallSids.delete(callSid);
+        console.log('[Twilio] ✓ CallSid removido del Set (cancelado):', callSid);
+      }
+      
       this.activeCall = null;
       if (this.onDisconnectCallback) {
         this.onDisconnectCallback(call);
@@ -155,6 +184,14 @@ class TwilioClientService {
     // Llamada rechazada
     call.on('reject', () => {
       console.log('[Twilio] Llamada rechazada');
+      
+      // Limpiar del Set de llamadas procesadas
+      const callSid = call.parameters?.CallSid;
+      if (callSid) {
+        this.processedCallSids.delete(callSid);
+        console.log('[Twilio] ✓ CallSid removido del Set (rechazado):', callSid);
+      }
+      
       this.activeCall = null;
       if (this.onDisconnectCallback) {
         this.onDisconnectCallback(call);

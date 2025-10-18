@@ -4,10 +4,12 @@
 import * as React from "react";
 import { useEffect, useState, useCallback } from "react";
 import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import apiClient from '@/core/api/apiClient';
 import { ENDPOINTS } from '@/core/api/endpoints';
 
 export default function Campaing({ selectedFile = null, onClearFile = null }) {
+  const theme = useTheme();
   const [bases, setBases] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -88,22 +90,24 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
             width: '100%',
             minWidth: '320px',
             borderRadius: '10px',
-            backgroundColor: '#EBF5FE',
+            backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)',
             borderWidth: '2px',
             borderColor: snackSeverity === 'success' ? '#0f9d58' :
               snackSeverity === 'error' ? '#d32f2f' :
-                snackSeverity === 'warning' ? '#f57c00' : '#0C155A',
-            boxShadow: '0 4px 12px rgba(12, 21, 90, 0.15)',
+                snackSeverity === 'warning' ? '#f57c00' : theme.palette.primary.main,
+            boxShadow: theme.palette.mode === 'light'
+              ? '0 4px 12px rgba(12, 21, 90, 0.15)'
+              : '0 4px 12px rgba(0, 0, 0, 0.5)',
             '& .MuiAlert-icon': {
               fontSize: '1.3rem',
               color: snackSeverity === 'success' ? '#0f9d58' :
                 snackSeverity === 'error' ? '#d32f2f' :
-                  snackSeverity === 'warning' ? '#f57c00' : '#0C155A',
+                  snackSeverity === 'warning' ? '#f57c00' : theme.palette.primary.main,
             },
             '& .MuiAlert-message': {
               fontSize: '0.9rem',
               fontWeight: 500,
-              color: '#0C155A',
+              color: theme.palette.text.primary,
             },
           }}
         >
@@ -119,14 +123,15 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
 
       {loading && !uploading ? (
         <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress sx={{ color: '#0C155A' }} />
+          <CircularProgress sx={{ color: theme.palette.primary.main }} />
         </Box>
       ) : (
         <Paper
           elevation={0}
           sx={{
-            backgroundColor: 'white',
+            backgroundColor: theme.palette.background.paper,
             borderRadius: 2,
+            overflow: 'hidden', // Importante para que las esquinas se vean redondeadas
           }}
         >
           {error && (
@@ -138,13 +143,13 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: '#EBF5FE' }}>
+                <TableRow sx={{ backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)' }}>
                   <TableCell
                     sx={{
                       fontWeight: 700,
                       fontSize: '0.9rem',
-                      color: '#0C155A',
-                      borderBottom: '2px solid #0C155A',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
                       py: 2,
                     }}
                   >
@@ -154,8 +159,8 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                     sx={{
                       fontWeight: 700,
                       fontSize: '0.9rem',
-                      color: '#0C155A',
-                      borderBottom: '2px solid #0C155A',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
                       py: 2,
                     }}
                   >
@@ -165,8 +170,8 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                     sx={{
                       fontWeight: 700,
                       fontSize: '0.9rem',
-                      color: '#0C155A',
-                      borderBottom: '2px solid #0C155A',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
                       py: 2,
                     }}
                   >
@@ -188,7 +193,9 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                       }}>
                         <Typography
                           sx={{
-                            color: 'rgba(12, 21, 90, 0.5)',
+                            color: theme.palette.mode === 'light'
+                              ? 'rgba(12, 21, 90, 0.5)'
+                              : 'rgba(255, 255, 255, 0.5)',
                             fontSize: '1.1rem',
                             fontWeight: 500,
                           }}
@@ -197,7 +204,9 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                         </Typography>
                         <Typography
                           sx={{
-                            color: 'rgba(12, 21, 90, 0.4)',
+                            color: theme.palette.mode === 'light'
+                              ? 'rgba(12, 21, 90, 0.4)'
+                              : 'rgba(255, 255, 255, 0.4)',
                             fontSize: '0.9rem',
                           }}
                         >
@@ -212,36 +221,46 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                       key={b.id}
                       sx={{
                         '&:hover': {
-                          backgroundColor: '#F8FBFF',
+                          backgroundColor: theme.palette.mode === 'light'
+                            ? '#F8FBFF'
+                            : 'rgba(255, 255, 255, 0.05)',
                         },
-                        backgroundColor: index % 2 === 0 ? 'white' : '#FAFCFE',
+                        backgroundColor: theme.palette.mode === 'light'
+                          ? (index % 2 === 0 ? 'white' : '#FAFCFE')
+                          : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
                         transition: 'background-color 0.2s ease',
                       }}
                     >
                       <TableCell
                         sx={{
-                          color: '#0C155A',
+                          color: theme.palette.text.primary,
                           fontWeight: 600,
                           fontSize: '0.85rem',
-                          borderBottom: '1px solid rgba(12, 21, 90, 0.1)',
+                          borderBottom: theme.palette.mode === 'light'
+                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
                       >
                         {b.id}
                       </TableCell>
                       <TableCell
                         sx={{
-                          color: '#0C155A',
+                          color: theme.palette.text.primary,
                           fontSize: '0.85rem',
-                          borderBottom: '1px solid rgba(12, 21, 90, 0.1)',
+                          borderBottom: theme.palette.mode === 'light'
+                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
                       >
                         {b.nombre_bd}
                       </TableCell>
                       <TableCell
                         sx={{
-                          color: 'rgba(12, 21, 90, 0.7)',
+                          color: theme.palette.text.secondary,
                           fontSize: '0.85rem',
-                          borderBottom: '1px solid rgba(12, 21, 90, 0.1)',
+                          borderBottom: theme.palette.mode === 'light'
+                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
                       >
                         {b.campana || '-'}
