@@ -3,6 +3,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 import csv
+import chardet
 import random
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -24,28 +25,49 @@ class CargarBaseDatosView(APIView):
     def post(self, request, *args, **kwargs):
         campana_id = request.data.get("campana_id")
         file = request.FILES.get("file")
+
         if not file:
             return Response({"error": "Debe subir un archivo CSV"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Crear registro de carga
         base_datos = BaseDatosCargada.objects.create(
             campana_id=campana_id,
             nombre_bd=file.name
         )
         base_datos_id = base_datos.id
 
-        decoded_file = file.read().decode('utf-8').splitlines()
+        # Detectar codificación del archivo
+        raw_data = file.read()
+        result = chardet.detect(raw_data)
+        encoding = result["encoding"] or "utf-8"
+        print(f"📄 Codificación detectada: {encoding}")
+
+        # Decodificar con la codificación detectada
+        try:
+            decoded_file = raw_data.decode(encoding, errors="replace").splitlines()
+        except Exception as e:
+            return Response({"error": f"Error al decodificar el archivo: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Leer CSV de forma segura
         reader = csv.DictReader(decoded_file)
 
         clientes_creados = 0
         for row in reader:
-            row_normalized = {k.strip().lower(): v for k, v in row.items()}
+            # Normalizar claves (sin espacios ni mayúsculas)
+            row_normalized = {
+                (k.strip().lower() if k else ""): (v.strip() if isinstance(v, str) else v)
+                for k, v in row.items()
+            }
 
+            # Detectar nombre y teléfono con tolerancia
             nombre_field = next((k for k in row_normalized.keys() if "nombre" in k), None)
-            telefono_field = next((k for k in row_normalized.keys() if "tel" in k), None)            
-            nombre = row_normalized.get(nombre_field,"" ) 
-            telefono = row_normalized.get(telefono_field, "")
+            telefono_field = next((k for k in row_normalized.keys() if "tel" in k), None)
 
-            # Guardar todos los demás campos en JSON
-            otros = {k: v for k, v in row.items() if k.lower() not in ["nombre", "telefono"]}
+            nombre = row_normalized.get(nombre_field, "") or ""
+            telefono = row_normalized.get(telefono_field, "") or ""
+
+            # Guardar el resto como JSON limpio
+            otros = {k: v for k, v in row_normalized.items() if k not in [nombre_field, telefono_field]}
 
             Cliente.objects.create(
                 base_datos_id=base_datos_id,
@@ -57,7 +79,10 @@ class CargarBaseDatosView(APIView):
             clientes_creados += 1
 
         return Response(
-            {"mensaje": f"Base de datos cargada correctamente. {clientes_creados} clientes registrados."},
+            {
+                "mensaje": f"Base de datos cargada correctamente. {clientes_creados} clientes registrados.",
+                "codificacion_detectada": encoding
+            },
             status=status.HTTP_201_CREATED
         )
 @api_view(['GET'])

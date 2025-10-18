@@ -171,6 +171,7 @@ class BaseDatosCargada(models.Model):
     iteracion_activa = models.BooleanField(
         'Iteración Activa',
         default=False,
+        null=True,
         help_text='Indica si la base está actualmente en proceso de iteración'
     )
     fecha_hora_inicio_iteracion = models.DateTimeField(
