@@ -22,6 +22,7 @@ from apps.calls.serializers import (
 )
 from common.estados_helper import get_estado_id
 from apps.campaigns.serializers import ClienteSerializer
+from rest_framework.decorators import api_view
 
 class ClienteViewSet(viewsets.ModelViewSet):
     """
@@ -486,3 +487,32 @@ class FormularioVentaViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='client-by-call-sid/(?P<call_sid>[^/.]+)')
+    def get_client_info_by_call_sid(self, request, call_sid):
+        """
+        GET /api/calls/client-by-call-sid/{call_sid}/
+        Devuelve información del cliente usando el call_sid
+        """
+        try:
+            llamada = Llamada.objects.select_related('cliente').get(
+                twilio_call_sid=call_sid
+            )
+            
+            cliente = llamada.cliente
+            
+            return Response({
+                'cliente_id': cliente.cliente_id,
+                'nombre': cliente.nombre,
+                'telefono': cliente.telefono,
+                'otros_datos': cliente.otros_datos,
+                'campana': cliente.campana.nombre,
+                'llamada_id': llamada.id,
+                'estado': llamada.estado_llamada.descripcion
+            })
+            
+        except Llamada.DoesNotExist:
+            return Response(
+                {'error': 'Llamada no encontrada'},
+                status=status.HTTP_404_NOT_FOUND
+    )

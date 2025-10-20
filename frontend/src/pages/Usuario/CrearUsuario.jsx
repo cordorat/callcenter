@@ -22,9 +22,11 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { usersService } from '@/core/api/users';
 import { useTheme } from '@mui/material/styles';
 
-export default function CrearUsuario() {
+export default function CrearUsuario({ onCancel, onUserCreated }) {
   const navigate = useNavigate();
   const theme = useTheme();
+  // Permite cerrar el modal si se pasa como prop
+  const isModal = typeof onUserCreated === 'function';
   const [formData, setFormData] = useState({
     documento_id: "",
     first_name: "",
@@ -110,14 +112,11 @@ export default function CrearUsuario() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
-
     setLoading(true);
-    
     try {
       const userData = {
-        documento_id: parseInt(formData.documento_id, 10), // Convertir a entero
+        documento_id: parseInt(formData.documento_id, 10),
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email,
@@ -126,17 +125,17 @@ export default function CrearUsuario() {
         password_confirm: formData.password_confirm,
         phone: formData.phone
       };
-
       await usersService.createUser(userData);
       setSuccessMessage('Usuario creado correctamente');
       setTimeout(() => {
-        navigate('/usuarios');
+        if (isModal && typeof onUserCreated === 'function') {
+          onUserCreated();
+        } else {
+          navigate('/usuarios');
+        }
       }, 1000);
-
     } catch (error) {
       console.error("Error al crear usuario:", error);
-      
-      // Mostrar errores del backend
       if (error.response && error.response.data) {
         const backendErrors = error.response.data;
         setErrors(backendErrors);
@@ -147,7 +146,9 @@ export default function CrearUsuario() {
   };
 
   const handleCancel = () => {
-    navigate(-1);
+    if (typeof onCancel === 'function') {
+      onCancel(); // Cierra el popup igual que la X
+    }
   };
 
   const handleTogglePassword = () => {
@@ -155,19 +156,7 @@ export default function CrearUsuario() {
   };
 
   return (
-    <MainLayout title="Crear Usuario">
-      <Paper
-        elevation={4}
-        sx={{
-          p: 5,
-          maxWidth: 900,
-          mx: "auto",
-          mt: 6,
-          borderRadius: 4,
-          bgcolor: "#fafafa",
-          background: theme.palette.background.paper
-        }}
-      >
+      <Box sx={{ p: 4 }}>
         {successMessage && (
           <Box
             sx={{
@@ -184,40 +173,59 @@ export default function CrearUsuario() {
             {successMessage}
           </Box>
         )}
-        <Typography variant="h5" fontWeight="bold" mb={3} textAlign="center">
-          Ingresa los datos del nuevo usuario
-        </Typography>
+          <Typography variant="h5" fontWeight="bold" mb={3} textAlign="center">
+            Crear Nuevo Usuario
+          </Typography>
 
-        <Box component="form" onSubmit={handleSubmit}>
-          <Grid container spacing={3} justifyContent="flex-start">
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Número de documento"
-                name="documento_id"
-                type="number"
-                value={formData.documento_id}
-                onChange={handleChange}
-                variant="outlined"
-                error={!!errors.documento_id}
-                helperText={errors.documento_id}
-                disabled={loading}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Primer nombre"
-                name="first_name"
-                value={formData.first_name}
-                onChange={handleChange}
-                variant="outlined"
-                error={!!errors.first_name}
-                helperText={errors.first_name}
-                disabled={loading}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+          <Box component="form" onSubmit={handleSubmit}>
+            <Grid
+              container
+              spacing={2}
+              justifyContent="center"
+              sx={{
+                '& .MuiTextField-root, & .MuiFormControl-root': {
+                  width: '300px',
+                },
+                '& .MuiOutlinedInput-root': {
+                  height: '60px',
+                },
+                '& .MuiSelect-select': {
+                  display: 'flex',
+                  alignItems: 'center',
+                }
+              }}
+            >
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Número de documento"
+                  name="documento_id"
+                  type="number"
+                  value={formData.documento_id}
+                  onChange={handleChange}
+                  variant="outlined"
+                  error={!!errors.documento_id}
+                  helperText={errors.documento_id}
+                  disabled={loading}
+                  
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Primer nombre"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  variant="outlined"
+                  error={!!errors.first_name}
+                  helperText={errors.first_name}
+                  disabled={loading}
+                  
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Apellido"
@@ -228,9 +236,10 @@ export default function CrearUsuario() {
                 error={!!errors.last_name}
                 helperText={errors.last_name}
                 disabled={loading}
+                
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Correo electrónico"
@@ -241,9 +250,10 @@ export default function CrearUsuario() {
                 error={!!errors.email}
                 helperText={errors.email}
                 disabled={loading}
+                
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Número de teléfono"
@@ -255,9 +265,10 @@ export default function CrearUsuario() {
                 error={!!errors.phone}
                 helperText={errors.phone}
                 disabled={loading}
+                
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Contraseña"
@@ -278,9 +289,10 @@ export default function CrearUsuario() {
                 error={!!errors.password}
                 helperText={errors.password || "8-16 caracteres (M,m,9-0,@$!%*?&)"}
                 disabled={loading}
+                
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Confirmar Contraseña"
@@ -301,9 +313,10 @@ export default function CrearUsuario() {
                 error={!!errors.password_confirm}
                 helperText={errors.password_confirm}
                 disabled={loading}
+                
               />
             </Grid>
-            <Grid item xs={12} sm={6} sx={{ fontSize: '1.2rem', minWidth: '250px' }}>
+            <Grid item xs={12} md={6} sx={{ fontSize: '1.2rem', minWidth: '250px' }}>
               <FormControl fullWidth error={!!errors.role}>
                 <InputLabel>Rol</InputLabel>
                 <Select
@@ -312,6 +325,7 @@ export default function CrearUsuario() {
                   onChange={handleChange}
                   label="Rol"
                   disabled={loading}
+                  
                 >
                   <MenuItem value="ADMIN">ADMIN</MenuItem>
                   <MenuItem value="COORDINADOR">COORDINADOR</MenuItem>
@@ -327,15 +341,16 @@ export default function CrearUsuario() {
                 )}
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} display="flex" alignItems="center">
-              <FormControlLabel
-                control={<Checkbox name="activo" checked={true} />}
-                label="Usuario activo"
-              />
-            </Grid>
           </Grid>
-            <Grid container spacing={2} mt={3} display="flex" justifyContent="center">
-              <Grid item xs={12} sm={6} textAlign="center">
+          
+        <Box sx={{ pt: 2, alignItems: 'center', textAlign: 'center' }}>
+          <FormControlLabel
+            control={<Checkbox name="activo" checked={true} size="small" />}
+            label="Usuario activo"
+            sx={{ fontSize: '0.9rem', mb: 2 }}
+          />
+            <Box sx={{ display: 'flex', gap: 1.5, mt: 2.5, justifyContent: 'center' }}>
+              <Grid item xs={12} md={6} textAlign="center">
                 <Button 
                   type="button" 
                   size="large"
@@ -354,7 +369,7 @@ export default function CrearUsuario() {
                   Cancelar
                 </Button>
               </Grid>            
-              <Grid item xs={12} sm={6} textAlign="center">
+              <Grid item xs={12} md={6} textAlign="center">
                 <Button 
                   type="submit" 
                   variant="contained" 
@@ -372,9 +387,9 @@ export default function CrearUsuario() {
                   {loading ? <CircularProgress size={24} color="inherit" /> : 'Guardar'}
                 </Button>
               </Grid>
-            </Grid>
+            </Box>
+          </Box>
         </Box>
-      </Paper>
-    </MainLayout>
+      </Box>
   );
 }

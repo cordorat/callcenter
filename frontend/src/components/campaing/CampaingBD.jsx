@@ -359,8 +359,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
             </Table>
 
             {/* Paginación */}
-            {bases.length > 0 && (
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
                 <Typography variant="body2" color="text.secondary">
                   Mostrando {bases.length} de {totalCount} bases de datos
                 </Typography>
@@ -373,8 +372,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
                   size="medium"
                 />
               </Box>
-            )}
-          </Box>
+            </Box>
         </Paper>
       )}
     </Box>

@@ -93,6 +93,7 @@ def listar_bases_datos(request):
     page_obj = paginator.get_page(page)
     serializer = BaseDatosCargadaSerializer(page_obj.object_list, many=True)
     return Response({
+        "count": paginator.count,
         "total_pages": paginator.num_pages,
         "current_page": page_obj.number,
         "page_size": paginator.per_page,
