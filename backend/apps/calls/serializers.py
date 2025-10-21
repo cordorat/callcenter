@@ -159,13 +159,7 @@ class RecibirLlamadaSerializer(serializers.Serializer):
         request = self.context.get('request')
         user = request.user
         
-        # Validar que el usuario sea agente
-        if not hasattr(user, 'rol_id') or user.rol_id != get_estado_id('ROL_USUARIO', 'AGENTE'):
-            raise serializers.ValidationError(
-                'Solo los agentes pueden recibir llamadas.'
-            )
-        
-        # Validar que el agente esté disponible
+        # Validar que el usuario esté disponible
         try:
             estado_actual = EstadoAgenteActual.objects.get(agente_id=user)
             estado_disponible = get_estado_id('ESTADO_AGENTE', 'DISPONIBLE')
@@ -174,11 +168,11 @@ class RecibirLlamadaSerializer(serializers.Serializer):
                 estado_obj = estado_actual.estado_id
                 estado_nombre = estado_obj.valor if estado_obj else 'Desconocido'
                 raise serializers.ValidationError({
-                    'agente': f'El agente no está disponible. Estado actual: {estado_nombre}'
+                    'agente': f'El usuario no está disponible. Estado actual: {estado_nombre}'
                 })
         except EstadoAgenteActual.DoesNotExist:
             raise serializers.ValidationError(
-                'No se encontró el estado del agente.'
+                'No se encontró el estado del usuario.'
             )
         
         # Validar que la campaña exista

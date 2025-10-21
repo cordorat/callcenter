@@ -5,6 +5,7 @@ from django.utils import timezone
 import csv
 import chardet
 import random
+import io
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets, serializers
@@ -44,12 +45,13 @@ class CargarBaseDatosView(APIView):
 
         # Decodificar con la codificación detectada
         try:
-            decoded_file = raw_data.decode(encoding, errors="replace").splitlines()
+            decoded_file = raw_data.decode(encoding, errors="replace")
         except Exception as e:
             return Response({"error": f"Error al decodificar el archivo: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Leer CSV de forma segura
-        reader = csv.DictReader(decoded_file)
+        # Leer CSV de forma segura usando StringIO
+        csv_file = io.StringIO(decoded_file)
+        reader = csv.DictReader(csv_file)
 
         clientes_creados = 0
         for row in reader:

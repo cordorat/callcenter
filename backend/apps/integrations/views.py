@@ -56,12 +56,6 @@ def generate_twilio_client_token(request):
             'error': 'Twilio no está configurado. Contacta al administrador.'
         }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     
-    # Verificar que sea un agente
-    if not user.is_agent():
-        return Response({
-            'error': 'Solo los agentes pueden generar tokens de Twilio Client.'
-        }, status=status.HTTP_403_FORBIDDEN)
-    
     try:
         # Identity única del agente (usar pk que funciona con cualquier primary key)
         identity = f"agent_{user.pk}"
