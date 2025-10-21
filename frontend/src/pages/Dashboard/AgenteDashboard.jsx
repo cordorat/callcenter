@@ -87,7 +87,7 @@ export default function AgenteDashboard() {
   };
 
   return (
-    <MainLayout title="Mi Dashboard">
+    <MainLayout title="Dashboard">
       <Box sx={{ width: "100%", p: 3 }}>
         {/* Header con título y botón refresh */}
         <Box

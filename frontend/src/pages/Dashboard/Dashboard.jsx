@@ -3,11 +3,17 @@ import * as React from "react";
 import { useAuth } from "@/core/context/AuthContext";
 import AdminDashboard from "./AdminDashboard";
 import AgenteDashboard from "./AgenteDashboard";
+import JefeCentroDashboard from "./JefeCentroDashboard";
+import JefeCampañaDashboard from "./JefeCampañaDashboard";
+import CoordinadorDashboard from "./CoordinadorDashboard";
 
 // Mapeo de componentes por rol (Patrón moderno)
 const DASHBOARD_BY_ROLE = {
   ADMIN: AdminDashboard,
   AGENTE: AgenteDashboard,
+  JEFE_CENTRO: JefeCentroDashboard,
+  JEFE_DE_CAMPAÑA: JefeCampañaDashboard,
+  COORDINADOR: CoordinadorDashboard
 };
 
 export default function Dashboard() {

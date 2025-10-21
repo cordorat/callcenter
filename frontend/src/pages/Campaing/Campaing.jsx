@@ -478,7 +478,7 @@ export default function Campaing() {
         </div>
 
         {/* Contenido de las pestañas */}
-        <div className="campaign-content">
+        <div >
           {currentTab === "database" && (
             <div className="campaign-tab-panel">
               <CampaingBD

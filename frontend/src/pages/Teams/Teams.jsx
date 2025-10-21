@@ -14,6 +14,7 @@ import {
     Search as SearchIcon,
     Groups as GroupsIcon
 } from '@mui/icons-material';
+import { useTheme } from '@mui/material/styles';
 import MainLayout from '@/core/components/layout/MainLayout';
 import TeamsComponent from '@/components/campaing/Teams';
 import CreateTeamModal from '@/components/teams/CreateTeamModal';
@@ -27,8 +28,11 @@ import DeleteTeamModal from '@/components/teams/DeleteTeamModal';
  * Criterio 5.1: Se actualiza automáticamente después de crear/actualizar/eliminar
  */
 const Teams = () => {
+    const theme = useTheme();
     const [searchTerm, setSearchTerm] = useState('');
     const [refreshKey, setRefreshKey] = useState(0);
+    const [page, setPage] = useState(1);
+    const [pageSize] = useState(10); // AQUÍ: Cambia este número para cambiar registros por página
 
     // Modales
     const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -126,22 +130,30 @@ const Teams = () => {
         refreshTeams();
     };
 
+    // Gradientes según el tema
+    const gradientBg = theme.palette.mode === 'light'
+        ? 'linear-gradient(135deg, #2c86eeff 0%, #2a15e9ff 100%)'
+        : 'linear-gradient(135deg, #0C155A 0%, #040c47ff 100%)';
+
     return (
         <MainLayout title="Equipos de Trabajo">
             <Box sx={{ height: '100%', overflow: 'auto' }}>
-                {/* Header con gradiente */}
+                {/* Header con gradiente adaptivo */}
                 <Box
                     sx={{
-                        background: 'linear-gradient(135deg, #2c86eeff 0%, #2a15e9ff 100%)',
+                        background: gradientBg,
                         borderRadius: 3,
                         p: 4,
                         mb: 4,
-                        boxShadow: '0 8px 32px rgba(102, 126, 234, 0.25)',
+                        boxShadow: theme.palette.mode === 'light'
+                            ? '0 8px 32px rgba(102, 126, 234, 0.25)'
+                            : '0 8px 32px rgba(0, 0, 0, 0.5)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         flexWrap: 'wrap',
-                        gap: 2
+                        gap: 2,
+                        transition: 'all 0.3s ease'
                     }}
                 >
                     <Box sx={{ color: 'white' }}>
@@ -161,17 +173,22 @@ const Teams = () => {
                         startIcon={<AddIcon />}
                         onClick={handleOpenCreateModal}
                         sx={{
-                            bgcolor: 'white',
-                            color: 'primary.main',
+                            bgcolor: theme.palette.mode === 'light' ? 'white' : 'rgba(255, 255, 255, 0.1)',
+                            color: theme.palette.mode === 'light' ? 'primary.main' : 'white',
                             fontWeight: 600,
                             px: 4,
                             py: 1.5,
                             borderRadius: 2,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            border: theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
+                            boxShadow: theme.palette.mode === 'light'
+                                ? '0 4px 12px rgba(0,0,0,0.15)'
+                                : '0 4px 12px rgba(0,0,0,0.3)',
                             '&:hover': {
-                                bgcolor: 'grey.100',
+                                bgcolor: theme.palette.mode === 'light' ? 'grey.100' : 'rgba(255, 255, 255, 0.15)',
                                 transform: 'translateY(-2px)',
-                                boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
+                                boxShadow: theme.palette.mode === 'light'
+                                    ? '0 6px 20px rgba(0,0,0,0.2)'
+                                    : '0 6px 20px rgba(0,0,0,0.4)',
                             },
                             transition: 'all 0.3s ease'
                         }}
@@ -199,26 +216,33 @@ const Teams = () => {
                             '& .MuiOutlinedInput-root': {
                                 borderRadius: 3,
                                 bgcolor: 'background.paper',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                boxShadow: theme.palette.mode === 'light'
+                                    ? '0 2px 8px rgba(0,0,0,0.08)'
+                                    : '0 2px 8px rgba(0,0,0,0.3)',
                                 transition: 'all 0.3s ease',
                                 '&:hover': {
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                                    boxShadow: theme.palette.mode === 'light'
+                                        ? '0 4px 12px rgba(0,0,0,0.12)'
+                                        : '0 4px 12px rgba(0,0,0,0.4)',
                                 },
                                 '&.Mui-focused': {
-                                    boxShadow: '0 4px 16px rgba(102, 126, 234, 0.25)',
+                                    boxShadow: theme.palette.mode === 'light'
+                                        ? '0 4px 16px rgba(102, 126, 234, 0.25)'
+                                        : '0 4px 16px rgba(102, 126, 234, 0.15)',
                                 }
                             }
                         }}
                     />
                 </Box>
 
-                {/* Componente de Teams reutilizado */}
+                {/* Componente de Teams reutilizado con paginación */}
                 <TeamsComponent 
                     key={refreshKey}
                     searchTerm={searchTerm}
                     onEditTeam={handleOpenEditModal}
                     onDeleteTeam={handleOpenDeleteModal}
                     showActions={true}
+                    pageSize={pageSize}
                 />
 
                 {/* Modal de creación */}

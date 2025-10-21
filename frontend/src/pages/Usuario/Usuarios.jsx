@@ -1,3 +1,6 @@
+//Path: frontend/src/pages/Usuario/Usuarios.jsx
+//Esta es la página de gestión de usuarios
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '@/core/components/layout/MainLayout';
@@ -42,7 +45,7 @@ export default function Usuarios() {
   const [totalCount, setTotalCount] = useState(0);
   const [openModal, setOpenModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const pageSize = 10;
+  const pageSize = 6;
   const theme = useTheme();
 
   const rolesMap = {
@@ -98,23 +101,71 @@ export default function Usuarios() {
     return colors[role] || theme.palette.text.primary;
   };
 
+  // Gradientes según el tema
+  const gradientBg = theme.palette.mode === 'light'
+    ? 'linear-gradient(135deg, #2c86eeff 0%, #2a15e9ff 100%)'
+    : 'linear-gradient(135deg, #0C155A 0%, #040c47ff 100%)';
+
   return (
     <MainLayout title="Usuarios">
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ height: '100%', overflow: 'auto' }}>
         {showSuccess && (
           <Alert severity="success" sx={{ mb: 3 }}>
             Usuario creado correctamente
           </Alert>
         )}
-        {/* Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <h2></h2>
+        {/* Header con gradiente adaptivo */}
+        <Box
+          sx={{
+            background: gradientBg,
+            borderRadius: 3,
+            p: 4,
+            mb: 4,
+            boxShadow: theme.palette.mode === 'light'
+              ? '0 8px 32px rgba(102, 126, 234, 0.25)'
+              : '0 8px 32px rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 2,
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <Box sx={{ color: 'white' }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              Usuarios
+            </Typography>
+            <Typography variant="body1" sx={{ opacity: 0.95 }}>
+              Gestiona los usuarios de la plataforma
+            </Typography>
+          </Box>
+
           <Button
             variant="contained"
-            color="primary"
+            size="large"
             startIcon={<AddIcon />}
             onClick={handleCreateUser}
-            sx={{ borderRadius: 2, px: 3, py: 1.5, textTransform: 'none', fontWeight: 'bold' }}
+            sx={{
+              bgcolor: theme.palette.mode === 'light' ? 'white' : 'rgba(255, 255, 255, 0.1)',
+              color: theme.palette.mode === 'light' ? 'primary.main' : 'white',
+              fontWeight: 600,
+              px: 4,
+              py: 1.5,
+              borderRadius: 2,
+              border: theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
+              boxShadow: theme.palette.mode === 'light'
+                ? '0 4px 12px rgba(0,0,0,0.15)'
+                : '0 4px 12px rgba(0,0,0,0.3)',
+              '&:hover': {
+                bgcolor: theme.palette.mode === 'light' ? 'grey.100' : 'rgba(255, 255, 255, 0.15)',
+                transform: 'translateY(-2px)',
+                boxShadow: theme.palette.mode === 'light'
+                  ? '0 6px 20px rgba(0,0,0,0.2)'
+                  : '0 6px 20px rgba(0,0,0,0.4)',
+              },
+              transition: 'all 0.3s ease'
+            }}
           >
             Crear Usuario
           </Button>
@@ -127,7 +178,7 @@ export default function Usuarios() {
           </Alert>
         )}
 
-        <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden', backgroundColor: theme.palette.background.paper }}>
+        <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', backgroundColor: theme.palette.background.paper }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
               <CircularProgress sx={{ color: theme.palette.primary.main }} />
@@ -158,13 +209,13 @@ export default function Usuarios() {
                 <Table>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)' }}>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2 }}>Documento</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2 }}>Nombre</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2 }}>Email</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2 }}>Teléfono</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2 }}>Rol</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2 }}>Estado</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2, textAlign: 'center' }}>Acciones</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2, textAlign: 'center' }}>Documento</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2, textAlign: 'center' }}>Nombre</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2, textAlign: 'center' }}>Email</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2, textAlign: 'center' }}>Teléfono</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2, textAlign: 'center' }}>Rol</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2, textAlign: 'center' }}>Estado</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', color: theme.palette.text.primary, borderBottom: `2px solid ${theme.palette.primary.main}`, py: 2, textAlign: 'center' }}>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -206,32 +257,75 @@ export default function Usuarios() {
                             size="small"
                             variant={user.is_active ? 'filled' : 'outlined'}
                             sx={{
-                              borderColor: user.is_active ? theme.palette.success.main : theme.palette.grey[500],
-                              color: user.is_active ? theme.palette.success.main : theme.palette.grey[500],
-                              backgroundColor: 'transparent',
+                              borderColor: user.is_active ? theme.palette.success.main : theme.palette.error.main,
+                              color: user.is_active ? theme.palette.success.main : theme.palette.error.main,
+                              backgroundColor: user.is_active ? 'transparent' : 'transparent',
                               border: '2px solid',
+                              fontWeight: 'bold',
                             }}
                           />
                         </TableCell>
                         <TableCell align="center" sx={{ borderBottom: theme.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
-                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
                             <Tooltip title="Ver detalles">
-                              <IconButton size="small" color="info">
-                                <VisibilityIcon fontSize="small" color='primary' />
+                              <IconButton
+                                size="small"
+                                sx={{
+                                  transition: 'all 0.2s',
+                                  borderRadius: '50%',
+                                  bgcolor: theme.palette.mode === 'light' ? 'grey.200' : 'grey.800',
+                                  color: theme.palette.mode === 'light' ? 'grey.700' : 'grey.300',
+                                  boxShadow: theme.palette.mode === 'light' ? '0 2px 8px rgba(102,126,234,0.10)' : '0 2px 8px rgba(0,0,0,0.25)',
+                                  '&:hover': {
+                                    bgcolor: theme.palette.primary.main,
+                                    color: 'white',
+                                    transform: 'scale(1.15)',
+                                    boxShadow: theme.palette.mode === 'light' ? '0 4px 16px rgba(102,126,234,0.18)' : '0 4px 16px rgba(0,0,0,0.35)',
+                                  }
+                                }}
+                              >
+                                <VisibilityIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Editar">
-                              <IconButton size="small" color="primary">
+                              <IconButton
+                                size="small"
+                                sx={{
+                                  transition: 'all 0.2s',
+                                  borderRadius: '50%',
+                                  bgcolor: theme.palette.mode === 'light' ? 'grey.200' : 'grey.800',
+                                  color: theme.palette.mode === 'light' ? 'grey.700' : 'grey.300',
+                                  boxShadow: theme.palette.mode === 'light' ? '0 2px 8px rgba(102,126,234,0.10)' : '0 2px 8px rgba(0,0,0,0.25)',
+                                  '&:hover': {
+                                    bgcolor: theme.palette.primary.main,
+                                    color: 'white',
+                                    transform: 'scale(1.15)',
+                                    boxShadow: theme.palette.mode === 'light' ? '0 4px 16px rgba(102,126,234,0.18)' : '0 4px 16px rgba(0,0,0,0.35)',
+                                  }
+                                }}
+                              >
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Desactivar">
                               <IconButton
                                 size="small"
-                                color="primary"
                                 disabled={!user.is_active}
+                                sx={{
+                                  transition: 'all 0.2s',
+                                  borderRadius: '50%',
+                                  bgcolor: theme.palette.mode === 'light' ? 'grey.200' : 'grey.800',
+                                  color: theme.palette.mode === 'light' ? 'grey.700' : 'grey.300',
+                                  boxShadow: theme.palette.mode === 'light' ? '0 2px 8px rgba(102,126,234,0.10)' : '0 2px 8px rgba(0,0,0,0.25)',
+                                  '&:hover': {
+                                    bgcolor: theme.palette.error.main,
+                                    color: 'white',
+                                    transform: 'scale(1.15)',
+                                    boxShadow: theme.palette.mode === 'light' ? '0 4px 16px rgba(255,0,0,0.18)' : '0 4px 16px rgba(0,0,0,0.35)',
+                                  }
+                                }}
                               >
-                                <DeleteIcon fontSize="small" color='primary' />
+                                <DeleteIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                           </Box>
