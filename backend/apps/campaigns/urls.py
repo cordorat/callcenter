@@ -9,6 +9,7 @@ app_name = 'campaigns'
 router = DefaultRouter()
 router.register(r'clientes', ClienteViewSet, basename='cliente')
 router.register(r'equipos', EquipoViewSet, basename='equipo')
+router.register(r'productos', views.ProductoViewSet, basename='producto')
 
 urlpatterns = [
     # Endpoints existentes de bases de datos

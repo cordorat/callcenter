@@ -500,3 +500,15 @@ class EquipoUpdateSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """Usar EquipoSerializer para la respuesta."""
         return EquipoSerializer(instance, context=self.context).data
+
+class ProductoSerializer(serializers.Serializer):
+    nombre = serializers.CharField(max_length=100)
+    descripcion = serializers.CharField(max_length=500)
+    precio = serializers.DecimalField(max_digits=10, decimal_places=2)
+    activo = serializers.BooleanField()
+    class Meta:
+        model = Equipo
+        fields = [
+            'nombre', 'descripcion', 'precio', 'activo'
+        ]
+        read_only_fields = ['equipo_id']

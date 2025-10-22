@@ -9,11 +9,11 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import api_view, action
 from rest_framework.permissions import IsAuthenticated
-from .models import Cliente, BaseDatosCargada, Equipo, EquipoAgenteDetalle, Campana
+from .models import Cliente, BaseDatosCargada, Equipo, EquipoAgenteDetalle, Campana, Producto
 from .serializers import (
     BaseDatosCargadaSerializer, ClienteSerializer, ClienteUpdateSerializer,
     EquipoSerializer, EquipoCreateSerializer, EquipoUpdateSerializer,
-    AgenteSimpleSerializer, CampanaSimpleSerializer
+    AgenteSimpleSerializer, CampanaSimpleSerializer, ProductoSerializer
 )
 from apps.users.models import User
 from common.estados_helper import get_estado_id
@@ -596,3 +596,40 @@ class EquipoViewSet(viewsets.ModelViewSet):
             'campanas': serializer.data
         }, status=status.HTTP_200_OK)
 
+class ProductoViewSet(viewsets.ModelViewSet):
+    def create(self, request, *args, **kwargs):
+
+
+        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        if request.user.rol_id != rol_jefe_centro_id:
+            return Response({
+                'success': False,
+                'message': 'Solo los jefes de centro pueden crear productos'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = ProductoSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'message': 'El producto ha sido creado',  
+                'producto': serializer.data
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response({
+            'success': False,
+            'message': 'Error de validación en los datos proporcionados',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def list(self, request, *args, **kwargs):
+
+        queryset = Producto.objects.all()
+        
+        serializer = self.get_serializer(queryset, many=True)
+        
+        return Response({
+            'success': True,
+            'productos': serializer.data
+        }, status=status.HTTP_200_OK)
