@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Cliente, BaseDatosCargada
+from .models import Cliente, BaseDatosCargada, Producto
 import re
 
 
@@ -501,14 +501,8 @@ class EquipoUpdateSerializer(serializers.ModelSerializer):
         """Usar EquipoSerializer para la respuesta."""
         return EquipoSerializer(instance, context=self.context).data
 
-class ProductoSerializer(serializers.Serializer):
-    nombre = serializers.CharField(max_length=100)
-    descripcion = serializers.CharField(max_length=500)
-    precio = serializers.DecimalField(max_digits=10, decimal_places=2)
-    activo = serializers.BooleanField()
+class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Equipo
-        fields = [
-            'nombre', 'descripcion', 'precio', 'activo'
-        ]
-        read_only_fields = ['equipo_id']
+        model = Producto
+        fields = ['nombre', 'descripcion', 'precio', 'activo']
+        read_only_fields = []

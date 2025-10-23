@@ -598,28 +598,37 @@ class EquipoViewSet(viewsets.ModelViewSet):
 
 class ProductoViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
-
-
+        # Obtener los IDs de los roles permitidos
         rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
-        if request.user.rol_id != rol_jefe_centro_id:
+        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+
+        # Validar que el usuario tenga alguno de esos roles
+        if not request.user or not request.user.rol:
             return Response({
                 'success': False,
-                'message': 'Solo los jefes de centro pueden crear productos'
+                'message': 'Usuario no autenticado o sin rol asignado.'
             }, status=status.HTTP_403_FORBIDDEN)
-        
+
+        if request.user.rol.parametros_id not in [rol_jefe_centro_id, rol_admin_id]:
+            return Response({
+                'success': False,
+                'message': 'Solo los jefes de centro o administradores pueden crear productos.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Serializar y guardar el producto
         serializer = ProductoSerializer(data=request.data)
-        
         if serializer.is_valid():
             serializer.save()
             return Response({
                 'success': True,
-                'message': 'El producto ha sido creado',  
+                'message': 'El producto ha sido creado correctamente.',
                 'producto': serializer.data
             }, status=status.HTTP_201_CREATED)
-        
+
+        # Si la validación falla
         return Response({
             'success': False,
-            'message': 'Error de validación en los datos proporcionados',
+            'message': 'Error de validación en los datos proporcionados.',
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 

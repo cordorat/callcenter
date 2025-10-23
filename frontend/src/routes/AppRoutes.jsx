@@ -9,7 +9,7 @@ import Campaing from '../pages/Campaing/Campaing';
 import Teams from '../pages/Teams/Teams';
 import PrivateRoute from './PrivateRoute';
 import Settings from '../pages/Settings/Settings';
-
+import ProductsPage from '../pages/Campaing/Product';
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
 
@@ -37,6 +37,14 @@ const AppRoutes = () => {
           element={
             <PrivateRoute>
               <Calls />
+            </PrivateRoute>
+          } 
+        />
+        <Route 
+          path="/productos" 
+          element={
+            <PrivateRoute>
+              <ProductsPage />
             </PrivateRoute>
           } 
         />
