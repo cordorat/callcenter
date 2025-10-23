@@ -1,7 +1,9 @@
 from django.shortcuts import render
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 import csv
+import chardet
 import random
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -23,28 +25,49 @@ class CargarBaseDatosView(APIView):
     def post(self, request, *args, **kwargs):
         campana_id = request.data.get("campana_id")
         file = request.FILES.get("file")
+
         if not file:
             return Response({"error": "Debe subir un archivo CSV"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Crear registro de carga
         base_datos = BaseDatosCargada.objects.create(
             campana_id=campana_id,
             nombre_bd=file.name
         )
         base_datos_id = base_datos.id
 
-        decoded_file = file.read().decode('utf-8').splitlines()
+        # Detectar codificación del archivo
+        raw_data = file.read()
+        result = chardet.detect(raw_data)
+        encoding = result["encoding"] or "utf-8"
+        print(f"📄 Codificación detectada: {encoding}")
+
+        # Decodificar con la codificación detectada
+        try:
+            decoded_file = raw_data.decode(encoding, errors="replace").splitlines()
+        except Exception as e:
+            return Response({"error": f"Error al decodificar el archivo: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Leer CSV de forma segura
         reader = csv.DictReader(decoded_file)
 
         clientes_creados = 0
         for row in reader:
-            row_normalized = {k.strip().lower(): v for k, v in row.items()}
+            # Normalizar claves (sin espacios ni mayúsculas)
+            row_normalized = {
+                (k.strip().lower() if k else ""): (v.strip() if isinstance(v, str) else v)
+                for k, v in row.items()
+            }
 
+            # Detectar nombre y teléfono con tolerancia
             nombre_field = next((k for k in row_normalized.keys() if "nombre" in k), None)
-            telefono_field = next((k for k in row_normalized.keys() if "tel" in k), None)            
-            nombre = row_normalized.get(nombre_field,"" ) 
-            telefono = row_normalized.get(telefono_field, "")
+            telefono_field = next((k for k in row_normalized.keys() if "tel" in k), None)
 
-            # Guardar todos los demás campos en JSON
-            otros = {k: v for k, v in row.items() if k.lower() not in ["nombre", "telefono"]}
+            nombre = row_normalized.get(nombre_field, "") or ""
+            telefono = row_normalized.get(telefono_field, "") or ""
+
+            # Guardar el resto como JSON limpio
+            otros = {k: v for k, v in row_normalized.items() if k not in [nombre_field, telefono_field]}
 
             Cliente.objects.create(
                 base_datos_id=base_datos_id,
@@ -56,7 +79,10 @@ class CargarBaseDatosView(APIView):
             clientes_creados += 1
 
         return Response(
-            {"mensaje": f"Base de datos cargada correctamente. {clientes_creados} clientes registrados."},
+            {
+                "mensaje": f"Base de datos cargada correctamente. {clientes_creados} clientes registrados.",
+                "codificacion_detectada": encoding
+            },
             status=status.HTTP_201_CREATED
         )
 @api_view(['GET'])
@@ -113,6 +139,112 @@ def cargar_bd_registros(request, pk):
         "page_size": paginator.per_page,
         "results": serializer.data
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['PUT'])
+def programar_iteracion_bd(request, pk):
+    """
+    PUT /api/campaigns/base-datos/<pk>/programar-iteracion/
+    
+    Programa o inicia la iteración de una base de datos.
+    
+    Opciones:
+    1. Iniciar AHORA: { "iteracion_activa": true }
+    2. Programar: { "fecha_hora_inicio_iteracion": "2025-10-20T14:30:00-05:00" }
+    
+    Solo se puede enviar UNO de los dos parámetros a la vez.
+    """
+    try:
+        base = BaseDatosCargada.objects.get(pk=pk)
+        
+        iteracion_activa = request.data.get('iteracion_activa')
+        fecha_hora = request.data.get('fecha_hora_inicio_iteracion')
+        
+        # Validar que solo se envíe uno
+        if iteracion_activa is not None and fecha_hora is not None:
+            return Response(
+                {'error': 'Solo puede enviar iteracion_activa O fecha_hora_inicio_iteracion, no ambos.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if iteracion_activa is None and fecha_hora is None:
+            return Response(
+                {'error': 'Debe enviar iteracion_activa o fecha_hora_inicio_iteracion.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Opción 1: Iniciar AHORA
+        if iteracion_activa is True:
+            if base.iteracion_activa:
+                return Response(
+                    {'error': 'La iteración ya está activa.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Importar la tarea de Celery
+            from apps.campaigns.tasks import iniciar_iteracion_base
+            
+            # Guardar hora actual y marcar como activa
+            base.fecha_hora_inicio_iteracion = timezone.now()
+            base.iteracion_activa = True
+            base.save()
+            
+            # Lanzar tarea asíncrona
+            iniciar_iteracion_base.delay(base.id)
+            
+            return Response({
+                'mensaje': 'Iteración iniciada correctamente.',
+                'base_datos_id': base.id,
+                'fecha_hora_inicio': base.fecha_hora_inicio_iteracion,
+                'iteracion_activa': base.iteracion_activa
+            }, status=status.HTTP_200_OK)
+        
+        # Opción 2: Programar para después
+        if fecha_hora is not None:
+            from datetime import datetime
+            
+            try:
+                # Parsear fecha
+                if isinstance(fecha_hora, str):
+                    fecha_hora_obj = datetime.fromisoformat(fecha_hora.replace('Z', '+00:00'))
+                else:
+                    fecha_hora_obj = fecha_hora
+                
+                # Validar que sea futura
+                if fecha_hora_obj <= timezone.now():
+                    return Response(
+                        {'error': 'La fecha debe ser futura.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Guardar fecha programada (sin activar todavía)
+                base.fecha_hora_inicio_iteracion = fecha_hora_obj
+                base.iteracion_activa = False  # No se activa hasta que llegue la hora
+                base.save()
+                
+                return Response({
+                    'mensaje': 'Iteración programada correctamente.',
+                    'base_datos_id': base.id,
+                    'fecha_hora_inicio_programada': base.fecha_hora_inicio_iteracion,
+                    'iteracion_activa': base.iteracion_activa
+                }, status=status.HTTP_200_OK)
+                
+            except (ValueError, TypeError) as e:
+                return Response(
+                    {'error': f'Formato de fecha inválido: {str(e)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+    except BaseDatosCargada.DoesNotExist:
+        return Response(
+            {'error': 'Base de datos no encontrada.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 class ClienteViewSet(viewsets.ModelViewSet):

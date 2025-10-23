@@ -92,7 +92,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
                 'AGENTE': 'AGENTE',
                 'ADMIN': 'ADMIN',
                 'COORDINADOR': 'COORDINADOR',
-                'ANALISTA': 'ANALISTA'
+                'BACKOFFICE': 'BACKOFFICE',
+                'JEFE DE CENTRO': 'JEFE_CENTRO',
+                'JEFE DE CAMPAÑA': 'JEFE DE CAMPAÑA'
             }
             # Convertir a español si viene en inglés, o usar el valor original
             role_valor = role_mapping.get(role_string, role_string)
@@ -101,7 +103,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             rol_obj = get_estado('ROL_USUARIO', role_valor)
             if not rol_obj:
                 raise serializers.ValidationError({
-                    "role": f"Rol '{role_string}' no válido. Debe ser 'ADMIN', 'AGENTE', 'COORDINADOR' o 'ANALISTA'."
+                    "role": f"Rol '{role_string}' no válido. Debe ser 'ADMIN', 'AGENTE', 'COORDINADOR', 'BACKOFFICE', 'JEFE DE CENTRO' o 'JEFE DE CAMPAÑA'."
                 })
             attrs['rol'] = rol_obj
         elif not attrs.get('rol'):

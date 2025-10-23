@@ -82,12 +82,13 @@ class TwilioClient:
                 'sid': call.sid,
                 'status': call.status,
                 'to': call.to,
-                'from': call.from_,
+                'from': from_,  # Usar el parámetro from_ directamente
                 'direction': call.direction,
                 'date_created': call.date_created,
             }
         except Exception as e:
             logger.error(f"Error al crear llamada: {str(e)}")
+            raise
             raise
     
     def get_call_details(self, call_sid: str) -> Dict[str, Any]:

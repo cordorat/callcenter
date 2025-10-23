@@ -35,6 +35,11 @@ def poblar_tipos_parametros():
         },
         {
             'nombre': 'ROL_USUARIO',
+            'valor': 'BACKOFFICE',
+            'descripcion': 'Backoffice encargado de revisar llamadas'
+        },
+        {
+            'nombre': 'ROL_USUARIO',
             'valor': 'AGENTE',
             'descripcion': 'Agente de call center que atiende llamadas'
         },
@@ -47,6 +52,11 @@ def poblar_tipos_parametros():
             'nombre': 'ROL_USUARIO',
             'valor': 'JEFE_CENTRO',
             'descripcion': 'Jefe de centro que gestiona equipos de trabajo'
+        },
+        {
+            'nombre': 'ROL_USUARIO',
+            'valor': 'JEFE_CAMPAÑA',
+            'descripcion': 'Jefe de campaña que supervisa campañas específicas'
         },
         
         # ============================================================

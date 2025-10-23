@@ -79,7 +79,7 @@ class User(AbstractUser):
     documento_id = models.CharField(
         'Documento de Identidad',
         primary_key=True,
-        max_length=50,
+        max_length=20,
         unique=True,
         help_text='Numero de documento de indentidad'
     )
@@ -114,7 +114,7 @@ class User(AbstractUser):
         verbose_name = 'Usuario'
         verbose_name_plural = 'Usuarios'
     
-    def _str_(self):
+    def __str__(self):
         return f"{self.email} - {self.get_role_display()}"
     
     @property

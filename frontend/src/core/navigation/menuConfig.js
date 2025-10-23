@@ -69,7 +69,7 @@ export const menuItems = [
     label: 'Configuración',
     path: '/configuracion',
     icon: SettingsIcon,
-    roles: ['ADMIN', 'AGENTE']
+    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO']
   }
 ];
 

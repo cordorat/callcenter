@@ -16,7 +16,8 @@ from django.conf import settings
 from django.utils import timezone
 import logging
 
-from apps.calls.models import Llamada, Cliente, Campana
+from apps.calls.models import Llamada
+from apps.campaigns.models import Cliente, Campana
 from apps.users.models import EstadoAgenteDetalle, EstadoAgenteActual, User
 from common.twilio_client import twilio_client
 
@@ -233,7 +234,7 @@ def twilio_voice_request(request):
             
             logger.info(f"Llamada {llamada.id} creada exitosamente con CallSid={call_sid}")
         except Exception as e:
-            logger.error(f"Error creando llamada: {str(e)}")
+            logger.error(f"Error creando llamada: {str(e)}", exc_info=True)
             return HttpResponse('<Response><Say language="es-MX">Error al crear registro de llamada</Say></Response>', content_type='text/xml')
         
         # Generar TwiML para realizar la llamada
@@ -464,10 +465,10 @@ def twilio_call_status_webhook(request, llamada_id=None):
         recording_url = params.get('RecordingUrl', '')
         recording_sid = params.get('RecordingSid', '')
         
-        logger.info(f"Webhook estado: SID={call_sid}, Status={call_status}, Duration={call_duration}")
+        logger.info(f"[WEBHOOK STATUS] SID={call_sid}, Status={call_status}, Duration={call_duration}")
         
         if not call_sid and not llamada_id:
-            logger.error("No se proporcionó CallSid ni llamada_id")
+            logger.error("[WEBHOOK STATUS] No se proporcionó CallSid ni llamada_id")
             return HttpResponse(status=200)  # Siempre devolver 200, aunque haya error
         
         try:
@@ -478,6 +479,8 @@ def twilio_call_status_webhook(request, llamada_id=None):
                 # Buscar por twilio_call_sid
                 llamada = Llamada.objects.get(twilio_call_sid=call_sid)
             
+            logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} encontrada - Agente: {llamada.agente.email}, Estado actual agente: {llamada.agente.estado_actual.estado_id.descripcion if hasattr(llamada.agente, 'estado_actual') else 'N/A'}")
+            
             # Actualizar estado de Twilio
             llamada.twilio_status = call_status
             from common.estados_helper import get_estado
@@ -486,11 +489,27 @@ def twilio_call_status_webhook(request, llamada_id=None):
             if call_status == 'ringing':
                 estado_timbrado = get_estado('ESTADO_LLAMADA', 'TIMBRADO')
                 llamada.estado_llamada = estado_timbrado
-                logger.info(f"Llamada {llamada.id} cambió a TIMBRADO")
+                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> TIMBRADO (no cambia estado agente)")
             elif call_status == 'in-progress':
                 estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
                 llamada.estado_llamada = estado_en_curso
-                logger.info(f"Llamada {llamada.id} en progreso")
+                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> EN_CURSO")
+                
+                # Asegurar que el agente se mantenga EN_LLAMADA (no cambiar a AFTERCALL todavía)
+                estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')
+                try:
+                    # Verificar que el agente esté EN_LLAMADA
+                    estado_actual = EstadoAgenteActual.objects.filter(agente_id=llamada.agente).first()
+                    if estado_actual and estado_actual.estado_id != estado_en_llamada:
+                        logger.warning(f"[WEBHOOK STATUS] ⚠️ Agente {llamada.agente.email} estaba en {estado_actual.estado_id.descripcion}, corrigiendo a EN_LLAMADA")
+                        EstadoAgenteActual.objects.filter(agente_id=llamada.agente).update(
+                            estado_id=estado_en_llamada,
+                            tiempo=timezone.now()
+                        )
+                    else:
+                        logger.info(f"[WEBHOOK STATUS] ✓ Agente {llamada.agente.email} ya está EN_LLAMADA (correcto)")
+                except Exception as e:
+                    logger.error(f"[WEBHOOK STATUS] Error verificando estado del agente: {str(e)}")
             elif call_status == 'completed':
                 estado_completada = get_estado('ESTADO_LLAMADA', 'COMPLETADA')
                 llamada.estado_llamada = estado_completada
@@ -498,6 +517,8 @@ def twilio_call_status_webhook(request, llamada_id=None):
                     llamada.fecha_hora_fin = timezone.now()
                 if call_duration:
                     llamada.duracion = int(call_duration)
+                
+                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> COMPLETADA, cambiando agente a AFTERCALL")
                 
                 # Cambiar estado del agente a AFTERCALL (post llamada)
                 try:
@@ -535,6 +556,8 @@ def twilio_call_status_webhook(request, llamada_id=None):
                 estado_no_contestada = get_estado('ESTADO_LLAMADA', 'NO_CONTESTADA')
                 llamada.estado_llamada = estado_no_contestada
                 llamada.fecha_hora_fin = timezone.now()
+                
+                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> NO_CONTESTADA ({call_status}), volviendo agente a DISPONIBLE")
                 
                 # Volver agente a DISPONIBLE
                 try:
@@ -592,6 +615,167 @@ def twilio_call_status_webhook(request, llamada_id=None):
         # Capturar CUALQUIER error no manejado y devolver 200
         logger.error(f"Error crítico en webhook de estado: {str(e)}", exc_info=True)
         return HttpResponse(status=200)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def twilio_automated_call_handler(request):
+    """
+    Webhook para manejar llamadas AUTOMATICAS salientes.
+    
+    Cuando el cliente contesta la llamada automática, Twilio hace POST a este
+    endpoint para obtener las instrucciones TwiML de cómo proceder.
+    
+    Este endpoint:
+    1. Busca la llamada en la BD usando el CallSid
+    2. Reproduce un mensaje de bienvenida al cliente
+    3. Conecta al cliente con el agente asignado (usando WebRTC)
+    
+    Parámetros POST enviados por Twilio:
+    - CallSid: ID único de la llamada
+    - From: Número del que llama (tu número de Twilio)
+    - To: Número al que se llamó (el cliente)
+    - CallStatus: Estado de la llamada (in-progress cuando contesta)
+    """
+    try:
+        call_sid = request.POST.get('CallSid')
+        to_number = request.POST.get('To')  # Cliente
+        from_number = request.POST.get('From')  # Tu número de Twilio
+        
+        logger.info(f"Handle-call automática: CallSid={call_sid}, To={to_number}")
+        
+        # Buscar la llamada en la BD usando el CallSid
+        try:
+            llamada = Llamada.objects.select_related('agente', 'cliente').get(twilio_call_sid=call_sid)
+            agente = llamada.agente
+            
+            logger.info(f"Llamada encontrada: ID={llamada.id}, Agente={agente.get_full_name()}, Cliente={llamada.cliente.nombre}")
+            
+        except Llamada.DoesNotExist:
+            logger.error(f"Llamada no encontrada con CallSid={call_sid}")
+            return HttpResponse('<Response><Say language="es-MX">Error: No se encontró el registro de la llamada</Say></Response>', content_type='text/xml')
+        
+        try:
+            # Para llamadas AUTOMATICAS:
+            # El backend inició la llamada al cliente.
+            # Cuando el cliente contesta, conectamos al agente usando Twilio Client (WebRTC).
+            
+            from twilio.twiml.voice_response import VoiceResponse, Dial
+            
+            response = VoiceResponse()
+            
+            # Mensaje de bienvenida al cliente
+            response.say(
+                'Hola, gracias por atender. Te comunicaremos con tu asesor.',
+                language='es-MX',
+                voice='Polly.Mia'
+            )
+            
+            # Conectar al agente usando Twilio Client
+            client_identity = f"agent_{agente.pk}"
+            
+            # NO usar 'action' aquí porque se ejecuta cuando el Dial termina,
+            # no cuando la llamada principal termina.
+            # El webhook de estado principal (status_callback en make_call) manejará el estado.
+            dial = Dial(
+                timeout=30,  # Tiempo de espera para que el agente conteste
+                record='record-from-answer',  # Grabar desde que se contesta
+                recording_status_callback=request.build_absolute_uri('/api/webhooks/twilio/recording/')
+            )
+            dial.client(client_identity)
+            response.append(dial)
+            
+            # Si el agente no contesta en 30 segundos
+            response.say(
+                'Lo sentimos, el asesor no está disponible en este momento. Por favor intenta más tarde.',
+                language='es-MX',
+                voice='Polly.Mia'
+            )
+            
+            twiml_str = str(response)
+            logger.info(f"TwiML generado para llamada automática {call_sid}")
+            logger.debug(f"TwiML: {twiml_str}")
+            
+            return HttpResponse(twiml_str, content_type='text/xml')
+            
+        except Exception as e:
+            logger.error(f"Error en handle-call: {str(e)}", exc_info=True)
+            return HttpResponse('<Response><Say language="es-MX">Error al procesar la llamada</Say></Response>', content_type='text/xml')
+        
+    except Exception as e:
+        logger.error(f"Error crítico en handle-call: {str(e)}", exc_info=True)
+        return HttpResponse('<Response><Say language="es-MX">Error al conectar la llamada</Say></Response>', content_type='text/xml')
+
+
+@csrf_exempt
+@require_http_methods(["POST", "GET"])
+def twilio_agent_wait_conference(request):
+    """
+    Endpoint para que el agente espere en silencio en la conferencia.
+    El agente entra esperando a que el cliente se una.
+    Cuando el cliente entra, automáticamente empiezan a hablar.
+    """
+    try:
+        conference_name = request.GET.get('conference')
+        
+        logger.info(f"Agente uniéndose a conferencia de espera: {conference_name}")
+        
+        from twilio.twiml.voice_response import VoiceResponse, Dial
+        
+        response = VoiceResponse()
+        
+        # Unir al agente a la conferencia
+        dial = Dial()
+        dial.conference(
+            conference_name,
+            start_conference_on_enter=False,  # NO inicia hasta que llegue el cliente
+            end_conference_on_exit=False,     # NO termina si el agente sale
+            beep=False,                       # Sin beep
+            wait_url='',                      # Sin música, silencio total
+            muted=False                       # El agente puede hablar cuando cliente entre
+        )
+        response.append(dial)
+        
+        logger.info(f"Agente esperando en conferencia: {conference_name}")
+        
+        return HttpResponse(str(response), content_type='text/xml')
+        
+    except Exception as e:
+        logger.error(f"Error preparando agente en conferencia: {str(e)}", exc_info=True)
+        return HttpResponse('<Response><Say language="es-MX">Error</Say></Response>', content_type='text/xml')
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def twilio_join_conference(request):
+    """
+    Endpoint para unir al agente a una conferencia existente.
+    Este endpoint es llamado automáticamente cuando el agente recibe la llamada de conferencia.
+    """
+    try:
+        conference_name = request.GET.get('conference')
+        
+        logger.info(f"Uniendo agente a conferencia: {conference_name}")
+        
+        from twilio.twiml.voice_response import VoiceResponse, Dial
+        
+        response = VoiceResponse()
+        
+        # Unir al agente a la conferencia SIN música de espera
+        dial = Dial()
+        dial.conference(
+            conference_name,
+            start_conference_on_enter=True,
+            end_conference_on_exit=True,
+            beep=False
+        )
+        response.append(dial)
+        
+        return HttpResponse(str(response), content_type='text/xml')
+        
+    except Exception as e:
+        logger.error(f"Error uniendo agente a conferencia: {str(e)}", exc_info=True)
+        return HttpResponse('<Response><Say language="es-MX">Error al conectar</Say></Response>', content_type='text/xml')
 
 
 @csrf_exempt
