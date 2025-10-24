@@ -7,20 +7,15 @@ import {
   CircularProgress,
   Alert,
   Tooltip,
+  Chip,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import PhoneMissedIcon from "@mui/icons-material/PhoneMissed";
-// ⚠️ si tu archivo real es "kpis.js" en minúsculas, usa: "@/core/api/kpis"
 import { getKpiOverview } from "@/core/api/Kpis";
+import { callsService } from "@/core/api/calls"; // 👈 usamos el mismo servicio que Historial
 import { useTheme } from "@mui/material/styles";
-
-/* 
-// ======== Donut Charts (Recharts) ========
-// 💬 Se comenta toda la importación relacionada con el donut
-import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-*/
 
 import "./Dashboard.css";
 
@@ -29,6 +24,16 @@ const toLocalDateString = (date) => {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+};
+
+const estadoToChip = (estado) => {
+  const map = {
+    COMPLETADA: { label: "Contestada", color: "success" },
+    NO_CONTESTADA: { label: "No contestada", color: "warning" },
+    FALLIDA: { label: "Fallida", color: "error" },
+    RECHAZADA: { label: "Rechazada", color: "default" },
+  };
+  return map[estado] || { label: estado || "N/A", color: "default" };
 };
 
 export default function Dashboard() {
@@ -44,8 +49,13 @@ export default function Dashboard() {
     llamadas: 0,
     ventas: 0,
     metaVentas: 0,
-    tasaConversion: 0, // en %
+    tasaConversion: 0,
   });
+
+  // Estado para últimas llamadas
+  const [lastCalls, setLastCalls] = React.useState([]);
+  const [loadingCalls, setLoadingCalls] = React.useState(false);
+  const [errorCalls, setErrorCalls] = React.useState(null);
 
   const load = React.useCallback(async () => {
     try {
@@ -79,35 +89,54 @@ export default function Dashboard() {
     }
   }, [range]);
 
+  // Carga últimas 5 llamadas del historial (misma fecha del rango del dashboard)
+  const loadLastCalls = React.useCallback(async () => {
+    try {
+      setErrorCalls(null);
+      setLoadingCalls(true);
+      const payload = await callsService.getHistory({
+        fecha_desde: range.from,
+        fecha_hasta: range.to,
+        page: 1,
+        page_size: 5, // 👈 solo 5
+      });
+
+      const list = Array.isArray(payload) ? payload : payload.results || [];
+      // Orden descendente por fecha por si el backend no lo hace
+      list.sort(
+        (a, b) => new Date(b.fecha_hora_inicio) - new Date(a.fecha_hora_inicio)
+      );
+      setLastCalls(list.slice(0, 5));
+    } catch (e) {
+      console.error(e);
+      setErrorCalls("No se pudieron cargar las últimas llamadas.");
+      setLastCalls([]);
+    } finally {
+      setLoadingCalls(false);
+    }
+  }, [range.from, range.to]);
+
   React.useEffect(() => {
     load();
-  }, [load]);
+    loadLastCalls();
+  }, [load, loadLastCalls]);
 
-  /* 
-  // 💬 Cálculo de cumplimiento (usado para el donut)
-  const cumplimientoPct =
-    kpi.metaVentas > 0 ? Math.min((kpi.ventas / kpi.metaVentas) * 100, 100) : 0;
-
-  // 💬 Datos del gráfico circular (donut)
-  const donutData = [
-    { name: "Completado", value: Math.max(0, Math.min(cumplimientoPct / 100, 1)) },
-    { name: "Pendiente", value: Math.max(0, 1 - Math.max(0, Math.min(cumplimientoPct / 100, 1))) },
-  ];
-  */
-
-  // (opcional) si luego agregas filas reales en "Últimas llamadas"
   const statusIcon = (estado) => {
-    if (estado === "Contestado") return <CheckCircleIcon sx={{ color: "#0a6b2b" }} />;
-    if (estado === "Fallida") return <CancelIcon sx={{ color: "#c41e3a" }} />;
+    if (estado === "COMPLETADA") return <CheckCircleIcon sx={{ color: "#0a6b2b" }} />;
+    if (estado === "FALLIDA") return <CancelIcon sx={{ color: "#c41e3a" }} />;
+    if (estado === "NO_CONTESTADA") return <PhoneMissedIcon sx={{ color: "var(--primary, #0C155A)" }} />;
+    if (estado === "RECHAZADA") return <CancelIcon sx={{ color: "var(--primary, #0C155A)" }} />;
     return <PhoneMissedIcon sx={{ color: "var(--primary, #0C155A)" }} />;
   };
+
+  const formatDateTime = (iso) =>
+    iso ? new Date(iso).toLocaleString() : "—";
 
   return (
     <MainLayout title="Dashboard">
       <Box
         className="dashboard-page"
         style={{
-          // Variables para light/dark mode
           "--primary": isDark ? "#E6EDFF" : "#0C155A",
           "--text-primary": theme.palette.text.primary,
           "--text-muted": theme.palette.text.secondary,
@@ -127,13 +156,13 @@ export default function Dashboard() {
           <h2>Estadísticas del día</h2>
           <Tooltip title="Actualizar">
             <IconButton
-              onClick={load}
-              disabled={loading}
+              onClick={() => { load(); loadLastCalls(); }}
+              disabled={loading || loadingCalls}
               aria-label="Actualizar"
               className="refresh-btn"
               size="large"
             >
-              <RefreshIcon className={loading ? "spin" : ""} />
+              <RefreshIcon className={loading || loadingCalls ? "spin" : ""} />
             </IconButton>
           </Tooltip>
         </div>
@@ -166,63 +195,65 @@ export default function Dashboard() {
                 <div className="kpi-pill-label">Tasa de conversión</div>
                 <div className="kpi-pill-value">{kpi.tasaConversion}%</div>
               </div>
-
-              {/*
-              ==========================================================
-              💬 BLOQUE COMPLETO DEL DONUT (comentado)
-              ==========================================================
-              
-              <div className="kpi-pill-circle">
-                <div className="kpi-circle-title">Cumplimiento de ventas</div>
-                <div className="donut-wrap">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <defs>
-                        <linearGradient id="completadoGradient" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0%" stopColor="#0a6b2b" stopOpacity={1} />
-                          <stop offset="100%" stopColor="#0f8d3a" stopOpacity={1} />
-                        </linearGradient>
-                        <linearGradient id="pendienteGradient" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0%" stopColor={isDark ? "#32456F" : "#e0e0e0"} stopOpacity={1} />
-                          <stop offset="100%" stopColor={isDark ? "#415783" : "#f5f5f5"} stopOpacity={1} />
-                        </linearGradient>
-                      </defs>
-
-                      <Pie
-                        data={donutData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius="68%"
-                        outerRadius="88%"
-                        paddingAngle={2}
-                        stroke={isDark ? "#0E152F" : "#ffffff"}
-                        strokeWidth={3}
-                      >
-                        <Cell fill="url(#completadoGradient)" />
-                        <Cell fill="url(#pendienteGradient)" />
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="kpi-circle-text">
-                  <div className="kpi-circle-pct">{Math.round(cumplimientoPct)}%</div>
-                  <div className="kpi-circle-sub">
-                    {kpi.ventas} / {kpi.metaVentas || 0}
-                  </div>
-                </div>
-              </div>
-              */}
             </div>
 
-            {/* Tarjeta tabla (estructura) */}
+            {/* Tarjeta tabla Últimas llamadas */}
             <div className="db-card">
               <div className="db-card-title">Últimas llamadas realizadas</div>
-              <div className="db-table">
-                <div className="db-empty">Sin llamadas recientes</div>
-              </div>
+
+              {errorCalls && (
+                <Alert severity="warning" sx={{ mb: 1 }}>
+                  {errorCalls}
+                </Alert>
+              )}
+
+              {loadingCalls ? (
+                <Box className="db-loading" style={{ minHeight: 120 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : lastCalls.length === 0 ? (
+                <div className="db-table">
+                  <div className="db-empty">Sin llamadas recientes</div>
+                </div>
+              ) : (
+                <div className="db-table">
+                  {/* Encabezados simples */}
+                  <div className="db-table-row db-table-head">
+                    <div className="db-col db-col-wide">Cliente / Teléfono</div>
+                    <div className="db-col">Fecha y hora</div>
+                    <div className="db-col">Duración</div>
+                    <div className="db-col">Estado</div>
+                  </div>
+
+                  {/* Filas */}
+                  {lastCalls.map((row) => {
+                    const chip = estadoToChip(row.estado_llamada_valor);
+                    return (
+                      <div key={row.id} className="db-table-row">
+                        <div className="db-col db-col-wide">
+                          <div className="db-cell-title">
+                            {statusIcon(row.estado_llamada_valor)}
+                            <span style={{ marginLeft: 8 }}>
+                              {row.cliente_nombre || row.telefono_destino || "N/A"}
+                            </span>
+                          </div>
+                          <div className="db-cell-sub">
+                            {row.cliente_telefono || row.telefono_destino}
+                          </div>
+                        </div>
+
+                        <div className="db-col">{formatDateTime(row.fecha_hora_inicio)}</div>
+                        <div className="db-col">
+                          {Math.floor((row.duracion || 0) / 60)}m {Math.floor((row.duracion || 0) % 60)}s
+                        </div>
+                        <div className="db-col">
+                          <Chip size="small" label={chip.label} color={chip.color} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </>
         )}

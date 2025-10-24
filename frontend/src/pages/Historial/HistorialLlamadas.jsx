@@ -1,14 +1,5 @@
 // PATH: src/pages/Historial/HistorialLlamadas.jsx
-// -----------------------------------------------------------------------------
-// Historial de llamadas (React + MUI, conectado al backend con apiClient)
-// Funcionalidad:
-// - Filtros: búsqueda (q), estado, rango de fechas (desde/hasta).
-// - Auto-refresh opcional (autoRefreshMs).
-// - Fila clickeable para ver detalle (sin icono).
-// - Botón de recarga circular.
-// Backend:
-// - Endpoint: /calls/llamadas/historial/
-// -----------------------------------------------------------------------------
+
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
@@ -143,30 +134,37 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
 
   // ======================== Fetch Data ========================
   const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  try {
+    setLoading(true);
+    setError(null);
 
-      const payload = await callsService.getHistory({
-        fecha_desde: fechaInicio || undefined,
-        fecha_hasta: fechaFin || undefined,
-        estado,
-        telefono: q?.trim() || undefined,
-        cliente: q?.trim() || undefined,
-        page: 1,
-        page_size: 50,
-      });
+    const trimmed = q.trim();
+    const isNumber = /^[\d\s\+\-]+$/.test(trimmed);
 
-      const list = Array.isArray(payload) ? payload : payload.results || [];
-      list.sort((a, b) => new Date(b.fecha_hora_inicio) - new Date(a.fecha_hora_inicio));
-      setRows(list);
-    } catch (e) {
-      console.error(e);
-      setError("No se pudo cargar el historial de llamadas, intente nuevamente más tarde.");
-    } finally {
-      setLoading(false);
-    }
-  }, [q, estado, fechaInicio, fechaFin]);
+    const payload = await callsService.getHistory({
+      fecha_desde: fechaInicio || undefined,
+      fecha_hasta: fechaFin || undefined,
+      estado: estado === "todos" ? undefined : estado.toUpperCase(),
+      ...(trimmed
+        ? isNumber
+          ? { telefono: trimmed }
+          : { cliente: trimmed }
+        : {}),
+      page: 1,
+      page_size: 50,
+    });
+
+    const list = Array.isArray(payload) ? payload : payload.results || [];
+    list.sort((a, b) => new Date(b.fecha_hora_inicio) - new Date(a.fecha_hora_inicio));
+    setRows(list);
+  } catch (e) {
+    console.error(e);
+    setError("No se pudo cargar el historial de llamadas, intente nuevamente más tarde.");
+  } finally {
+    setLoading(false);
+  }
+}, [q, estado, fechaInicio, fechaFin]);
+
 
   // auto-refresh
   useEffect(() => {
