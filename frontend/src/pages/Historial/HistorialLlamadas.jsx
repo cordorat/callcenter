@@ -1,19 +1,20 @@
-// Path: src/pages/Historial/HistorialLlamadas.jsx
+// PATH: src/pages/Historial/HistorialLlamadas.jsx
 // -----------------------------------------------------------------------------
-// Historial de llamadas (React + MUI, con soporte modo claro/oscuro)
+// Historial de llamadas (React + MUI, conectado al backend con apiClient)
 // Funcionalidad:
 // - Filtros: búsqueda (q), estado, rango de fechas (desde/hasta).
 // - Auto-refresh opcional (autoRefreshMs).
 // - Fila clickeable para ver detalle (sin icono).
 // - Botón de recarga circular.
 // Backend:
-// - Ajusta buildUrl() si tu endpoint difiere de /api/llamadas.
-// - Envía agent_id si tu API lo requiere o elimínalo si se infiere por token.
+// - Endpoint: /calls/llamadas/historial/
 // -----------------------------------------------------------------------------
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
 import { useAuth } from "@/core/context/AuthContext";
+import { callsService } from "@/core/api/calls"; // 👈 nuevo import
+
 import {
   Box,
   Paper,
@@ -41,25 +42,30 @@ import {
   Collapse,
   Button,
 } from "@mui/material";
+
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 
+// ======================== Utilidades ========================
 const formatearDuracion = (seg) => {
   if (!seg || seg <= 0) return "0s";
   const m = Math.floor(seg / 60);
   const s = seg % 60;
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 };
+
 const estadoToChip = (estado) => {
   const map = {
-    contestada: { label: "Contestada", color: "success" },
-    no_contestada: { label: "No contestada", color: "warning" },
-    fallida: { label: "Fallida", color: "error" },
+    COMPLETADA: { label: "Contestada", color: "success" },
+    NO_CONTESTADA: { label: "No contestada", color: "warning" },
+    FALLIDA: { label: "Fallida", color: "error" },
+    RECHAZADA: { label: "Rechazada", color: "default" },
   };
   return map[estado] || { label: estado || "N/A", color: "default" };
 };
+
 const toYMD = (d) => {
   const dt = new Date(d);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(
@@ -67,6 +73,7 @@ const toYMD = (d) => {
   ).padStart(2, "0")}`;
 };
 
+// ======================== Estilos ========================
 const cardSx = (theme) => ({
   p: 2,
   mb: 2,
@@ -82,6 +89,7 @@ const cardSx = (theme) => ({
       : "1px solid rgba(255,255,255,0.08)",
 });
 
+// ======================== Botón circular ========================
 function RefreshCircle({ onClick, loading }) {
   return (
     <Tooltip title="Actualizar">
@@ -116,14 +124,11 @@ function RefreshCircle({ onClick, loading }) {
   );
 }
 
-export default function HistorialLlamadas({
-  apiBaseUrl,
-  autoRefreshMs = 15000,
-}) {
+// ======================== Componente principal ========================
+export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
   const { user } = useAuth();
-  const API = apiBaseUrl || import.meta?.env?.VITE_API_BASE_URL || window.location.origin;
-
   const today = toYMD(new Date());
+
   const [q, setQ] = useState("");
   const [estado, setEstado] = useState("todos");
   const [fechaInicio, setFechaInicio] = useState(today);
@@ -136,24 +141,22 @@ export default function HistorialLlamadas({
   const [snack, setSnack] = useState(null);
   const debounceRef = useRef(null);
 
-  const buildUrl = useCallback(() => {
-    const base = API.endsWith("/") ? API.slice(0, -1) : API;
-    const url = new URL(`${base}/api/llamadas`, window.location.origin);
-    if (q) url.searchParams.set("q", q.trim());
-    if (estado && estado !== "todos") url.searchParams.set("estado", estado);
-    if (fechaInicio) url.searchParams.set("start", fechaInicio);
-    if (fechaFin) url.searchParams.set("end", fechaFin);
-    if (user?.id) url.searchParams.set("agent_id", String(user.id));
-    return url.toString();
-  }, [API, q, estado, fechaInicio, fechaFin, user?.id]);
-
+  // ======================== Fetch Data ========================
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(buildUrl(), { credentials: "include" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const payload = await res.json();
+
+      const payload = await callsService.getHistory({
+        fecha_desde: fechaInicio || undefined,
+        fecha_hasta: fechaFin || undefined,
+        estado,
+        telefono: q?.trim() || undefined,
+        cliente: q?.trim() || undefined,
+        page: 1,
+        page_size: 50,
+      });
+
       const list = Array.isArray(payload) ? payload : payload.results || [];
       list.sort((a, b) => new Date(b.fecha_hora_inicio) - new Date(a.fecha_hora_inicio));
       setRows(list);
@@ -163,14 +166,15 @@ export default function HistorialLlamadas({
     } finally {
       setLoading(false);
     }
-  }, [buildUrl]);
+  }, [q, estado, fechaInicio, fechaFin]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  // auto-refresh
   useEffect(() => {
+    fetchData();
     if (!autoRefreshMs) return;
     const id = setInterval(fetchData, autoRefreshMs);
     return () => clearInterval(id);
-  }, [autoRefreshMs, fetchData]);
+  }, [fetchData, autoRefreshMs]);
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
@@ -182,24 +186,35 @@ export default function HistorialLlamadas({
   const toggleRow = (id) => setOpenRows((prev) => ({ ...prev, [id]: !prev[id] }));
   const total = useMemo(() => rows.length, [rows]);
 
+  // ======================== Render ========================
   return (
     <MainLayout title="Historial de llamadas">
       <Box sx={{ p: { xs: 1.5, md: 2 } }}>
+        {/* Header */}
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
           <Typography variant="h6" fontWeight={800}></Typography>
           <RefreshCircle onClick={fetchData} loading={loading} />
         </Stack>
 
+        {/* Filtros */}
         <Paper variant="outlined" sx={(t) => cardSx(t)}>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
-            {/* Búsqueda con mismo estilo que fechas */}
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            alignItems={{ xs: "stretch", md: "center" }}
+          >
+            {/* Buscar */}
             <TextField
               fullWidth
               placeholder="Buscar por teléfono o nombre del cliente"
               value={q}
               onChange={handleSearchChange}
               InputProps={{
-                startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
                 endAdornment: (
                   <InputAdornment position="end">
                     {q && (
@@ -227,7 +242,7 @@ export default function HistorialLlamadas({
               }}
             />
 
-            {/* Filtro Estado con mismo estilo que fechas */}
+            {/* Estado */}
             <FormControl
               sx={{
                 minWidth: 190,
@@ -265,74 +280,50 @@ export default function HistorialLlamadas({
                 <MenuItem value="contestada">Contestada</MenuItem>
                 <MenuItem value="no_contestada">No contestada</MenuItem>
                 <MenuItem value="fallida">Fallida</MenuItem>
+                <MenuItem value="rechazada">Rechazada</MenuItem>
               </Select>
             </FormControl>
 
-            {/* fecha desde (gris claro en modo claro) */}
-            <TextField
-              label="Desde"
-              type="date"
-              size="small"
-              value={fechaInicio}
-              onChange={(e) => { setFechaInicio(e.target.value); fetchData(); }}
-              InputLabelProps={{
-                shrink: true,
-                sx: (theme) => ({
-                  color: theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.primary.dark,
-                  fontWeight: 700,
-                }),
-              }}
-              sx={{
-                minWidth: 190,
-                "& .MuiOutlinedInput-root": (t) => ({
-                  borderRadius: "14px",
-                  backgroundColor:
-                    t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
-                  "& fieldset": {
-                    borderColor:
-                      t.palette.mode === "light" ? "rgba(12,21,90,0.16)" : "rgba(255,255,255,0.18)",
-                    borderWidth: 2,
-                  },
-                  "&:hover fieldset": { borderColor: t.palette.primary.main },
-                  "&.Mui-focused fieldset": { borderColor: t.palette.primary.main },
-                  height: 44,
-                }),
-                "& input": { paddingY: 1.2 },
-              }}
-            />
-
-            {/* fecha hasta (gris claro en modo claro) */}
-            <TextField
-              label="Hasta"
-              type="date"
-              size="small"
-              value={fechaFin}
-              onChange={(e) => { setFechaFin(e.target.value); fetchData(); }}
-              InputLabelProps={{
-                shrink: true,
-                sx: (theme) => ({
-                  color: theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.primary.dark,
-                  fontWeight: 700,
-                }),
-              }}
-              sx={{
-                minWidth: 190,
-                "& .MuiOutlinedInput-root": (t) => ({
-                  borderRadius: "14px",
-                  backgroundColor:
-                    t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
-                  "& fieldset": {
-                    borderColor:
-                      t.palette.mode === "light" ? "rgba(12,21,90,0.16)" : "rgba(255,255,255,0.18)",
-                    borderWidth: 2,
-                  },
-                  "&:hover fieldset": { borderColor: t.palette.primary.main },
-                  "&.Mui-focused fieldset": { borderColor: t.palette.primary.main },
-                  height: 44,
-                }),
-                "& input": { paddingY: 1.2 },
-              }}
-            />
+            {/* Fechas */}
+            {["Desde", "Hasta"].map((label, i) => (
+              <TextField
+                key={label}
+                label={label}
+                type="date"
+                size="small"
+                value={i === 0 ? fechaInicio : fechaFin}
+                onChange={(e) =>
+                  i === 0 ? setFechaInicio(e.target.value) : setFechaFin(e.target.value)
+                }
+                onBlur={fetchData}
+                InputLabelProps={{
+                  shrink: true,
+                  sx: (theme) => ({
+                    color: theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.primary.dark,
+                    fontWeight: 700,
+                  }),
+                }}
+                sx={{
+                  minWidth: 190,
+                  "& .MuiOutlinedInput-root": (t) => ({
+                    borderRadius: "14px",
+                    backgroundColor:
+                      t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
+                    "& fieldset": {
+                      borderColor:
+                        t.palette.mode === "light"
+                          ? "rgba(12,21,90,0.16)"
+                          : "rgba(255,255,255,0.18)",
+                      borderWidth: 2,
+                    },
+                    "&:hover fieldset": { borderColor: t.palette.primary.main },
+                    "&.Mui-focused fieldset": { borderColor: t.palette.primary.main },
+                    height: 44,
+                  }),
+                  "& input": { paddingY: 1.2 },
+                }}
+              />
+            ))}
 
             <Button
               variant="text"
@@ -355,6 +346,7 @@ export default function HistorialLlamadas({
           </Stack>
         </Paper>
 
+        {/* Tabla */}
         <TableContainer component={Paper} variant="outlined" sx={(t) => ({ ...cardSx(t), mb: 1 })}>
           <Table size="small">
             <TableHead>
@@ -387,7 +379,7 @@ export default function HistorialLlamadas({
 
               {!loading &&
                 rows.map((row) => {
-                  const chip = estadoToChip(row.estado_llamada);
+                  const chip = estadoToChip(row.estado_llamada_valor);
                   const id = row.id;
                   const isOpen = !!openRows[id];
                   return (
@@ -413,10 +405,10 @@ export default function HistorialLlamadas({
                         <TableCell>
                           <Stack spacing={0.3}>
                             <Typography variant="body2" fontWeight={600}>
-                              {row?.cliente?.nombre || row?.cliente?.documento || row.telefono_destino || "N/A"}
+                              {row.cliente_nombre || row.telefono_destino || "N/A"}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {row?.cliente?.telefono || row.telefono_destino}
+                              {row.cliente_telefono || row.telefono_destino}
                             </Typography>
                           </Stack>
                         </TableCell>
@@ -440,19 +432,32 @@ export default function HistorialLlamadas({
                             <Box sx={{ p: 2 }}>
                               <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
                                 <Box sx={{ minWidth: 240 }}>
-                                  <Typography variant="subtitle2" gutterBottom>Información del cliente</Typography>
-                                  <Typography variant="body2">Nombre: {row?.cliente?.nombre || "N/A"}</Typography>
-                                  <Typography variant="body2">Documento: {row?.cliente?.documento || "N/A"}</Typography>
-                                  <Typography variant="body2">Teléfono: {row?.cliente?.telefono || row.telefono_destino || "N/A"}</Typography>
+                                  <Typography variant="subtitle2" gutterBottom>
+                                    Información del cliente
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    Nombre: {row.cliente_nombre || "N/A"}
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    Teléfono: {row.cliente_telefono || "N/A"}
+                                  </Typography>
                                 </Box>
                                 <Box sx={{ minWidth: 240 }}>
-                                  <Typography variant="subtitle2" gutterBottom>Resultado</Typography>
-                                  <Typography variant="body2">{row?.resultado || row?.estado_venta || "Sin resultado registrado"}</Typography>
+                                  <Typography variant="subtitle2" gutterBottom>
+                                    Resultado
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {row.resultado_llamada?.estado_llamada ||
+                                      row.estado_llamada_valor ||
+                                      "Sin resultado"}
+                                  </Typography>
                                 </Box>
                                 <Box sx={{ flex: 1 }}>
-                                  <Typography variant="subtitle2" gutterBottom>Notas / Transcripción</Typography>
+                                  <Typography variant="subtitle2" gutterBottom>
+                                    Notas / Transcripción
+                                  </Typography>
                                   <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                                    {row?.transcipcion || "Sin notas"}
+                                    {row.notas?.[0]?.contenido || "Sin notas"}
                                   </Typography>
                                 </Box>
                               </Stack>
@@ -467,15 +472,34 @@ export default function HistorialLlamadas({
           </Table>
         </TableContainer>
 
-        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} sx={{ mt: 1 }}>
-          <Typography variant="caption" color="text.secondary">Total: {total} llamadas</Typography>
+        {/* Pie */}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          sx={{ mt: 1 }}
+        >
           <Typography variant="caption" color="text.secondary">
-            {autoRefreshMs ? `Actualiza cada ${Math.round(autoRefreshMs / 1000)}s` : "Actualización manual"}
+            Total: {total} llamadas
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {autoRefreshMs
+              ? `Actualiza cada ${Math.round(autoRefreshMs / 1000)}s`
+              : "Actualización manual"}
           </Typography>
         </Stack>
 
-        {error && <Box sx={{ mt: 2 }}><Alert severity="error">{error}</Alert></Box>}
-        <Snackbar open={!!snack} autoHideDuration={2200} onClose={() => setSnack(null)} message={snack} />
+        {error && (
+          <Box sx={{ mt: 2 }}>
+            <Alert severity="error">{error}</Alert>
+          </Box>
+        )}
+        <Snackbar
+          open={!!snack}
+          autoHideDuration={2200}
+          onClose={() => setSnack(null)}
+          message={snack}
+        />
       </Box>
     </MainLayout>
   );
