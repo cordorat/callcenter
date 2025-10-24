@@ -14,7 +14,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import PhoneMissedIcon from "@mui/icons-material/PhoneMissed";
 import { getKpiOverview } from "@/core/api/Kpis";
-import { callsService } from "@/core/api/calls"; // 👈 usamos el mismo servicio que Historial
+import { callsService } from "@/core/api/calls";
 import { useTheme } from "@mui/material/styles";
 
 import "./Dashboard.css";
@@ -36,6 +36,10 @@ const estadoToChip = (estado) => {
   return map[estado] || { label: estado || "N/A", color: "default" };
 };
 
+const formatDateTime = (iso) => (iso ? new Date(iso).toLocaleString() : "—");
+const formatDuration = (s = 0) =>
+  `${Math.floor(s / 60)}m ${Math.floor(s % 60)}s`;
+
 export default function Dashboard() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -52,11 +56,12 @@ export default function Dashboard() {
     tasaConversion: 0,
   });
 
-  // Estado para últimas llamadas
+  // Últimas llamadas (desde backend)
   const [lastCalls, setLastCalls] = React.useState([]);
   const [loadingCalls, setLoadingCalls] = React.useState(false);
   const [errorCalls, setErrorCalls] = React.useState(null);
 
+  // KPIs del día
   const load = React.useCallback(async () => {
     try {
       setError(null);
@@ -89,20 +94,20 @@ export default function Dashboard() {
     }
   }, [range]);
 
-  // Carga últimas 5 llamadas del historial (misma fecha del rango del dashboard)
+  // Últimas 5 llamadas del historial (mismo rango del dashboard)
   const loadLastCalls = React.useCallback(async () => {
     try {
       setErrorCalls(null);
       setLoadingCalls(true);
+
       const payload = await callsService.getHistory({
         fecha_desde: range.from,
         fecha_hasta: range.to,
         page: 1,
-        page_size: 5, // 👈 solo 5
+        page_size: 5, // solo 5
       });
 
       const list = Array.isArray(payload) ? payload : payload.results || [];
-      // Orden descendente por fecha por si el backend no lo hace
       list.sort(
         (a, b) => new Date(b.fecha_hora_inicio) - new Date(a.fecha_hora_inicio)
       );
@@ -122,15 +127,16 @@ export default function Dashboard() {
   }, [load, loadLastCalls]);
 
   const statusIcon = (estado) => {
-    if (estado === "COMPLETADA") return <CheckCircleIcon sx={{ color: "#0a6b2b" }} />;
-    if (estado === "FALLIDA") return <CancelIcon sx={{ color: "#c41e3a" }} />;
-    if (estado === "NO_CONTESTADA") return <PhoneMissedIcon sx={{ color: "var(--primary, #0C155A)" }} />;
-    if (estado === "RECHAZADA") return <CancelIcon sx={{ color: "var(--primary, #0C155A)" }} />;
-    return <PhoneMissedIcon sx={{ color: "var(--primary, #0C155A)" }} />;
+    if (estado === "COMPLETADA")
+      return <CheckCircleIcon className="state-icon success" />;
+    if (estado === "FALLIDA")
+      return <CancelIcon className="state-icon danger" />;
+    if (estado === "NO_CONTESTADA")
+      return <PhoneMissedIcon className="state-icon primary" />;
+    if (estado === "RECHAZADA")
+      return <CancelIcon className="state-icon primary" />;
+    return <PhoneMissedIcon className="state-icon primary" />;
   };
-
-  const formatDateTime = (iso) =>
-    iso ? new Date(iso).toLocaleString() : "—";
 
   return (
     <MainLayout title="Dashboard">
@@ -142,27 +148,38 @@ export default function Dashboard() {
           "--text-muted": theme.palette.text.secondary,
           "--card-bg": isDark ? "#0E152F" : "#ffffff",
           "--card-border": isDark ? "#223053" : "#ffffff",
-          "--shadow": isDark ? "0 6px 16px rgba(0,0,0,0.35)" : "0 6px 16px rgba(12,21,90,0.10)",
-          "--shadow-hover": isDark ? "0 8px 18px rgba(0,0,0,0.45)" : "0 8px 18px rgba(12,21,90,0.18)",
+          "--shadow": isDark
+            ? "0 6px 16px rgba(0,0,0,0.35)"
+            : "0 6px 16px rgba(12,21,90,0.10)",
+          "--shadow-hover": isDark
+            ? "0 8px 18px rgba(0,0,0,0.45)"
+            : "0 8px 18px rgba(12,21,90,0.18)",
           "--btn-bg": isDark ? "#2A3B70" : "#0C155A",
           "--btn-bg-hover": isDark ? "#1F2E57" : "#0A1147",
           "--empty-bg": isDark ? "rgba(255,255,255,0.06)" : "#f4f7fb",
           "--empty-border": isDark ? "rgba(255,255,255,0.20)" : "#cfd7e6",
-          "--empty-text": isDark ? "rgba(255,255,255,0.85)" : "rgba(12,21,90,0.7)",
+          "--empty-text": isDark
+            ? "rgba(255,255,255,0.85)"
+            : "rgba(12,21,90,0.7)",
         }}
       >
-        {/* Header alineado a la izquierda con botón a la derecha */}
+        {/* Header */}
         <div className="db-header">
           <h2>Estadísticas del día</h2>
           <Tooltip title="Actualizar">
             <IconButton
-              onClick={() => { load(); loadLastCalls(); }}
+              onClick={() => {
+                load();
+                loadLastCalls();
+              }}
               disabled={loading || loadingCalls}
               aria-label="Actualizar"
               className="refresh-btn"
               size="large"
             >
-              <RefreshIcon className={loading || loadingCalls ? "spin" : ""} />
+              <RefreshIcon
+                className={loading || loadingCalls ? "spin" : ""}
+              />
             </IconButton>
           </Tooltip>
         </div>
@@ -179,7 +196,7 @@ export default function Dashboard() {
           </Box>
         ) : (
           <>
-            {/* KPIs en fila */}
+            {/* KPIs */}
             <div className="kpi-row">
               <div className="kpi-pill">
                 <div className="kpi-pill-label">Llamadas atendidas</div>
@@ -197,7 +214,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Tarjeta tabla Últimas llamadas */}
+            {/* Últimas llamadas: 4 columnas (grid) */}
             <div className="db-card">
               <div className="db-card-title">Últimas llamadas realizadas</div>
 
@@ -216,37 +233,47 @@ export default function Dashboard() {
                   <div className="db-empty">Sin llamadas recientes</div>
                 </div>
               ) : (
-                <div className="db-table">
-                  {/* Encabezados simples */}
-                  <div className="db-table-row db-table-head">
-                    <div className="db-col db-col-wide">Cliente / Teléfono</div>
-                    <div className="db-col">Fecha y hora</div>
-                    <div className="db-col">Duración</div>
-                    <div className="db-col">Estado</div>
+                <div className="db-table-grid">
+                  {/* Encabezado */}
+                  <div className="db-grid db-head">
+                    <div>Cliente / Teléfono</div>
+                    <div>Fecha y hora</div>
+                    <div>Duración</div>
+                    <div>Estado</div>
                   </div>
 
                   {/* Filas */}
                   {lastCalls.map((row) => {
                     const chip = estadoToChip(row.estado_llamada_valor);
                     return (
-                      <div key={row.id} className="db-table-row">
-                        <div className="db-col db-col-wide">
-                          <div className="db-cell-title">
+                      <div key={row.id} className="db-grid db-row">
+                        {/* Col 1: cliente / teléfono */}
+                        <div>
+                          <div className="cell-title">
                             {statusIcon(row.estado_llamada_valor)}
-                            <span style={{ marginLeft: 8 }}>
-                              {row.cliente_nombre || row.telefono_destino || "N/A"}
+                            <span className="customer-name">
+                              {row.cliente_nombre ||
+                                row.telefono_destino ||
+                                "N/A"}
                             </span>
                           </div>
-                          <div className="db-cell-sub">
+                          <div className="cell-sub">
                             {row.cliente_telefono || row.telefono_destino}
                           </div>
                         </div>
 
-                        <div className="db-col">{formatDateTime(row.fecha_hora_inicio)}</div>
-                        <div className="db-col">
-                          {Math.floor((row.duracion || 0) / 60)}m {Math.floor((row.duracion || 0) % 60)}s
+                        {/* Col 2: fecha y hora */}
+                        <div className="cell-datetime">
+                          {formatDateTime(row.fecha_hora_inicio)}
                         </div>
-                        <div className="db-col">
+
+                        {/* Col 3: duración */}
+                        <div className="cell-duration">
+                          {formatDuration(row.duracion || 0)}
+                        </div>
+
+                        {/* Col 4: estado (chip) */}
+                        <div className="cell-state">
                           <Chip size="small" label={chip.label} color={chip.color} />
                         </div>
                       </div>

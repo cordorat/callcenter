@@ -1,5 +1,14 @@
 // PATH: src/pages/Historial/HistorialLlamadas.jsx
-
+// -----------------------------------------------------------------------------
+// Historial de llamadas (React + MUI, conectado al backend con apiClient)
+// Funcionalidad:
+// - Filtros: búsqueda (q), estado, rango de fechas (desde/hasta).
+// - Auto-refresh opcional (autoRefreshMs).
+// - Fila clickeable para ver detalle (sin icono).
+// - Botón de recarga circular.
+// Backend:
+// - Endpoint: /calls/llamadas/historial/
+// -----------------------------------------------------------------------------
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MainLayout from "@/core/components/layout/MainLayout";

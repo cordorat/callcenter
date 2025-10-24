@@ -86,57 +86,6 @@
   color: var(--primary, #0C155A);
   line-height: 1.1;
 }
-/*
-
-/* 
-.kpi-pill-circle {
-  background: var(--card-bg, #ffffff);
-  border: 3px solid var(--card-border, #ffffff);
-  border-radius: 18px;
-  width: 220px;
-  height: 220px;
-  display: grid;
-  place-items: center;
-  box-shadow: var(--shadow, 0 6px 16px rgba(12, 21, 90, 0.1));
-  position: relative;
-  padding-top: 24px; 
-}
-.kpi-circle-title {
-  position: absolute;
-  top: 8px;
-  left: 12px;
-  right: 12px;
-  text-align: center;
-  font-weight: 800;
-  font-size: 14px;
-  color: var(--primary, #0C155A);
-  pointer-events: none;
-}
-.donut-wrap {
-  width: 86%;
-  height: 86%;
-  position: relative;
-}
-
-
-.kpi-circle-text {
-  position: absolute;
-  top: 54%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  color: var(--primary, #0C155A);
-  font-weight: 800;
-  pointer-events: none;
-}
-.kpi-circle-pct { font-size: 22px; line-height: 1; }
-.kpi-circle-sub {
-  font-size: 12px;
-  font-weight: 700;
-  opacity: .9;
-  color: var(--text-muted, rgba(12, 21, 90, 0.75));
-} */
-
 
 /* Tarjeta tabla */
 .db-card {
@@ -163,7 +112,81 @@
   border: 1.5px dashed var(--empty-border, #cfd7e6);
 }
 
-/* Responsive */
+/* ===== Tabla grid para Últimas llamadas ===== */
+.db-table-grid {
+  width: 100%;
+  display: grid;
+  row-gap: 10px;
+}
+
+.db-grid {
+  display: grid;
+  grid-template-columns: 1.8fr 1.1fr 0.7fr 0.8fr; /* 4 columnas a lo ancho */
+  column-gap: 16px;
+  align-items: center;
+  width: 100%;
+}
+
+.db-head {
+  font-weight: 700;
+  opacity: 0.9;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--empty-bg);
+  border: 1px solid var(--empty-border);
+}
+
+.db-row {
+  padding: 12px 12px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1.5px solid var(--card-border);
+  box-shadow: var(--shadow);
+}
+
+.db-row:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+  transition: all .15s ease;
+}
+
+.cell-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.state-icon {
+  width: 18px;
+  height: 18px;
+}
+.state-icon.success { color: #0a6b2b; }
+.state-icon.danger { color: #c41e3a; }
+.state-icon.primary { color: var(--primary, #0C155A); }
+
+.customer-name {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-sub {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.cell-datetime,
+.cell-duration,
+.cell-state {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+/* Responsive: en pantallas estrechas apilar en 1 columna */
 @media (max-width: 1200px) {
   .kpi-pill {
     min-width: 220px;
@@ -171,7 +194,16 @@
   }
   .kpi-pill-value { font-size: 48px; }
 }
+
+@media (max-width: 820px) {
+  .db-grid {
+    grid-template-columns: 1fr;
+    row-gap: 6px;
+  }
+  .db-head { display: none; } /* oculta header en móvil */
+}
+
 @media (max-width: 768px) {
   .kpi-row { flex-direction: column; align-items: center; }
-  .kpi-pill, .kpi-pill-circle { width: 90%; }
+  .kpi-pill { width: 90%; }
 }
