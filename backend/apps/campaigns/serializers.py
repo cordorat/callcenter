@@ -252,7 +252,7 @@ class CampanaSimpleSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Campana
-        fields = ['id', 'nombre', 'descripcion', 'estado', 'estado_nombre', 'fecha_inicio', 'fecha_fin']
+        fields = ['id', 'nombre', 'descripcion', 'estado', 'estado_nombre', 'fecha_inicio', 'fecha_fin','jefe_campana','centro','objetivo_llamadas','objetivo_ventas']
         read_only_fields = fields
     
     def get_estado_nombre(self, obj):

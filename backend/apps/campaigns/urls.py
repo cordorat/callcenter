@@ -10,7 +10,7 @@ router = DefaultRouter()
 router.register(r'clientes', ClienteViewSet, basename='cliente')
 router.register(r'equipos', EquipoViewSet, basename='equipo')
 router.register(r'productos', views.ProductoViewSet, basename='producto')
-
+router.register(r'campanas', views.CampanaViewSet, basename='campana')
 urlpatterns = [
     # Endpoints existentes de bases de datos
     path('cargar-base-datos/', CargarBaseDatosView.as_view(), name='cargar-base-datos'),

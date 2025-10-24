@@ -9,7 +9,7 @@ import Campaing from '../pages/Campaing/Campaing';
 import Teams from '../pages/Teams/Teams';
 import PrivateRoute from './PrivateRoute';
 import Settings from '../pages/Settings/Settings';
-import ProductsPage from '../pages/Campaing/Product';
+import CampaingJefeCentro from '../pages/Campaing/CampaingJefeCentro';
 import Usuarios from '../pages/Usuario/Usuarios';
 import CrearUsuario from '../pages/Usuario/CrearUsuario';
 
@@ -47,7 +47,7 @@ const AppRoutes = () => {
           path="/productos" 
           element={
             <PrivateRoute>
-              <ProductsPage />
+              <CampaingJefeCentro />
             </PrivateRoute>
           } 
         />

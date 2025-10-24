@@ -23,16 +23,33 @@ export default function CreateProductModal({ open, onClose }) {
       [name]: value,
     });
   };
+  const validateForm = () => {
+    const newErrors = {};
 
+    if (!formData.nombre) {
+      newErrors.nombre = "El nombre es requerido";
+    }
+
+    if (!formData.descripcion) {
+      newErrors.descripcion = "La descripcion es requerido";
+    }
+    if (!formData.precio) {
+      newErrors.precio = "El precio es requerido";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setLoading(true);
     setErrors({});
 
     try {
       await createProduct(formData);
       setSuccessMessage("Producto creado correctamente");
-
+      setFormData({ nombre: "", descripcion: "", precio: "" });
       setTimeout(() => {
         onClose();
         setSuccessMessage("");
@@ -91,7 +108,8 @@ export default function CreateProductModal({ open, onClose }) {
             value={formData.nombre}
             onChange={handleChange}
             margin="normal"
-            required
+            error={!!errors.nombre}
+            helperText={errors.nombre}
           />
           <TextField
             fullWidth
@@ -100,7 +118,8 @@ export default function CreateProductModal({ open, onClose }) {
             value={formData.descripcion}
             onChange={handleChange}
             margin="normal"
-            required
+            error={!!errors.descripcion}
+            helperText={errors.descripcion}
           />
           <TextField
             fullWidth
@@ -110,11 +129,12 @@ export default function CreateProductModal({ open, onClose }) {
             value={formData.precio}
             onChange={handleChange}
             margin="normal"
-            required
+            error={!!errors.precio}
+            helperText={errors.precio}
           />
 
           <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
-            <Button onClick={onClose} color="secondary" sx={{ mr: 1 }}>
+            <Button onClick={onClose} sx={{ mr: 1, backgroundColor: theme.palette.primary.secondary }} variant="contained" >
               Cancelar
             </Button>
             <Button
