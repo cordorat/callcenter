@@ -20,7 +20,7 @@ import {
   Search as SearchIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
-import { createEquipo, getCampanasActivas, getAgentesDisponibles } from '@/core/api/equipos';
+import { createEquipo, getCampanasActivas, getAgentesDisponibles, getCoordinadoresDisponibles } from '@/core/api/equipos';
 
 /**
  * Modal para crear nuevo equipo de trabajo
@@ -39,16 +39,19 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
   // Estados del formulario
   const [nombre, setNombre] = useState('');
   const [campanaSeleccionada, setCampanaSeleccionada] = useState(null);
+  const [coordinadorSeleccionado, setCoordinadorSeleccionado] = useState(null);
   const [agentesSeleccionados, setAgentesSeleccionados] = useState([]);
   
   // Estados de datos
   const [campanas, setCampanas] = useState([]);
+  const [coordinadores, setCoordinadores] = useState([]);
   const [agentesDisponibles, setAgentesDisponibles] = useState([]);
   const [searchAgentes, setSearchAgentes] = useState('');
   
   // Estados de UI
   const [loading, setLoading] = useState(false);
   const [loadingCampanas, setLoadingCampanas] = useState(false);
+  const [loadingCoordinadores, setLoadingCoordinadores] = useState(false);
   const [loadingAgentes, setLoadingAgentes] = useState(false);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
@@ -57,6 +60,7 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
   useEffect(() => {
     if (open) {
       loadCampanasActivas();
+      loadCoordinadoresDisponibles();
       loadAgentesDisponibles('');
     } else {
       // Limpiar formulario al cerrar
@@ -81,6 +85,7 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
   const resetForm = () => {
     setNombre('');
     setCampanaSeleccionada(null);
+    setCoordinadorSeleccionado(null);
     setAgentesSeleccionados([]);
     setSearchAgentes('');
     setErrors({});
@@ -104,6 +109,25 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
       setErrors(prev => ({ ...prev, general: 'Error al cargar las campañas activas' }));
     } finally {
       setLoadingCampanas(false);
+    }
+  };
+
+  /**
+   * Carga coordinadores disponibles
+   */
+  const loadCoordinadoresDisponibles = async () => {
+    try {
+      setLoadingCoordinadores(true);
+      const response = await getCoordinadoresDisponibles();
+      
+      if (response.success) {
+        setCoordinadores(response.coordinadores || []);
+      }
+    } catch (err) {
+      console.error('[CreateTeamModal] Error cargando coordinadores:', err);
+      setErrors(prev => ({ ...prev, general: 'Error al cargar los coordinadores' }));
+    } finally {
+      setLoadingCoordinadores(false);
     }
   };
 
@@ -144,6 +168,10 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
       newErrors.campana = 'Debe seleccionar una campaña';
     }
 
+    if (!coordinadorSeleccionado) {
+      newErrors.coordinador = 'Debe seleccionar un coordinador';
+    }
+
     if (agentesSeleccionados.length === 0) {
       newErrors.agentes = 'Debe seleccionar al menos un agente';
     }
@@ -173,6 +201,7 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
       const data = {
         nombre: nombre.trim(),
         campana: campanaSeleccionada.id,
+        coordinador: coordinadorSeleccionado.documento_id,
         agentes_ids: agentesSeleccionados.map(a => a.documento_id)
       };
 
@@ -292,6 +321,48 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
                   <Typography variant="body2">{option.nombre}</Typography>
                   <Typography variant="caption" color="text.secondary">
                     {option.descripcion}
+                  </Typography>
+                </Box>
+              </li>
+            )}
+          />
+        </Box>
+
+        {/* Campo: Coordinador */}
+        <Box sx={{ mb: 3 }}>
+          <Autocomplete
+            options={coordinadores}
+            getOptionLabel={(option) => option.full_name || ''}
+            value={coordinadorSeleccionado}
+            onChange={(event, newValue) => {
+              setCoordinadorSeleccionado(newValue);
+              setErrors(prev => ({ ...prev, coordinador: null }));
+            }}
+            loading={loadingCoordinadores}
+            disabled={loading || !!successMessage}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Coordinador *"
+                error={!!errors.coordinador}
+                helperText={errors.coordinador}
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {loadingCoordinadores ? <CircularProgress size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+            renderOption={(props, option) => (
+              <li {...props}>
+                <Box>
+                  <Typography variant="body2">{option.full_name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {option.email}
                   </Typography>
                 </Box>
               </li>

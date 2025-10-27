@@ -1,0 +1,91 @@
+.date-range-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.date-inputs {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.date-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.date-group input {
+  padding: 10px 12px;
+  border: 1px solid var(--date-border, rgba(12, 21, 90, 0.15));
+  border-radius: 6px;
+  background: var(--date-bg, #F0F4F8);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 200ms ease;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--primary-main);
+    background: var(--date-bg-hover, #E8F1FF);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: var(--date-focus-shadow, 0 0 0 3px rgba(12, 21, 90, 0.1));
+    border-color: var(--primary-main);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.date-group input[type='date']::-webkit-calendar-picker-indicator {
+  filter: var(--date-icon-filter, none);
+  cursor: pointer;
+}
+
+.date-error {
+  padding: 10px 12px;
+  background-color: rgba(197, 34, 31, 0.1);
+  border: 1px solid rgba(197, 34, 31, 0.3);
+  border-radius: 6px;
+  color: #c41e3a;
+  font-size: 13px;
+  font-weight: 500;
+  animation: slideInDown 200ms ease;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .date-inputs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .date-group input {
+    width: 100%;
+  }
+}

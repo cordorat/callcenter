@@ -36,7 +36,7 @@ export default function ModuleShell({ title, items, children }) {
   const handleMouseLeave = () => setHovered(false);
 
   return (
-    <Box sx={{ display: "flex", width: "100%", height: "100vh", overflow: "hidden" }}>
+    <Box sx={{ display: "flex", width: "100%", height: "110vh", overflow: "hidden" }}>
       {/* Header */}
       <AppBar
         position="fixed"

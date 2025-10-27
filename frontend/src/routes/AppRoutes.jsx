@@ -11,6 +11,8 @@ import PrivateRoute from './PrivateRoute';
 import Settings from '../pages/Settings/Settings';
 import Usuarios from '../pages/Usuario/Usuarios';
 import CrearUsuario from '../pages/Usuario/CrearUsuario';
+import AgentesPage from '../pages/Kpis/AgentesPage';
+import AgentDetailPage from '../pages/Kpis/AgentDetailPage';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -48,6 +50,25 @@ const AppRoutes = () => {
           element={
             <PrivateRoute>
               <Kpis />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Rutas de KPI Coordinador */}
+        <Route
+          path="/kpis/agentes"
+          element={
+            <PrivateRoute>
+              <AgentesPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/kpis/agentes/:documentoId"
+          element={
+            <PrivateRoute>
+              <AgentDetailPage />
             </PrivateRoute>
           }
         />

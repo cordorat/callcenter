@@ -256,7 +256,8 @@ class Contrato(models.Model):
 class Equipo(models.Model):
     """
     Equipos de trabajo para organizar agentes.
-    Los equipos son creados por el Jefe de Centro y asignados a campañas activas.
+    Los equipos son asignados a campañas activas.
+    El centro se determina indirectamente a través de la campaña.
     """
     equipo_id = models.AutoField(primary_key=True)
     
@@ -264,16 +265,6 @@ class Equipo(models.Model):
         'Nombre del Equipo', 
         max_length=100,
         help_text='Nombre descriptivo del equipo'
-    )
-    
-    jefe_centro = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='equipos_gestionados',
-        db_column='jefe_centro_id',
-        null=True,
-        blank=True,
-        help_text='Jefe de centro responsable del equipo'
     )
     
     campana = models.ForeignKey(
@@ -286,7 +277,6 @@ class Equipo(models.Model):
         help_text='Campaña asignada al equipo'
     )
     
-    # Para mantener compatibilidad con código existente
     coordinador = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -294,7 +284,7 @@ class Equipo(models.Model):
         blank=True,
         related_name='equipos_coordinados',
         db_column='coordinador_id',
-        help_text='Coordinador del equipo (opcional)'
+        help_text='Coordinador responsable del equipo'
     )
     
     is_active = models.BooleanField(
@@ -309,8 +299,8 @@ class Equipo(models.Model):
         verbose_name_plural = 'Equipos'
         ordering = ['nombre']
         indexes = [
-            models.Index(fields=['jefe_centro', 'is_active']),
             models.Index(fields=['campana', 'is_active']),
+            models.Index(fields=['coordinador', 'is_active']),
         ]
     
     def __str__(self):

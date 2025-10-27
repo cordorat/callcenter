@@ -15,7 +15,7 @@ from common.estados_helper import get_estado
 def create_jefe_campana():
     """Crea un usuario Jefe de Campaña."""
     
-    email = 'jefe_campana@callcenter.com'
+    email = 'jefe_campana1@callcenter.com'
     password = 'jefe_campana123!'
     
     # Verificar si el usuario ya existe

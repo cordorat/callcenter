@@ -13,7 +13,8 @@ import{
   Settings as SettingsIcon,
   Equalizer as EqualizerIcon,
   History as HistoryIcon,
-  Groups as GroupsIcon
+  Groups as GroupsIcon,
+  AssignmentInd as AssignmentIndIcon
 } from '@mui/icons-material';
 
 export const menuItems = [
@@ -28,6 +29,12 @@ export const menuItems = [
     path: '/equipos',
     icon: GroupsIcon,
     roles: ['JEFE_CENTRO']
+  },
+  {
+    label: 'Agentes',
+    path: '/kpis/agentes',
+    icon: AssignmentIndIcon,
+    roles: ['COORDINADOR', 'ADMIN']
   },
   {
     label: 'Usuarios',

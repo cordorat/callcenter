@@ -125,3 +125,17 @@ export const getCampanasActivas = async () => {
     throw error;
   }
 };
+
+/**
+ * Obtiene coordinadores disponibles para asignar a equipos.
+ * @returns {Promise<Object>} { success, count, coordinadores }
+ */
+export const getCoordinadoresDisponibles = async () => {
+  try {
+    const response = await apiClient.get('/api/campaigns/equipos/coordinadores-disponibles/');
+    return response.data;
+  } catch (error) {
+    console.error('[API Equipos] Error obteniendo coordinadores:', error);
+    throw error;
+  }
+};
