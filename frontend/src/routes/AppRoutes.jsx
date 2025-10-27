@@ -12,6 +12,7 @@ import Settings from '../pages/Settings/Settings';
 import CampaingJefeCentro from '../pages/Campaing/CampaingJefeCentro';
 import Usuarios from '../pages/Usuario/Usuarios';
 import CrearUsuario from '../pages/Usuario/CrearUsuario';
+import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -50,6 +51,15 @@ const AppRoutes = () => {
               <CampaingJefeCentro />
             </PrivateRoute>
           } 
+        />
+
+         <Route
+          path="/historial"
+          element={
+            <PrivateRoute>
+              <HistorialLlamadas />
+            </PrivateRoute>
+          }
         />
 
         <Route

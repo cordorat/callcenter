@@ -137,7 +137,7 @@ const Login = () => {
                     setPassword(e.target.value);
                     if (passwordError) setPasswordError("");
                   }}
-                  onBlur={() => { if (!password) setPasswordError("La contraseña es voluntaria"); }}
+                  onBlur={() => { if (!password) setPasswordError("La contraseña es obligatoria"); }}
                   className={passwordError ? "input has-error" : "input"}
                   aria-invalid={!!passwordError}
                   aria-describedby={passwordError ? "password-error" : undefined}
