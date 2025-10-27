@@ -120,13 +120,13 @@ class LlamadaSerializer(serializers.ModelSerializer):
             'fecha_hora_inicio', 'fecha_hora_fin', 'duracion',
             'duracion_total_formateada', 'grabacion_url',
             'twilio_call_sid', 'twilio_status', 'twilio_recording_sid',
-            'twilio_recording_url', 'transcipcion',
+            'twilio_recording_url', 'transcipcion', 'fue_contestada',
             'estado_llamada', 'estado_llamada_valor',
             'estado_venta', 'estado_venta_valor',
             'estado_reportada', 'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'duracion', 'created_at', 'updated_at'
+            'id', 'duracion', 'fue_contestada', 'created_at', 'updated_at'
         ]
 
 
@@ -171,7 +171,7 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             'telefono_origen', 'telefono_destino',
             'fecha_hora_inicio', 'fecha_hora_fin', 'duracion',
             'duracion_total_formateada', 'tiene_grabacion', 'grabacion_url',
-            'twilio_call_sid', 'twilio_recording_url',
+            'twilio_call_sid', 'twilio_recording_url', 'fue_contestada',
             'estado_llamada', 'estado_llamada_valor',
             'estado_venta', 'estado_venta_valor',
             'estado_reportada', 'estado_reportada_valor',
@@ -179,7 +179,7 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'duracion', 'created_at', 'updated_at'
+            'id', 'duracion', 'fue_contestada', 'created_at', 'updated_at'
         ]
     
     def get_cliente_nombre(self, obj):

@@ -196,26 +196,27 @@ class KPIViewSet(viewsets.ViewSet):
             fecha_hora_inicio__range=(inicio_dia, fin_dia)
         )
         
-        total_llamadas = llamadas.count()
+        # Total de llamadas atendidas (solo las contestadas)
+        total_llamadas = llamadas.filter(fue_contestada=True).count()
         
-        # Ventas realizadas (excluir NO_VENTA usando estados_helper)
+        # Ventas realizadas (excluir NO_VENTA usando estados_helper) - solo de llamadas contestadas
         estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
         if estado_no_venta_id:
-            ventas = llamadas.exclude(estado_venta_id=estado_no_venta_id).count()
+            ventas = llamadas.filter(fue_contestada=True).exclude(estado_venta_id=estado_no_venta_id).count()
         else:
             ventas = 0
         
         # Cumplimiento como decimal 0-1
         cumplimiento_decimal = (ventas / total_llamadas) if total_llamadas > 0 else 0
         
-        # Llamadas por hora (promedio)
+        # Llamadas por hora (promedio) - solo contestadas
         dias = (fecha_hasta - fecha_desde).days + 1
         horas_totales = dias * 8  # Asumiendo 8 horas laborales por día
         llamadas_por_hora_promedio = round(total_llamadas / horas_totales, 2) if horas_totales > 0 else 0
         
-        # Desglose de llamadas por hora (para gráfica)
+        # Desglose de llamadas por hora (para gráfica) - solo contestadas
         llamadas_por_hora_qs = (
-            llamadas.annotate(
+            llamadas.filter(fue_contestada=True).annotate(
                 hora=Extract('fecha_hora_inicio', 'hour')
             )
             .values('hora')
@@ -234,8 +235,9 @@ class KPIViewSet(viewsets.ViewSet):
             for hora, total in sorted(horas_dict.items())
         ]
         
-        # Duración promedio de llamada
+        # Duración promedio de llamada - solo de llamadas contestadas
         duracion_promedio = llamadas.filter(
+            fue_contestada=True,
             duracion__isnull=False
         ).aggregate(promedio=Avg('duracion'))['promedio'] or 0
         

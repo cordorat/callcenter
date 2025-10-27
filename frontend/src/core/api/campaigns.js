@@ -5,6 +5,21 @@ import apiClient from './apiClient';
 import { ENDPOINTS } from './endpoints';
 
 /**
+ * Obtener lista de todas las campañas
+ * @param {Object} params - Parámetros opcionales para filtrar o paginar
+ * @returns {Promise<Object>} { success, campanas }
+ */
+export const getCampaigns = async (params = {}) => {
+  try {
+    const response = await apiClient.get('/api/campaigns/', { params });
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al obtener campañas:', error);
+    throw error;
+  }
+};
+
+/**
  * Obtener lista de campañas activas
  */
 export const getActiveCampaigns = async () => {

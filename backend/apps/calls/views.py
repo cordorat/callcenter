@@ -417,6 +417,7 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         - fecha_desde: Fecha inicial (formato: YYYY-MM-DD)
         - fecha_hasta: Fecha final (formato: YYYY-MM-DD)
         - estado: Estado de la llamada (COMPLETADA, NO_CONTESTADA, RECHAZADA, FALLIDA)
+        - fue_contestada: Filtrar por llamadas contestadas (true/false)
         - telefono: Buscar por número de teléfono (parcial)
         - cliente: Buscar por nombre de cliente (parcial)
         - page: Número de página (default: 1)
@@ -426,6 +427,7 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         - /api/calls/llamadas/historial/
         - /api/calls/llamadas/historial/?fecha_desde=2025-10-01&fecha_hasta=2025-10-23
         - /api/calls/llamadas/historial/?estado=COMPLETADA&page=2&page_size=50
+        - /api/calls/llamadas/historial/?fue_contestada=true
         - /api/calls/llamadas/historial/?telefono=+57300&cliente=Juan
         """
         user = request.user
@@ -437,6 +439,7 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         fecha_desde = request.query_params.get('fecha_desde')
         fecha_hasta = request.query_params.get('fecha_hasta')
         estado = request.query_params.get('estado')
+        fue_contestada = request.query_params.get('fue_contestada')
         telefono = request.query_params.get('telefono')
         cliente = request.query_params.get('cliente')
         
@@ -469,6 +472,13 @@ class LlamadaViewSet(viewsets.ModelViewSet):
                     {'error': f'Estado "{estado}" no válido'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+        
+        # Filtro por fue_contestada (llamadas que realmente fueron contestadas)
+        if fue_contestada is not None:
+            if fue_contestada.lower() in ['true', '1', 'yes']:
+                queryset = queryset.filter(fue_contestada=True)
+            elif fue_contestada.lower() in ['false', '0', 'no']:
+                queryset = queryset.filter(fue_contestada=False)
         
         # Búsqueda por número de teléfono (solo en destino)
         # Limpia el + y espacios para mejor compatibilidad

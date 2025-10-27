@@ -128,6 +128,13 @@ class Llamada(models.Model):
         help_text='URL de la grabación en Twilio'
     )
     
+    # Campo para diferenciar llamadas contestadas vs no contestadas
+    fue_contestada = models.BooleanField(
+        'Fue Contestada',
+        default=False,
+        help_text='True si la llamada fue contestada (in-progress), False si solo timbró'
+    )
+    
     # Campos adicionales NECESARIOS para operación
     telefono_origen = models.CharField(
         'Teléfono de Origen',

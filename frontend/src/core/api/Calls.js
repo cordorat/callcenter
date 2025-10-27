@@ -4,17 +4,18 @@ import { ENDPOINTS } from "./endpoints";
 
 /**
  * Mapea los estados del UI al backend:
- * UI: contestada | no_contestada | fallida | todos
- * API: COMPLETADA | NO_CONTESTADA | FALLIDA | (omitido)
+ * UI: completada | no_contestada | rechazada | colgada | ocupado | error | todos
+ * API: COMPLETADA (vía fue_contestada=true) | NO_CONTESTADA | RECHAZADA | COLGADA | OCUPADO | ERROR
  */
 const mapEstadoToBackend = (estadoUI) => {
   if (!estadoUI || estadoUI === "todos") return undefined;
   const map = {
-    contestada: "COMPLETADA",
+    completada: "COMPLETADA",
     no_contestada: "NO_CONTESTADA",
-    fallida: "FALLIDA",
-    // si agregas "rechazada" en el UI:
     rechazada: "RECHAZADA",
+    colgada: "COLGADA",
+    ocupado: "OCUPADO",
+    error: "ERROR",
   };
   return map[estadoUI] || undefined;
 };
@@ -25,7 +26,8 @@ export const callsService = {
    * Params soportados por tu backend:
    * - fecha_desde (YYYY-MM-DD)
    * - fecha_hasta (YYYY-MM-DD)
-   * - estado (COMPLETADA | NO_CONTESTADA | RECHAZADA | FALLIDA)
+   * - estado (COMPLETADA | NO_CONTESTADA | RECHAZADA | COLGADA | OCUPADO | ERROR)
+   * - fue_contestada (true | false) - Filtrar por llamadas realmente contestadas
    * - telefono (string)
    * - cliente (string)
    * - page (int)
@@ -34,22 +36,24 @@ export const callsService = {
   getHistory: async ({
     fecha_desde,
     fecha_hasta,
-    estado,       // estado UI → se mapea adentro
+    estado,       // Ya viene en formato correcto desde el componente
+    fue_contestada, // boolean - filtrar por llamadas contestadas
     telefono,
     cliente,
     page = 1,
     page_size = 50,
   } = {}) => {
-    const estadoBackend = mapEstadoToBackend(estado);
-    const params = {
-      fecha_desde,
-      fecha_hasta,
-      estado: estadoBackend,
-      telefono,
-      cliente,
-      page,
-      page_size,
-    };
+    // Construir params solo con valores definidos
+    const params = {};
+    
+    if (fecha_desde) params.fecha_desde = fecha_desde;
+    if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+    if (estado) params.estado = estado;
+    if (fue_contestada !== undefined) params.fue_contestada = fue_contestada;
+    if (telefono) params.telefono = telefono;
+    if (cliente) params.cliente = cliente;
+    if (page) params.page = page;
+    if (page_size) params.page_size = page_size;
 
     const response = await apiClient.get(ENDPOINTS.CALLS_HISTORY, { params });
     return response.data; // { count, total_pages, current_page, page_size, results }

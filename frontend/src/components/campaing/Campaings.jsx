@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Edit as EditIcon } from '@mui/icons-material';
-import { getCampaings } from '@/core/api/Campaings';
+import { getCampaigns } from '@/core/api/campaigns';
 
 export default function CampaignsComponent({ onEditTeam, showActions = false }) {
   const theme = useTheme();
@@ -34,7 +34,7 @@ export default function CampaignsComponent({ onEditTeam, showActions = false }) 
     try {
       setLoading(true);
       setError(null);
-      const response = await getCampaings();
+      const response = await getCampaigns();
 
       if (response.success) {
         setCampanas(response.campanas || []);

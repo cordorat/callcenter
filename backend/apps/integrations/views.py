@@ -487,7 +487,8 @@ def twilio_call_status_webhook(request, llamada_id=None):
             elif call_status == 'in-progress':
                 estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
                 llamada.estado_llamada = estado_en_curso
-                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> EN_CURSO")
+                llamada.fue_contestada = True  # ✅ MARCAMOS QUE FUE CONTESTADA
+                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> EN_CURSO (CONTESTADA)")
                 
                 # Asegurar que el agente se mantenga EN_LLAMADA (no cambiar a AFTERCALL todavía)
                 estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')

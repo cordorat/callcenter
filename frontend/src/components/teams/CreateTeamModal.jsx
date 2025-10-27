@@ -20,7 +20,7 @@ import {
   Close as CloseIcon
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import { createEquipo, getCampanasActivas, getAgentesDisponibles } from '@/core/api/equipos';
+import { createEquipo, getCampanasActivas, getAgentesDisponibles, getCoordinadoresDisponibles } from '@/core/api/equipos';
 
 /**
  * Modal para crear nuevo equipo de trabajo
@@ -300,185 +300,12 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
           Crear Nuevo Equipo
         </Typography>
 
-        {/* Campo: Campaña - Criterio 4.4 */}
-        <Box sx={{ mb: 3 }}>
-          <Autocomplete
-            options={campanas}
-            getOptionLabel={(option) => option.nombre || ''}
-            value={campanaSeleccionada}
-            onChange={(event, newValue) => {
-              setCampanaSeleccionada(newValue);
-              setErrors(prev => ({ ...prev, campana: null }));
-            }}
-            loading={loadingCampanas}
-            disabled={loading || !!successMessage}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Campaña Activa"
-                error={!!errors.campana}
-                helperText={errors.campana}
-                required
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {loadingCampanas ? <CircularProgress size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-            renderOption={(props, option) => (
-              <li {...props}>
-                <Box>
-                  <Typography variant="body2">{option.nombre}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {option.descripcion}
-                  </Typography>
-                </Box>
-              </li>
-            )}
-          />
-        </Box>
-
-        {/* Campo: Coordinador */}
-        <Box sx={{ mb: 3 }}>
-          <Autocomplete
-            options={coordinadores}
-            getOptionLabel={(option) => option.full_name || ''}
-            value={coordinadorSeleccionado}
-            onChange={(event, newValue) => {
-              setCoordinadorSeleccionado(newValue);
-              setErrors(prev => ({ ...prev, coordinador: null }));
-            }}
-            loading={loadingCoordinadores}
-            disabled={loading || !!successMessage}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Coordinador *"
-                error={!!errors.coordinador}
-                helperText={errors.coordinador}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {loadingCoordinadores ? <CircularProgress size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-            renderOption={(props, option) => (
-              <li {...props}>
-                <Box>
-                  <Typography variant="body2">{option.full_name}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {option.email}
-                  </Typography>
-                </Box>
-              </li>
-            )}
-          />
-        </Box>
-
-        {/* Campo: Agentes disponibles - Criterio 2.2 */}
-        <Box sx={{ mb: 2 }}>
-          <Autocomplete
-            multiple
-            options={agentesDisponibles}
-            getOptionLabel={(option) => option.full_name || ''}
-            value={agentesSeleccionados}
-            onChange={(event, newValue) => {
-              setAgentesSeleccionados(newValue);
-              setErrors(prev => ({ ...prev, agentes: null }));
-            }}
-            inputValue={searchAgentes}
-            onInputChange={(event, newInputValue) => {
-              setSearchAgentes(newInputValue);
-            }}
-            loading={loadingAgentes}
-            disabled={loading || !!successMessage}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Agentes Disponibles"
-                placeholder="Buscar por nombre o código..."
-                error={!!errors.agentes}
-                required
-                InputProps={{
-                  ...params.InputProps,
-                  startAdornment: (
-                    <>
-                      <SearchIcon sx={{ ml: 1, mr: 0.5, color: 'text.secondary' }} />
-                      {params.InputProps.startAdornment}
-                    </>
-                  ),
-                  endAdornment: (
-                    <>
-                      {loadingAgentes ? <CircularProgress size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-            renderOption={(props, option) => (
-              <li {...props}>
-                <Box>
-                  <Typography variant="body2">{option.full_name}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {option.email} • Código: {option.codigo_agente || 'N/A'}
-                  </Typography>
-                </Box>
-              </li>
-            )}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip
-                  label={option.full_name}
-                  {...getTagProps({ index })}
-                  size="small"
-                  deleteIcon={<CloseIcon />}
-                />
-              ))
-            }
-            noOptionsText={
-              searchAgentes 
-                ? "No se encontraron agentes disponibles" 
-                : "Escribe para buscar agentes"
-            }
-          />
-          {errors.agentes && (
-            <FormHelperText error>{errors.agentes}</FormHelperText>
-          )}
-          {agentesSeleccionados.length > 0 && (
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              {agentesSeleccionados.length} {agentesSeleccionados.length === 1 ? 'agente seleccionado' : 'agentes seleccionados'}
-            </Typography>
-          )}
-        </Box>
-      </DialogContent>
-
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        {/* Criterio 3.2: Botón "Volver" */}
-        <Button 
-          onClick={handleClose}
-          disabled={loading || !!successMessage}
-        >
-          {successMessage ? 'Cerrar' : 'Cancelar'}
-        </Button>
-        
-        {/* Criterio 3.1: Botón "Guardar" */}
-        {!successMessage && (
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={loading}
-            startIcon={loading && <CircularProgress size={20} />}
+        <Box component="form">
+          <Grid
+            container
+            spacing={2}
+            justifyContent="center"
+            
           >
             {/* Campo: Nombre del equipo */}
             <Grid item xs={12}>
@@ -555,6 +382,60 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
                       <Typography variant="body2">{option.nombre}</Typography>
                       <Typography variant="caption" color="text.secondary">
                         {option.descripcion}
+                      </Typography>
+                    </Box>
+                  </li>
+                )}
+              />
+            </Grid>
+
+            {/* Campo: Coordinador */}
+            <Grid item xs={12} sx={{
+              '& .MuiTextField-root, & .MuiAutocomplete-root': {
+                width: '570px',
+              },
+              '& .MuiOutlinedInput-root': {
+                height: '60px',
+              },
+              '& .MuiSelect-select': {
+                display: 'flex',
+                alignItems: 'center',
+              }
+            }}>
+              <Autocomplete
+                options={coordinadores}
+                getOptionLabel={(option) => option.full_name || ''}
+                value={coordinadorSeleccionado}
+                onChange={(event, newValue) => {
+                  setCoordinadorSeleccionado(newValue);
+                  setErrors(prev => ({ ...prev, coordinador: null }));
+                }}
+                loading={loadingCoordinadores}
+                disabled={loading || !!successMessage}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Coordinador"
+                    error={!!errors.coordinador}
+                    helperText={errors.coordinador}
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {loadingCoordinadores ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box>
+                      <Typography variant="body2">{option.full_name}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.email}
                       </Typography>
                     </Box>
                   </li>

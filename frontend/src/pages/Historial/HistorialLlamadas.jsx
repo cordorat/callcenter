@@ -13,7 +13,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
 import { useAuth } from "@/core/context/AuthContext";
-import { callsService } from "@/core/api/calls"; // 👈 nuevo import
+import { callsService } from "@/core/api/calls";
 
 import {
   Box,
@@ -57,14 +57,25 @@ const formatearDuracion = (seg) => {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 };
 
-const estadoToChip = (estado) => {
+const estadoToChip = (fueContestada, estado) => {
+  // Primero verificar si fue contestada (campo booleano de la BD)
+  if (fueContestada === true) {
+    return { label: "Contestada", color: "success" };
+  }
+  
+  // Si no fue contestada, mostrar el motivo según estado_llamada
   const map = {
-    COMPLETADA: { label: "Contestada", color: "success" },
     NO_CONTESTADA: { label: "No contestada", color: "warning" },
-    FALLIDA: { label: "Fallida", color: "error" },
     RECHAZADA: { label: "Rechazada", color: "default" },
+    COLGADA: { label: "Colgada", color: "error" },
+    OCUPADO: { label: "Ocupado", color: "warning" },
+    ERROR: { label: "Error", color: "error" },
+    TIMBRADO: { label: "Timbrando", color: "info" },
+    COMPLETADA: { label: "No contestada", color: "warning" }, // Completada pero no contestada
+    EN_CURSO: { label: "En curso", color: "primary" },
+    TRANSFERIDA: { label: "Transferida", color: "info" },
   };
-  return map[estado] || { label: estado || "N/A", color: "default" };
+  return map[estado] || { label: estado || "Sin respuesta", color: "default" };
 };
 
 const toYMD = (d) => {
@@ -126,7 +137,7 @@ function RefreshCircle({ onClick, loading }) {
 }
 
 // ======================== Componente principal ========================
-export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
+export default function HistorialLlamadas() {
   const { user } = useAuth();
   const today = toYMD(new Date());
 
@@ -153,18 +164,36 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
     const trimmed = q.trim();
     const isNumber = /^[\d\s\+\-]+$/.test(trimmed);
 
-    const payload = await callsService.getHistory({
+    // Construir parámetros base
+    const params = {
       fecha_desde: fechaInicio || undefined,
       fecha_hasta: fechaFin || undefined,
-      estado: estado === "todos" ? undefined : estado.toUpperCase(),
-      ...(trimmed
-        ? isNumber
-          ? { telefono: trimmed }
-          : { cliente: trimmed }
-        : {}),
       page: 1,
       page_size: 50,
-    });
+    };
+
+    // Agregar búsqueda por teléfono o cliente
+    if (trimmed) {
+      if (isNumber) {
+        params.telefono = trimmed;
+      } else {
+        params.cliente = trimmed;
+      }
+    }
+
+    // Manejar filtro de estado
+    if (estado === 'contestada') {
+      // Filtrar por fue_contestada=true
+      params.fue_contestada = true;
+    } else if (estado === 'no_contestada') {
+      // Filtrar por fue_contestada=false (llamadas completadas pero no contestadas)
+      params.fue_contestada = false;
+    } else if (estado !== 'todos') {
+      // Filtrar por estado específico (RECHAZADA, COLGADA, etc.)
+      params.estado = estado.toUpperCase();
+    }
+
+    const payload = await callsService.getHistory(params);
 
     const list = Array.isArray(payload) ? payload : payload.results || [];
     list.sort((a, b) => new Date(b.fecha_hora_inicio) - new Date(a.fecha_hora_inicio));
@@ -178,13 +207,10 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
 }, [q, estado, fechaInicio, fechaFin]);
 
 
-  // auto-refresh
+  // Cargar datos solo al montar el componente o cuando cambian los filtros
   useEffect(() => {
     fetchData();
-    if (!autoRefreshMs) return;
-    const id = setInterval(fetchData, autoRefreshMs);
-    return () => clearInterval(id);
-  }, [fetchData, autoRefreshMs]);
+  }, [fetchData]);
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
@@ -295,13 +321,18 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
                 labelId="estado-label"
                 value={estado}
                 label="Estado"
-                onChange={(e) => { setEstado(e.target.value); setPage(0); fetchData(); }}
+                onChange={(e) => { 
+                  setEstado(e.target.value); 
+                  setPage(0);
+                }}
               >
                 <MenuItem value="todos">Todos</MenuItem>
                 <MenuItem value="contestada">Contestada</MenuItem>
                 <MenuItem value="no_contestada">No contestada</MenuItem>
-                <MenuItem value="fallida">Fallida</MenuItem>
                 <MenuItem value="rechazada">Rechazada</MenuItem>
+                <MenuItem value="colgada">Colgada</MenuItem>
+                <MenuItem value="ocupado">Ocupado</MenuItem>
+                <MenuItem value="error">Error</MenuItem>
               </Select>
             </FormControl>
 
@@ -404,7 +435,7 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
 
               {!loading &&
                 paginatedRows.map((row, index) => {
-                  const chip = estadoToChip(row.estado_llamada_valor);
+                  const chip = estadoToChip(row.fue_contestada, row.estado_llamada_valor);
                   const id = row.id;
                   const isOpen = !!openRows[id];
                   return (
@@ -528,9 +559,7 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
             Total: {total} llamadas
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {autoRefreshMs
-              ? `Actualiza cada ${Math.round(autoRefreshMs / 1000)}s`
-              : "Actualización manual"}
+            Actualización manual
           </Typography>
         </Stack>
 
