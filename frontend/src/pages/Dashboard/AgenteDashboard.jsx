@@ -13,19 +13,12 @@ import {
   Stack,
   Paper,
   LinearProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Chip,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import PhoneMissedIcon from "@mui/icons-material/PhoneMissed";
 import { getKpiOverview } from "@/core/api/Kpis";
-import { callsService } from "@/core/api/calls";
 import { useTheme } from "@mui/material/styles";
 
 const toLocalDateString = (date) => {
@@ -33,20 +26,6 @@ const toLocalDateString = (date) => {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
-};
-
-const formatDateTime = (iso) => (iso ? new Date(iso).toLocaleString() : "—");
-const formatDuration = (s = 0) =>
-  `${Math.floor(s / 60)}m ${Math.floor(s % 60)}s`;
-
-const estadoToChip = (estado) => {
-  const map = {
-    COMPLETADA: { label: "Contestada", color: "success" },
-    NO_CONTESTADA: { label: "No contestada", color: "warning" },
-    FALLIDA: { label: "Fallida", color: "error" },
-    RECHAZADA: { label: "Rechazada", color: "default" },
-  };
-  return map[estado] || { label: estado || "N/A", color: "default" };
 };
 
 export default function AgenteDashboard() {
@@ -64,11 +43,6 @@ export default function AgenteDashboard() {
     metaVentas: 0,
     tasaConversion: 0,
   });
-
-  // Últimas llamadas (desde backend)
-  const [lastCalls, setLastCalls] = React.useState([]);
-  const [loadingCalls, setLoadingCalls] = React.useState(false);
-  const [errorCalls, setErrorCalls] = React.useState(null);
 
   const load = React.useCallback(async () => {
     try {
@@ -102,37 +76,9 @@ export default function AgenteDashboard() {
     }
   }, [range]);
 
-  // Últimas 5 llamadas del historial (mismo rango del dashboard)
-  const loadLastCalls = React.useCallback(async () => {
-    try {
-      setErrorCalls(null);
-      setLoadingCalls(true);
-
-      const payload = await callsService.getHistory({
-        fecha_desde: range.from,
-        fecha_hasta: range.to,
-        page: 1,
-        page_size: 5, // solo 5
-      });
-
-      const list = Array.isArray(payload) ? payload : payload.results || [];
-      list.sort(
-        (a, b) => new Date(b.fecha_hora_inicio) - new Date(a.fecha_hora_inicio)
-      );
-      setLastCalls(list.slice(0, 5));
-    } catch (e) {
-      console.error(e);
-      setErrorCalls("No se pudieron cargar las últimas llamadas.");
-      setLastCalls([]);
-    } finally {
-      setLoadingCalls(false);
-    }
-  }, [range.from, range.to]);
-
   React.useEffect(() => {
     load();
-    loadLastCalls();
-  }, [load, loadLastCalls]);
+  }, [load]);
 
   const statusIcon = (estado) => {
     if (estado === "Contestado") return <CheckCircleIcon sx={{ color: "#0a6b2b" }} />;
@@ -164,11 +110,8 @@ export default function AgenteDashboard() {
           </Typography>
           <Tooltip title="Actualizar">
             <IconButton
-              onClick={() => {
-                load();
-                loadLastCalls();
-              }}
-              disabled={loading || loadingCalls}
+              onClick={load}
+              disabled={loading}
               aria-label="Actualizar"
               size="large"
               sx={{
@@ -188,7 +131,7 @@ export default function AgenteDashboard() {
               <RefreshIcon
                 sx={{
                   transition: "transform 0.6s ease",
-                  animation: loading || loadingCalls ? "spin 1s linear infinite" : "none",
+                  animation: loading ? "spin 1s linear infinite" : "none",
                   "@keyframes spin": {
                     "0%": { transform: "rotate(0deg)" },
                     "100%": { transform: "rotate(360deg)" },
@@ -464,137 +407,31 @@ export default function AgenteDashboard() {
                 >
                   Últimas llamadas realizadas
                 </Typography>
-                {errorCalls && (
-                  <Alert severity="warning" sx={{ mb: 3 }}>
-                    {errorCalls}
-                  </Alert>
-                )}
-
-                {loadingCalls ? (
-                  <Box
+                <Paper
+                  sx={{
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.06)"
+                      : "#f4f7fb",
+                    border: isDark
+                      ? "2px dashed rgba(255,255,255,0.20)"
+                      : "2px dashed #cfd7e6",
+                    borderRadius: 3,
+                    p: 4,
+                    textAlign: "center",
+                  }}
+                >
+                  <Typography
+                    variant="body1"
                     sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      minHeight: 200,
+                      color: isDark
+                        ? "rgba(255,255,255,0.85)"
+                        : "rgba(12,21,90,0.7)",
+                      fontWeight: 500,
                     }}
                   >
-                    <CircularProgress size={40} />
-                  </Box>
-                ) : lastCalls.length === 0 ? (
-                  <Paper
-                    sx={{
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.06)"
-                        : "#f4f7fb",
-                      border: isDark
-                        ? "2px dashed rgba(255,255,255,0.20)"
-                        : "2px dashed #cfd7e6",
-                      borderRadius: 3,
-                      p: 4,
-                      textAlign: "center",
-                    }}
-                  >
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        color: isDark
-                          ? "rgba(255,255,255,0.85)"
-                          : "rgba(12,21,90,0.7)",
-                        fontWeight: 500,
-                      }}
-                    >
-                      Sin llamadas recientes
-                    </Typography>
-                  </Paper>
-                ) : (
-                  <Box sx={{ overflowX: "auto" }}>
-                    <Table
-                      sx={{
-                        "& .MuiTableHead-root": {
-                          backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#EBF5FE",
-                        },
-                        "& .MuiTableCell-head": {
-                          fontWeight: 700,
-                          fontSize: "0.9rem",
-                          color: "text.primary",
-                          borderBottom: `2px solid ${theme.palette.primary.main}`,
-                          py: 2,
-                          textAlign: "center",
-                        },
-                        "& .MuiTableCell-body": {
-                          py: 1.5,
-                          borderBottom: isDark
-                            ? "1px solid rgba(255,255,255,0.1)"
-                            : "1px solid rgba(12,21,90,0.1)",
-                          textAlign: "center",
-                        },
-                        "& .MuiTableRow-root:hover": {
-                          backgroundColor: isDark
-                            ? "rgba(255,255,255,0.05)"
-                            : "#F8FBFF",
-                        },
-                      }}
-                    >
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Cliente / Teléfono</TableCell>
-                          <TableCell>Fecha y Hora</TableCell>
-                          <TableCell>Duración</TableCell>
-                          <TableCell>Estado</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {lastCalls.map((call) => {
-                          const chip = estadoToChip(call.estado_llamada_valor);
-                          return (
-                            <TableRow key={call.id}>
-                              <TableCell sx={{ textAlign: "left" }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                  {statusIcon(call.estado_llamada_valor)}
-                                  <Box>
-                                    <Typography variant="body2" fontWeight={600}>
-                                      {call.cliente_nombre ||
-                                        call.telefono_destino ||
-                                        "N/A"}
-                                    </Typography>
-                                    <Typography
-                                      variant="caption"
-                                      sx={{
-                                        color: "text.secondary",
-                                        display: "block",
-                                      }}
-                                    >
-                                      {call.cliente_telefono || call.telefono_destino}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2">
-                                  {formatDateTime(call.fecha_hora_inicio)}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2" fontWeight={600}>
-                                  {formatDuration(call.duracion || 0)}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={chip.label}
-                                  color={chip.color}
-                                  size="small"
-                                  variant="outlined"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </Box>
-                )}
+                    Sin llamadas recientes
+                  </Typography>
+                </Paper>
               </CardContent>
             </Card>
           </>
