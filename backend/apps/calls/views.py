@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.db import models as django_models
 
 from apps.calls.models import Llamada, FormularioVenta
 from apps.campaigns.models import Cliente, Campana
@@ -13,6 +14,7 @@ from apps.users.permissions import IsAdmin, IsAdminOrOwner
 from apps.calls.serializers import (
     CampanaSerializer,
     LlamadaSerializer,
+    HistorialLlamadaSerializer,
     FormularioVentaSerializer,
     RecibirLlamadaSerializer,
     IniciarLlamadaSerializer,
@@ -22,6 +24,7 @@ from apps.calls.serializers import (
 )
 from common.estados_helper import get_estado_id
 from apps.campaigns.serializers import ClienteSerializer
+from rest_framework.decorators import api_view
 
 class ClienteViewSet(viewsets.ModelViewSet):
     """
@@ -402,6 +405,152 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         
         serializer = LlamadaSerializer(llamadas, many=True)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='historial')
+    def historial_llamadas(self, request):
+        """
+        Obtiene el historial de llamadas del agente autenticado con filtros opcionales.
+        
+        URL: /api/calls/llamadas/historial/
+        
+        Query Parameters:
+        - fecha_desde: Fecha inicial (formato: YYYY-MM-DD)
+        - fecha_hasta: Fecha final (formato: YYYY-MM-DD)
+        - estado: Estado de la llamada (COMPLETADA, NO_CONTESTADA, RECHAZADA, FALLIDA)
+        - telefono: Buscar por número de teléfono (parcial)
+        - cliente: Buscar por nombre de cliente (parcial)
+        - page: Número de página (default: 1)
+        - page_size: Tamaño de página (1-100, default: 20)
+        
+        Ejemplos:
+        - /api/calls/llamadas/historial/
+        - /api/calls/llamadas/historial/?fecha_desde=2025-10-01&fecha_hasta=2025-10-23
+        - /api/calls/llamadas/historial/?estado=COMPLETADA&page=2&page_size=50
+        - /api/calls/llamadas/historial/?telefono=+57300&cliente=Juan
+        """
+        user = request.user
+        
+        # Base queryset - solo llamadas del agente
+        queryset = Llamada.objects.filter(agente=user)
+        
+        # Obtener parámetros de query
+        fecha_desde = request.query_params.get('fecha_desde')
+        fecha_hasta = request.query_params.get('fecha_hasta')
+        estado = request.query_params.get('estado')
+        telefono = request.query_params.get('telefono')
+        cliente = request.query_params.get('cliente')
+        
+        # Filtro por rango de fechas
+        if fecha_desde:
+            try:
+                queryset = queryset.filter(fecha_hora_inicio__date__gte=fecha_desde)
+            except Exception:
+                return Response(
+                    {'error': 'Formato de fecha_desde inválido. Use YYYY-MM-DD'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        if fecha_hasta:
+            try:
+                queryset = queryset.filter(fecha_hora_inicio__date__lte=fecha_hasta)
+            except Exception:
+                return Response(
+                    {'error': 'Formato de fecha_hasta inválido. Use YYYY-MM-DD'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Filtro por estado de llamada
+        if estado:
+            estado_id = get_estado_id('ESTADO_LLAMADA', estado.upper())
+            if estado_id:
+                queryset = queryset.filter(estado_llamada_id=estado_id)
+            else:
+                return Response(
+                    {'error': f'Estado "{estado}" no válido'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Búsqueda por número de teléfono (solo en destino)
+        # Limpia el + y espacios para mejor compatibilidad
+        if telefono:
+            telefono_limpio = telefono.replace('+', '').replace(' ', '').replace('-', '')
+            queryset = queryset.filter(
+                django_models.Q(telefono_destino__icontains=telefono) |
+                django_models.Q(telefono_destino__icontains=telefono_limpio)
+            )
+        
+        # Búsqueda por nombre de cliente (solo campo nombre)
+        if cliente:
+            queryset = queryset.filter(
+                cliente__nombre__icontains=cliente
+            )
+        
+        # Optimizar consulta con select_related y prefetch_related
+        queryset = queryset.select_related(
+            'agente',
+            'cliente',
+            'venta',
+            'estado_llamada',
+            'estado_venta',
+            'estado_reportada'
+        ).prefetch_related(
+            'formularios'
+        ).order_by('-fecha_hora_inicio')
+        
+        # Contar total de resultados
+        total_count = queryset.count()
+        
+        # Paginación
+        page_size = request.query_params.get('page_size', 20)
+        try:
+            page_size = int(page_size)
+            if page_size < 1:
+                page_size = 20
+            elif page_size > 100:
+                page_size = 100
+        except ValueError:
+            page_size = 20
+        
+        page = request.query_params.get('page', 1)
+        try:
+            page = int(page)
+            if page < 1:
+                page = 1
+        except ValueError:
+            page = 1
+        
+        # Calcular offset
+        start = (page - 1) * page_size
+        end = start + page_size
+        
+        # Obtener página de resultados
+        llamadas_pagina = queryset[start:end]
+        
+        # Si no hay resultados
+        if total_count == 0:
+            return Response({
+                'count': 0,
+                'total_pages': 0,
+                'current_page': page,
+                'page_size': page_size,
+                'results': [],
+                'message': 'No se encontraron llamadas'
+            })
+        
+        # Serializar resultados
+        serializer = HistorialLlamadaSerializer(llamadas_pagina, many=True)
+        
+        # Calcular páginas totales
+        import math
+        total_pages = math.ceil(total_count / page_size)
+        
+        return Response({
+            'count': total_count,
+            'total_pages': total_pages,
+            'current_page': page,
+            'page_size': page_size,
+            'results': serializer.data
+        })
 
 
 class FormularioVentaViewSet(viewsets.ModelViewSet):

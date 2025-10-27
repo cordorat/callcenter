@@ -1,11 +1,11 @@
-// PATH: src/pages/Dashboard/AdminDashboard.jsx
+// PATH: src/pages/Dashboard/JefeCentroDashboard.jsx
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
 import { Box, Typography } from "@mui/material";
 import ConstructionIcon from "@mui/icons-material/Construction";
 import { useTheme } from "@mui/material/styles";
 
-export default function AdminDashboard() {
+export default function JefeCentroDashboard() {
   const theme = useTheme();
 
   return (

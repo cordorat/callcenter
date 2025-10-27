@@ -5,6 +5,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import twilioClient from '@/services/twilioClient';
+import apiClient from '@/core/api/apiClient';
 import { useAuth } from '@/core/context/AuthContext';
 import { changeState, mapFrontendToBackend } from '@/core/api/agentStates';
 
@@ -22,6 +23,7 @@ const useTwilioCall = () => {
   const [incomingCall, setIncomingCall] = useState(null);
   const [callStatus, setCallStatus] = useState('idle'); // idle, connecting, ringing, in-call
   const [currentCallInfo, setCurrentCallInfo] = useState(null); // Información de la llamada activa (registro del backend)
+  const [currentClientInfo, setCurrentClientInfo] = useState(null); // Información del cliente activo
   
   const timerRef = useRef(null);
 
@@ -76,19 +78,29 @@ const useTwilioCall = () => {
           setCallStatus('in-call');
           setIncomingCall(null);
           
-          // Obtener información de la llamada del backend (si es llamada automática)
+          // Obtener información de la llamada y del cliente del backend (si es llamada automática)
           try {
             const callSid = call.parameters.CallSid;
             if (callSid) {
               console.log('[useTwilioCall] Obteniendo información de llamada con CallSid:', callSid);
-              
-              // TODO: Hacer request al backend para obtener registro de Llamada
-              // const response = await apiClient.get(`/api/calls/by-sid/${callSid}/`);
-              // setCurrentCallInfo(response.data);
-              // console.log('[useTwilioCall] Información de llamada obtenida:', response.data);
+              const response = await apiClient.get(`/api/calls/by-sid/${callSid}/`);
+              setCurrentCallInfo(response.data);
+              console.log('[useTwilioCall] Información de llamada obtenida:', response.data);
+
+              // Obtener información del cliente
+              try {
+                const clientResp = await apiClient.get(`/api/calls/client-by-call-sid/${callSid}/`);
+                setCurrentClientInfo(clientResp.data);
+                console.log('[useTwilioCall] Información de cliente obtenida:', clientResp.data);
+              } catch (clientErr) {
+                console.error('[useTwilioCall] Error obteniendo información de cliente:', clientErr);
+                setCurrentClientInfo(null);
+              }
             }
           } catch (err) {
             console.error('[useTwilioCall] Error obteniendo información de llamada:', err);
+            setCurrentCallInfo(null);
+            setCurrentClientInfo(null);
           }
           
           // Iniciar contador de duración
@@ -119,6 +131,7 @@ const useTwilioCall = () => {
           setIsMuted(false);
           setIncomingCall(null);
           setCurrentCallInfo(null); // Limpiar información de llamada
+          setCurrentClientInfo(null); // Limpiar información de cliente
           
           // Detener contador de duración primero
           stopCallTimer();
@@ -321,7 +334,8 @@ const useTwilioCall = () => {
     error,
     incomingCall,
     currentCallInfo, // Información de la llamada activa
-    
+    currentClientInfo, // Información del cliente activo
+
     // Acciones
     makeCall,
     hangup,
@@ -330,7 +344,7 @@ const useTwilioCall = () => {
     rejectIncomingCall,
     sendDigit,
     subscribeToStateChanges,
-    
+
     // Utilidades
     formatDuration,
   };

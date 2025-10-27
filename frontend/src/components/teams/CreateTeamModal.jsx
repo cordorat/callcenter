@@ -3,9 +3,6 @@
 import { useState, useEffect } from 'react';
 import {
   Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   TextField,
   Box,
@@ -14,13 +11,16 @@ import {
   Chip,
   Alert,
   CircularProgress,
-  FormHelperText
+  FormHelperText,
+  Grid,
+  IconButton
 } from '@mui/material';
 import {
   Search as SearchIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
-import { createEquipo, getCampanasActivas, getAgentesDisponibles, getCoordinadoresDisponibles } from '@/core/api/equipos';
+import { useTheme } from '@mui/material/styles';
+import { createEquipo, getCampanasActivas, getAgentesDisponibles } from '@/core/api/equipos';
 
 /**
  * Modal para crear nuevo equipo de trabajo
@@ -36,6 +36,7 @@ import { createEquipo, getCampanasActivas, getAgentesDisponibles, getCoordinador
  * - 4.4: Solo campañas activas
  */
 const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
+  const theme = useTheme();
   // Estados del formulario
   const [nombre, setNombre] = useState('');
   const [campanaSeleccionada, setCampanaSeleccionada] = useState(null);
@@ -245,22 +246,47 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
       onClose={handleClose}
       maxWidth="md"
       fullWidth
+      sx={{
+        '& .MuiDialog-paper': {
+          borderRadius: 3,
+        }
+      }}
     >
-      <DialogTitle>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          Crear Nuevo Equipo
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Asigna agentes disponibles a una campaña activa
-        </Typography>
-      </DialogTitle>
+      <Box sx={{ position: 'relative' }}>
+        <IconButton
+          onClick={handleClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            zIndex: 1,
+            backgroundColor: theme.palette.mode === 'light' ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
+            '&:hover': {
+              backgroundColor: theme.palette.mode === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)',
+            }
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </Box>
 
-      <DialogContent dividers>
+      <Box sx={{ p: 4 }}>
         {/* Mensaje de éxito - Criterio 3.1.1 */}
         {successMessage && (
-          <Alert severity="success" sx={{ mb: 3 }}>
+          <Box
+            sx={{
+              p: 2,
+              mb: 3,
+              borderRadius: 2,
+              backgroundColor: '#e6f4ea',
+              border: '1px solid #2e7d32',
+              color: '#2e7d32',
+              fontWeight: 600,
+              textAlign: 'center',
+            }}
+          >
             {successMessage}
-          </Alert>
+          </Box>
         )}
 
         {/* Error general */}
@@ -270,20 +296,9 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
           </Alert>
         )}
 
-        {/* Campo: Nombre del equipo */}
-        <Box sx={{ mb: 3 }}>
-          <TextField
-            fullWidth
-            label="Nombre del Equipo"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            error={!!errors.nombre}
-            helperText={errors.nombre}
-            placeholder="Ej: Equipo Ventas Alpha"
-            disabled={loading || !!successMessage}
-            required
-          />
-        </Box>
+        <Typography variant="h5" fontWeight="bold" mb={3} textAlign="center">
+          Crear Nuevo Equipo
+        </Typography>
 
         {/* Campo: Campaña - Criterio 4.4 */}
         <Box sx={{ mb: 3 }}>
@@ -465,10 +480,231 @@ const CreateTeamModal = ({ open, onClose, onTeamCreated }) => {
             disabled={loading}
             startIcon={loading && <CircularProgress size={20} />}
           >
-            {loading ? 'Guardando...' : 'Guardar'}
-          </Button>
-        )}
-      </DialogActions>
+            {/* Campo: Nombre del equipo */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Nombre del Equipo"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                error={!!errors.nombre}
+                helperText={errors.nombre}
+                placeholder="Ej: Equipo Ventas Alpha"
+                disabled={loading || !!successMessage}
+                required
+                variant="outlined"
+                sx={{
+              '& .MuiTextField-root, & .MuiAutocomplete-root': {
+                width: '300px',
+              },
+              '& .MuiOutlinedInput-root': {
+                height: '60px',
+              },
+              '& .MuiSelect-select': {
+                display: 'flex',
+                alignItems: 'center',
+              }
+            }}
+              />
+            </Grid>
+
+            {/* Campo: Campaña - Criterio 4.4 */}
+            <Grid item xs={12} sx={{
+              '& .MuiTextField-root, & .MuiAutocomplete-root': {
+                width: '300px',
+              },
+              '& .MuiOutlinedInput-root': {
+                height: '60px',
+              },
+              '& .MuiSelect-select': {
+                display: 'flex',
+                alignItems: 'center',
+              }
+            }}>
+              <Autocomplete
+                options={campanas}
+                getOptionLabel={(option) => option.nombre || ''}
+                value={campanaSeleccionada}
+                onChange={(event, newValue) => {
+                  setCampanaSeleccionada(newValue);
+                  setErrors(prev => ({ ...prev, campana: null }));
+                }}
+                loading={loadingCampanas}
+                disabled={loading || !!successMessage}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Campaña Activa"
+                    error={!!errors.campana}
+                    helperText={errors.campana}
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {loadingCampanas ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box>
+                      <Typography variant="body2">{option.nombre}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.descripcion}
+                      </Typography>
+                    </Box>
+                  </li>
+                )}
+              />
+            </Grid>
+
+            {/* Campo: Agentes disponibles - Criterio 2.2 */}
+            <Grid item xs={12} sx={{
+              '& .MuiTextField-root, & .MuiAutocomplete-root': {
+                width: '570px',
+              },
+              '& .MuiOutlinedInput-root': {
+                height: '60px',
+              },
+              '& .MuiSelect-select': {
+                display: 'flex',
+                alignItems: 'center',
+              }
+            }}>
+              <Autocomplete
+                multiple
+                options={agentesDisponibles}
+                getOptionLabel={(option) => option.full_name || ''}
+                value={agentesSeleccionados}
+                onChange={(event, newValue) => {
+                  setAgentesSeleccionados(newValue);
+                  setErrors(prev => ({ ...prev, agentes: null }));
+                }}
+                inputValue={searchAgentes}
+                onInputChange={(event, newInputValue) => {
+                  setSearchAgentes(newInputValue);
+                }}
+                loading={loadingAgentes}
+                disabled={loading || !!successMessage}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Agentes Disponibles"
+                    placeholder="Buscar por nombre o código..."
+                    error={!!errors.agentes}
+                    required
+                    sx={{
+                      width: '100%',
+                      '& .MuiOutlinedInput-root': {
+                        minHeight: '60px',
+                        height: 'auto',
+                      }
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <SearchIcon sx={{ ml: 1, mr: 0.5, color: 'text.secondary' }} />
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                      endAdornment: (
+                        <>
+                          {loadingAgentes ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box>
+                      <Typography variant="body2">{option.full_name}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.email} • Código: {option.codigo_agente || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </li>
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      label={option.full_name}
+                      {...getTagProps({ index })}
+                      size="small"
+                      deleteIcon={<CloseIcon />}
+                    />
+                  ))
+                }
+                noOptionsText={
+                  searchAgentes 
+                    ? "No se encontraron agentes disponibles" 
+                    : "Escribe para buscar agentes"
+                }
+              />
+              {errors.agentes && (
+                <FormHelperText error sx={{ mt: 0.5, ml: 2 }}>
+                  {errors.agentes}
+                </FormHelperText>
+              )}
+              {agentesSeleccionados.length > 0 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', ml: 2 }}>
+                  {agentesSeleccionados.length} {agentesSeleccionados.length === 1 ? 'agente seleccionado' : 'agentes seleccionados'}
+                </Typography>
+              )}
+            </Grid>
+          </Grid>
+
+          {/* Botones */}
+          <Box sx={{ pt: 2, alignItems: 'center', textAlign: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 1.5, mt: 2.5, justifyContent: 'center' }}>
+              <Grid item xs={12} md={6} textAlign="center">
+                <Button 
+                  type="button" 
+                  size="large"
+                  variant="contained" 
+                  onClick={handleClose}
+                  disabled={loading || !!successMessage}
+                  sx={{
+                    width: "100%",
+                    borderRadius: 2,
+                    py: 1.5, 
+                    fontSize: '1rem',
+                    fontWeight: "bold",
+                    backgroundColor: theme.palette.primary.secondary
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </Grid>            
+              <Grid item xs={12} md={6} textAlign="center">
+                <Button 
+                  type="button"
+                  variant="contained" 
+                  size="large" 
+                  onClick={handleSubmit}
+                  disabled={loading || !!successMessage}
+                  sx={{
+                    width: "100%",
+                    borderRadius: 2,
+                    py: 1.5, 
+                    fontSize: '1rem',
+                    fontWeight: "bold",
+                    backgroundColor: theme.palette.primary.main
+                  }}
+                >
+                  {loading ? <CircularProgress size={24} color="inherit" /> : 'Guardar'}
+                </Button>
+              </Grid>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
     </Dialog>
   );
 };

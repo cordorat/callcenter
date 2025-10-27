@@ -24,8 +24,9 @@ export const ENDPOINTS = {
   CALLS_DETAIL: (id) => `${BASE_URL}/calls/${id}/`,
   CALLS_ONCALL: `${BASE_URL}/calls/oncall/`,
   CALLS_HANGOUT: `${BASE_URL}/calls/hangout/`,
+  CALLS_HISTORY: `${BASE_URL}/calls/llamadas/historial/`,
 
-  // --- KPIs ---  ⬅️ NUEVO
+  // --- KPIs ---  
   KPIS_OVERVIEW: `${BASE_URL}/kpis/overview/`,     // GET ?from=YYYY-MM-DD&to=YYYY-MM-DD
   // (opcional) series adicionales:
   KPIS_BY_HOUR: `${BASE_URL}/kpis/by-hour/`,       // GET ?from=&to=

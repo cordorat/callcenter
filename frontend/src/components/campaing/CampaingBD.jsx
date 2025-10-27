@@ -21,7 +21,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const pageSize = 10; // cantidad de registros por página
+  const pageSize = 6; // cantidad de registros por página
 
   const fetchBases = useCallback(async (pageNumber = 1) => {
     try {
@@ -103,7 +103,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
   };
 
   return (
-    <Box sx={{ p: 2 }}>
+  <Box sx={{ p: 0 }}>
       <Snackbar
         open={snackOpen}
         autoHideDuration={4000}
@@ -161,6 +161,8 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
             backgroundColor: theme.palette.background.paper,
             borderRadius: 2,
             overflow: 'hidden',
+            width: '100%',
+            mx: 0
           }}
         >
           {error && (
@@ -169,7 +171,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
             </Box>
           )}
 
-          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)' }}>
@@ -359,8 +361,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
             </Table>
 
             {/* Paginación */}
-            {bases.length > 0 && (
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
                 <Typography variant="body2" color="text.secondary">
                   Mostrando {bases.length} de {totalCount} bases de datos
                 </Typography>
@@ -373,8 +374,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
                   size="medium"
                 />
               </Box>
-            )}
-          </Box>
+            </Box>
         </Paper>
       )}
     </Box>

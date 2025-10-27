@@ -130,6 +130,108 @@ class LlamadaSerializer(serializers.ModelSerializer):
         ]
 
 
+class HistorialLlamadaSerializer(serializers.ModelSerializer):
+    """Serializer detallado para historial de llamadas del agente."""
+    
+    agente_nombre = serializers.CharField(
+        source='agente.full_name',
+        read_only=True
+    )
+    cliente_nombre = serializers.SerializerMethodField()
+    cliente_telefono = serializers.CharField(
+        source='cliente.telefono',
+        read_only=True
+    )
+    cliente_otros_datos = serializers.JSONField(
+        source='cliente.otros_datos',
+        read_only=True
+    )
+    duracion_total_formateada = serializers.ReadOnlyField()
+    estado_venta_valor = serializers.CharField(
+        source='estado_venta.valor',
+        read_only=True
+    )
+    estado_llamada_valor = serializers.CharField(
+        source='estado_llamada.valor',
+        read_only=True
+    )
+    estado_reportada_valor = serializers.CharField(
+        source='estado_reportada.valor',
+        read_only=True
+    )
+    tiene_grabacion = serializers.SerializerMethodField()
+    notas = serializers.SerializerMethodField()
+    resultado_llamada = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Llamada
+        fields = [
+            'id', 'agente', 'agente_nombre',
+            'cliente', 'cliente_nombre', 'cliente_telefono', 'cliente_otros_datos',
+            'telefono_origen', 'telefono_destino',
+            'fecha_hora_inicio', 'fecha_hora_fin', 'duracion',
+            'duracion_total_formateada', 'tiene_grabacion', 'grabacion_url',
+            'twilio_call_sid', 'twilio_recording_url',
+            'estado_llamada', 'estado_llamada_valor',
+            'estado_venta', 'estado_venta_valor',
+            'estado_reportada', 'estado_reportada_valor',
+            'notas', 'resultado_llamada',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'duracion', 'created_at', 'updated_at'
+        ]
+    
+    def get_cliente_nombre(self, obj):
+        """Obtiene el nombre del cliente."""
+        if obj.cliente:
+            return obj.cliente.nombre or 'Sin nombre'
+        return 'Sin cliente'
+    
+    def get_tiene_grabacion(self, obj):
+        """Indica si la llamada tiene grabación disponible."""
+        return bool(obj.grabacion_url or obj.twilio_recording_url)
+    
+    def get_notas(self, obj):
+        """Obtiene las notas de la transcripción o formularios asociados."""
+        notas = []
+        
+        # Agregar transcripción si existe
+        if obj.transcipcion:
+            notas.append({
+                'tipo': 'transcripcion',
+                'contenido': obj.transcipcion
+            })
+        
+        # Agregar notas de formularios si existen
+        formularios = obj.formularios.all()
+        for form in formularios:
+            if form.campos_json:
+                notas.append({
+                    'tipo': 'formulario',
+                    'contenido': form.campos_json
+                })
+        
+        return notas
+    
+    def get_resultado_llamada(self, obj):
+        """Obtiene el resultado de la llamada de forma legible."""
+        resultado = {
+            'estado_llamada': obj.estado_llamada.valor if obj.estado_llamada else 'Desconocido',
+            'estado_venta': obj.estado_venta.valor if obj.estado_venta else 'Sin información'
+        }
+        
+        # Agregar información de venta si existe
+        if obj.venta:
+            resultado['venta_realizada'] = True
+            resultado['monto_venta'] = float(obj.venta.monto) if obj.venta.monto else None
+        else:
+            resultado['venta_realizada'] = False
+            resultado['monto_venta'] = None
+        
+        return resultado
+
+
 class RecibirLlamadaSerializer(serializers.Serializer):
     """Serializer para recibir una llamada entrante."""
     
