@@ -4,6 +4,12 @@ import { useState } from 'react';
 import {
     Box,
     Button,
+    Card,
+    CardContent,
+    Typography,
+    Grid,
+    IconButton,
+    Chip,
     Alert,
     TextField,
     InputAdornment,
@@ -39,6 +45,9 @@ const Teams = () => {
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [selectedEquipo, setSelectedEquipo] = useState(null);
+
+    /**
+     * Fuerza la recarga del componente Teams
 
     /**
      * Fuerza la recarga del componente Teams
