@@ -57,7 +57,7 @@ export const menuItems = [
     label: 'Historial',
     path: '/historial',
     icon: HistoryIcon,
-    roles: []
+    roles: ['AGENTE']
   },
   {
     label: 'Comisiones',

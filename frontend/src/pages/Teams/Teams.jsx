@@ -13,7 +13,6 @@ import {
     Alert,
     TextField,
     InputAdornment,
-    Typography
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -45,9 +44,6 @@ const Teams = () => {
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [selectedEquipo, setSelectedEquipo] = useState(null);
-
-    /**
-     * Fuerza la recarga del componente Teams
 
     /**
      * Fuerza la recarga del componente Teams
