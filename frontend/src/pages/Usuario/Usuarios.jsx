@@ -29,11 +29,13 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Person
 } from '@mui/icons-material';
 import { usersService } from '@/core/api/users';
 import { useTheme } from '@mui/material/styles';
 import CrearUsuario from './CrearUsuario';
+import GroupIcon from '@mui/icons-material/Group';
 
 export default function Usuarios() {
   const navigate = useNavigate();
@@ -134,6 +136,7 @@ export default function Usuarios() {
         >
           <Box sx={{ color: 'white' }}>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <GroupIcon sx={{ fontSize: '40px' }} />
               Usuarios
             </Typography>
             <Typography variant="body1" sx={{ opacity: 0.95 }}>
