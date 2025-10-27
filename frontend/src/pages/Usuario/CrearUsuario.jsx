@@ -330,7 +330,7 @@ export default function CrearUsuario({ onCancel, onUserCreated }) {
                   <MenuItem value="ADMIN">ADMIN</MenuItem>
                   <MenuItem value="COORDINADOR">COORDINADOR</MenuItem>
                   <MenuItem value="AGENTE">AGENTE</MenuItem>
-                  <MenuItem value="JEFE DE CAMPAÑA">JEFE DE CAMPAÑA</MenuItem>
+                  <MenuItem value="JEFE_CAMPAÑA">JEFE DE CAMPAÑA</MenuItem>
                   <MenuItem value="JEFE_CENTRO">JEFE DE CENTRO</MenuItem>
                   <MenuItem value="BACKOFFICE">BACKOFFICE</MenuItem>
                 </Select>

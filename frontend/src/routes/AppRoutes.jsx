@@ -44,14 +44,6 @@ const AppRoutes = () => {
             </PrivateRoute>
           } 
         />
-        <Route 
-          path="/productos" 
-          element={
-            <PrivateRoute>
-              <CampaingJefeCentro />
-            </PrivateRoute>
-          } 
-        />
 
          <Route
           path="/historial"
