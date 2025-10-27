@@ -166,41 +166,6 @@ curl -X POST http://localhost:8000/api/auth/logout/ \
 | **JEFE_CENTRO** | Jefe del centro | Reportes y KPIs |
 | **BACKOFFICE** | Personal de back office | Gestión administrativa |
 
-## 🔧 Configuración
-
-### Backend (callcenter/settings.py)
-
-```python
-# Base de datos
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
-# JWT
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=8),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-}
-
-# CORS
-CORS_ALLOW_ALL_ORIGINS = True  # Desarrollo - cambiar en producción
-
-# Zona horaria
-TIME_ZONE = 'America/Bogota'
-```
-
-### Frontend (.env)
-
-```env
-VITE_API_BASE_URL=http://localhost:8000/api
-VITE_APP_NAME=Call Center Management
-```
-
 ## 📊 Endpoints Principales
 
 ### Autenticación
@@ -303,7 +268,6 @@ Body: {"refresh": "token"}
 
 - [Backend README](./backend/README.md) - Documentación específica del backend
 - [Frontend README](./frontend/README.md) - Documentación específica del frontend
-- [Instrucciones para IA](./backend/.github/copilot-instructions.md) - Convenciones del proyecto
 
 ## 🚢 Deployment
 
