@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Cliente, BaseDatosCargada
+from .models import Cliente, BaseDatosCargada, Producto
 import re
 
 
@@ -252,7 +252,7 @@ class CampanaSimpleSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Campana
-        fields = ['id', 'nombre', 'descripcion', 'estado', 'estado_nombre', 'fecha_inicio', 'fecha_fin']
+        fields = ['id', 'nombre', 'descripcion', 'estado', 'estado_nombre', 'fecha_inicio', 'fecha_fin','jefe_campana','centro','objetivo_llamadas','objetivo_ventas']
         read_only_fields = fields
     
     def get_estado_nombre(self, obj):
@@ -500,3 +500,9 @@ class EquipoUpdateSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """Usar EquipoSerializer para la respuesta."""
         return EquipoSerializer(instance, context=self.context).data
+
+class ProductoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Producto
+        fields = ['nombre', 'descripcion', 'precio', 'activo']
+        read_only_fields = []

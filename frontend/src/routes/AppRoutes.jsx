@@ -9,6 +9,7 @@ import Campaing from '../pages/Campaing/Campaing';
 import Teams from '../pages/Teams/Teams';
 import PrivateRoute from './PrivateRoute';
 import Settings from '../pages/Settings/Settings';
+import CampaingJefeCentro from '../pages/Campaing/CampaingJefeCentro';
 import Usuarios from '../pages/Usuario/Usuarios';
 import CrearUsuario from '../pages/Usuario/CrearUsuario';
 import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
@@ -40,6 +41,14 @@ const AppRoutes = () => {
           element={
             <PrivateRoute>
               <Calls />
+            </PrivateRoute>
+          } 
+        />
+        <Route 
+          path="/productos" 
+          element={
+            <PrivateRoute>
+              <CampaingJefeCentro />
             </PrivateRoute>
           } 
         />
