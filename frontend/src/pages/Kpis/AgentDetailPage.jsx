@@ -100,7 +100,17 @@ export default function AgentDetailPage() {
 
   return (
     <MainLayout title={`KPIs - ${agente?.nombre_completo || 'Agente'}`}>
-      <div className="agent-detail-page">
+      <div 
+        className={`agent-detail-page ${isDark ? 'dark-mode' : 'light-mode'}`}
+        style={{
+          '--text-primary': theme.palette.text.primary,
+          '--text-secondary': theme.palette.text.secondary,
+          '--background-paper': theme.palette.background.paper,
+          '--primary-main': theme.palette.primary.main,
+          '--primary-dark': theme.palette.primary.dark,
+          '--border-color': theme.palette.divider,
+        }}
+      >
         {/* Header */}
         <div className="agent-detail-header">
           <div className="agent-detail-top-row">
@@ -123,25 +133,17 @@ export default function AgentDetailPage() {
               Volver a Agentes
             </Button>
 
-            <Button
-              variant="contained"
-              startIcon={<RefreshIcon />}
+            <button
+              className="btn-refresh"
               onClick={fetchKpiDetail}
               disabled={loading}
-              sx={{
-                borderRadius: 2,
-                px: 3,
-                py: 1.2,
-                textTransform: 'none',
-                fontWeight: 600,
-                boxShadow: '0 2px 8px rgba(47, 118, 230, 0.25)',
-                '&:hover': {
-                  boxShadow: '0 4px 12px rgba(47, 118, 230, 0.35)',
-                }
+              style={{ 
+                background: theme.palette.primary.main,
+                color: '#fff',
               }}
             >
-              Actualizar
-            </Button>
+              {loading ? <RefreshIcon fontSize="small" className="spinning" /> : <RefreshIcon fontSize="small" />}
+            </button>
           </div>
 
           <div className="agent-detail-info">
@@ -284,9 +286,16 @@ export default function AgentDetailPage() {
             <CardContent sx={{ p: 3 }}>
               <h3 style={{ marginBottom: '24px' }}>Resumen del Período</h3>
               <div className="summary-grid">
-                <div className="summary-item">
-                  <span className="summary-label">Período Seleccionado</span>
-                  <span className="summary-value">
+                <div 
+                  className="summary-item"
+                  style={{
+                    background: isDark
+                      ? 'linear-gradient(135deg, #4A8FE7 0%, #2f76e6 100%)'
+                      : 'linear-gradient(135deg, #2f76e6 0%, #5a96ff 100%)',
+                  }}
+                >
+                  <span className="summary-label" style={{ color: '#fff', opacity: 0.9 }}>Período Seleccionado</span>
+                  <span className="summary-value" style={{ color: '#fff' }}>
                     {new Date(kpiData.fecha_desde).toLocaleDateString('es-ES', { 
                       day: '2-digit', 
                       month: 'short', 
@@ -298,17 +307,38 @@ export default function AgentDetailPage() {
                     })}
                   </span>
                 </div>
-                <div className="summary-item">
-                  <span className="summary-label">Total de Llamadas</span>
-                  <span className="summary-value">{kpiData.total_llamadas}</span>
+                <div 
+                  className="summary-item"
+                  style={{
+                    background: isDark
+                      ? 'linear-gradient(135deg, #4A8FE7 0%, #2f76e6 100%)'
+                      : 'linear-gradient(135deg, #2f76e6 0%, #5a96ff 100%)',
+                  }}
+                >
+                  <span className="summary-label" style={{ color: '#fff', opacity: 0.9 }}>Total de Llamadas</span>
+                  <span className="summary-value" style={{ color: '#fff' }}>{kpiData.total_llamadas}</span>
                 </div>
-                <div className="summary-item">
-                  <span className="summary-label">Ventas Realizadas</span>
-                  <span className="summary-value">{kpiData.ventas_realizadas}</span>
+                <div 
+                  className="summary-item"
+                  style={{
+                    background: isDark
+                      ? 'linear-gradient(135deg, #4A8FE7 0%, #2f76e6 100%)'
+                      : 'linear-gradient(135deg, #2f76e6 0%, #5a96ff 100%)',
+                  }}
+                >
+                  <span className="summary-label" style={{ color: '#fff', opacity: 0.9 }}>Ventas Realizadas</span>
+                  <span className="summary-value" style={{ color: '#fff' }}>{kpiData.ventas_realizadas}</span>
                 </div>
-                <div className="summary-item">
-                  <span className="summary-label">Tasa de Conversión</span>
-                  <span className="summary-value">{kpiData.tasa_conversion.toFixed(2)}%</span>
+                <div 
+                  className="summary-item"
+                  style={{
+                    background: isDark
+                      ? 'linear-gradient(135deg, #4A8FE7 0%, #2f76e6 100%)'
+                      : 'linear-gradient(135deg, #2f76e6 0%, #5a96ff 100%)',
+                  }}
+                >
+                  <span className="summary-label" style={{ color: '#fff', opacity: 0.9 }}>Tasa de Conversión</span>
+                  <span className="summary-value" style={{ color: '#fff' }}>{kpiData.tasa_conversion.toFixed(2)}%</span>
                 </div>
               </div>
             </CardContent>

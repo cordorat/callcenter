@@ -26,35 +26,56 @@
 
 .date-group input {
   padding: 10px 12px;
-  border: 1px solid var(--date-border, rgba(12, 21, 90, 0.15));
   border-radius: 6px;
-  background: var(--date-bg, #F0F4F8);
-  color: var(--text-primary);
   font-size: 14px;
   font-weight: 500;
   transition: all 200ms ease;
   cursor: pointer;
+  border: 1px solid rgba(12, 21, 90, 0.15);
+  background: #F0F4F8;
+  color: #0C155A;
+}
 
-  &:hover:not(:disabled) {
-    border-color: var(--primary-main);
-    background: var(--date-bg-hover, #E8F1FF);
-  }
+.date-group input:hover:not(:disabled) {
+  border-color: #2f76e6;
+  background: #E8F1FF;
+  box-shadow: 0 2px 8px rgba(47, 118, 230, 0.1);
+}
 
-  &:focus {
-    outline: none;
-    box-shadow: var(--date-focus-shadow, 0 0 0 3px rgba(12, 21, 90, 0.1));
-    border-color: var(--primary-main);
-  }
+.date-group input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(47, 118, 230, 0.15);
+  border-color: #2f76e6;
+  background: #E8F1FF;
+}
 
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+.date-group input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .date-group input[type='date']::-webkit-calendar-picker-indicator {
-  filter: var(--date-icon-filter, none);
   cursor: pointer;
+}
+
+/* MODO OSCURO */
+body.dark-mode .date-group input {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+body.dark-mode .date-group input:hover:not(:disabled) {
+  border-color: #5a96ff;
+  background: rgba(47, 118, 230, 0.1);
+  box-shadow: 0 2px 8px rgba(47, 118, 230, 0.2);
+}
+
+body.dark-mode .date-group input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(47, 118, 230, 0.25);
+  border-color: #5a96ff;
+  background: rgba(47, 118, 230, 0.15);
 }
 
 .date-error {
