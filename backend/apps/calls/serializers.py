@@ -159,9 +159,18 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
         source='estado_reportada.valor',
         read_only=True
     )
+    estado_auditoria_valor = serializers.CharField(
+        source='estado_auditoria.valor',
+        read_only=True
+    )
+    auditado_por_nombre = serializers.CharField(
+        source='auditado_por.full_name',
+        read_only=True
+    )
     tiene_grabacion = serializers.SerializerMethodField()
     notas = serializers.SerializerMethodField()
     resultado_llamada = serializers.SerializerMethodField()
+    es_venta = serializers.SerializerMethodField()
     
     class Meta:
         model = Llamada
@@ -173,8 +182,10 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             'duracion_total_formateada', 'tiene_grabacion', 'grabacion_url',
             'twilio_call_sid', 'twilio_recording_url',
             'estado_llamada', 'estado_llamada_valor',
-            'estado_venta', 'estado_venta_valor',
+            'estado_venta', 'estado_venta_valor', 'es_venta',
             'estado_reportada', 'estado_reportada_valor',
+            'estado_auditoria', 'estado_auditoria_valor',
+            'fecha_auditoria', 'auditado_por', 'auditado_por_nombre', 'notas_auditoria',
             'notas', 'resultado_llamada',
             'created_at', 'updated_at'
         ]
@@ -191,6 +202,12 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
     def get_tiene_grabacion(self, obj):
         """Indica si la llamada tiene grabación disponible."""
         return bool(obj.grabacion_url or obj.twilio_recording_url)
+    
+    def get_es_venta(self, obj):
+        """Indica si la llamada resultó en venta."""
+        if obj.estado_venta:
+            return obj.estado_venta.valor == 'VENTA'
+        return False
     
     def get_notas(self, obj):
         """Obtiene las notas de la transcripción o formularios asociados."""

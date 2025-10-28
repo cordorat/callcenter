@@ -10,6 +10,7 @@ from django.db import models as django_models
 
 from apps.calls.models import Llamada, FormularioVenta
 from apps.campaigns.models import Cliente, Campana
+from apps.users.models import User
 from apps.users.permissions import IsAdmin, IsAdminOrOwner
 from apps.calls.serializers import (
     CampanaSerializer,
@@ -408,81 +409,67 @@ class LlamadaViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='historial')
     def historial_llamadas(self, request):
         """
-        Obtiene el historial de llamadas del agente autenticado con filtros opcionales.
+        Obtiene el historial de llamadas según el rol del usuario autenticado.
         
         URL: /api/calls/llamadas/historial/
         
-        Query Parameters:
-        - fecha_desde: Fecha inicial (formato: YYYY-MM-DD)
-        - fecha_hasta: Fecha final (formato: YYYY-MM-DD)
-        - estado: Estado de la llamada (COMPLETADA, NO_CONTESTADA, RECHAZADA, FALLIDA)
+        Comportamiento según rol:
+        - AGENTE: Solo sus propias llamadas
+        - COORDINADOR: Llamadas de su equipo
+        - BACKOFFICE: Todas las llamadas (priorizadas para auditoría)
+        - ADMIN: Todas las llamadas
+        
+        Query Parameters (Agente):
+        - fecha_desde: Fecha inicial del rango (formato: YYYY-MM-DD)
+        - fecha_hasta: Fecha final del rango (formato: YYYY-MM-DD)
+        - estado: Estado de la llamada (COMPLETADA, NO_CONTESTADA, RECHAZADA, etc.)
         - telefono: Buscar por número de teléfono (parcial)
         - cliente: Buscar por nombre de cliente (parcial)
         - page: Número de página (default: 1)
         - page_size: Tamaño de página (1-100, default: 20)
         
+        Query Parameters (Coordinador):
+        - agente_nombre: Buscar por nombre de agente (parcial)
+        - telefono: Buscar por número de teléfono (parcial)
+        - estado: Estado de la llamada (COMPLETADA, NO_CONTESTADA, etc.)
+        
+        Query Parameters (BackOffice):
+        - estado_auditoria: NO_AUDITADA, AUDITADA
+        - fecha_desde: Fecha inicial del rango (formato: YYYY-MM-DD)
+        - fecha_hasta: Fecha final del rango (formato: YYYY-MM-DD)
+        - estado_reportada: NO_REPORTADA, REPORTADA
+        
+        Orden de prioridad (BackOffice):
+        1. Ventas sin auditar (más recientes primero)
+        2. No ventas sin auditar (más recientes primero)
+        3. Ventas auditadas (más recientes primero)
+        4. No ventas auditadas (más recientes primero)
+        
         Ejemplos:
         - /api/calls/llamadas/historial/
         - /api/calls/llamadas/historial/?fecha_desde=2025-10-01&fecha_hasta=2025-10-23
         - /api/calls/llamadas/historial/?estado=COMPLETADA&page=2&page_size=50
+        - /api/calls/llamadas/historial/?estado_auditoria=NO_AUDITADA&estado_venta=VENTA
         - /api/calls/llamadas/historial/?telefono=+57300&cliente=Juan
         """
         user = request.user
+
+        # Validar que los filtros enviados estén permitidos para el rol
+        invalid = self._validate_filters_for_role(user, request.query_params)
+        if invalid:
+            return Response({'error': invalid}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Determinar queryset base según el rol del usuario
+        queryset = self._get_base_queryset_by_role(user)
         
-        # Base queryset - solo llamadas del agente
-        queryset = Llamada.objects.filter(agente=user)
+        # Aplicar filtros comunes
+        queryset = self._apply_common_filters(queryset, request)
         
-        # Obtener parámetros de query
-        fecha_desde = request.query_params.get('fecha_desde')
-        fecha_hasta = request.query_params.get('fecha_hasta')
-        estado = request.query_params.get('estado')
-        telefono = request.query_params.get('telefono')
-        cliente = request.query_params.get('cliente')
+        # Aplicar filtros específicos de BackOffice/Coordinador
+        queryset = self._apply_specific_filters(queryset, request)
         
-        # Filtro por rango de fechas
-        if fecha_desde:
-            try:
-                queryset = queryset.filter(fecha_hora_inicio__date__gte=fecha_desde)
-            except Exception:
-                return Response(
-                    {'error': 'Formato de fecha_desde inválido. Use YYYY-MM-DD'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        if fecha_hasta:
-            try:
-                queryset = queryset.filter(fecha_hora_inicio__date__lte=fecha_hasta)
-            except Exception:
-                return Response(
-                    {'error': 'Formato de fecha_hasta inválido. Use YYYY-MM-DD'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Filtro por estado de llamada
-        if estado:
-            estado_id = get_estado_id('ESTADO_LLAMADA', estado.upper())
-            if estado_id:
-                queryset = queryset.filter(estado_llamada_id=estado_id)
-            else:
-                return Response(
-                    {'error': f'Estado "{estado}" no válido'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Búsqueda por número de teléfono (solo en destino)
-        # Limpia el + y espacios para mejor compatibilidad
-        if telefono:
-            telefono_limpio = telefono.replace('+', '').replace(' ', '').replace('-', '')
-            queryset = queryset.filter(
-                django_models.Q(telefono_destino__icontains=telefono) |
-                django_models.Q(telefono_destino__icontains=telefono_limpio)
-            )
-        
-        # Búsqueda por nombre de cliente (solo campo nombre)
-        if cliente:
-            queryset = queryset.filter(
-                cliente__nombre__icontains=cliente
-            )
+        # Aplicar ordenamiento según el rol
+        queryset = self._apply_role_ordering(queryset, user)
         
         # Optimizar consulta con select_related y prefetch_related
         queryset = queryset.select_related(
@@ -491,32 +478,19 @@ class LlamadaViewSet(viewsets.ModelViewSet):
             'venta',
             'estado_llamada',
             'estado_venta',
-            'estado_reportada'
+            'estado_reportada',
+            'estado_auditoria',
+            'auditado_por'
         ).prefetch_related(
             'formularios'
-        ).order_by('-fecha_hora_inicio')
+        )
         
         # Contar total de resultados
         total_count = queryset.count()
         
         # Paginación
-        page_size = request.query_params.get('page_size', 20)
-        try:
-            page_size = int(page_size)
-            if page_size < 1:
-                page_size = 20
-            elif page_size > 100:
-                page_size = 100
-        except ValueError:
-            page_size = 20
-        
-        page = request.query_params.get('page', 1)
-        try:
-            page = int(page)
-            if page < 1:
-                page = 1
-        except ValueError:
-            page = 1
+        page_size = self._get_page_size(request)
+        page = self._get_page_number(request)
         
         # Calcular offset
         start = (page - 1) * page_size
@@ -533,7 +507,7 @@ class LlamadaViewSet(viewsets.ModelViewSet):
                 'current_page': page,
                 'page_size': page_size,
                 'results': [],
-                'message': 'No se encontraron llamadas'
+                'message': 'No se encontraron llamadas que coincidan con los criterios seleccionados'
             })
         
         # Serializar resultados
@@ -548,8 +522,222 @@ class LlamadaViewSet(viewsets.ModelViewSet):
             'total_pages': total_pages,
             'current_page': page,
             'page_size': page_size,
-            'results': serializer.data
+            'results': serializer.data,
+            'rol_usuario': user.get_role_value()
         })
+    
+    def _get_base_queryset_by_role(self, user):
+        """
+        Retorna el queryset base según el rol del usuario.
+        
+        - AGENTE: Solo sus propias llamadas
+        - COORDINADOR: Llamadas de los agentes de su equipo
+        - BACKOFFICE: Todas las llamadas
+        - ADMIN: Todas las llamadas
+        """
+        if user.is_admin() or user.is_backoffice():
+            # Admin y BackOffice ven todas las llamadas
+            return Llamada.objects.all()
+        
+        elif user.is_coordinador():
+            # Coordinador ve llamadas de su equipo
+            from apps.campaigns.models import Equipo
+            
+            # Buscar equipos donde el usuario es coordinador
+            equipos = Equipo.objects.filter(coordinador=user, is_active=True)
+            
+            if not equipos.exists():
+                # Si no tiene equipos asignados, retornar vacío
+                return Llamada.objects.none()
+            
+            # Obtener agentes de esos equipos usando el método get_agentes()
+            agentes_list = []
+            for equipo in equipos:
+                agentes_equipo = equipo.get_agentes()
+                agentes_list.extend(list(agentes_equipo))
+            
+            if not agentes_list:
+                # Si no hay agentes en los equipos, retornar vacío
+                return Llamada.objects.none()
+            
+            # Filtrar llamadas de esos agentes
+            return Llamada.objects.filter(agente__in=agentes_list)
+        
+        else:
+            # Agente o cualquier otro rol: solo sus propias llamadas
+            return Llamada.objects.filter(agente=user)
+    
+    def _apply_common_filters(self, queryset, request):
+        """Aplica filtros comunes a todos los roles."""
+        
+        # Filtro por rango de fechas (desde - hasta)
+        fecha_desde = request.query_params.get('fecha_desde')
+        if fecha_desde:
+            try:
+                queryset = queryset.filter(fecha_hora_inicio__date__gte=fecha_desde)
+            except Exception:
+                pass
+        
+        fecha_hasta = request.query_params.get('fecha_hasta')
+        if fecha_hasta:
+            try:
+                queryset = queryset.filter(fecha_hora_inicio__date__lte=fecha_hasta)
+            except Exception:
+                pass
+        
+        # Filtro por estado de llamada
+        estado = request.query_params.get('estado')
+        if estado:
+            estado_id = get_estado_id('ESTADO_LLAMADA', estado.upper())
+            if estado_id:
+                queryset = queryset.filter(estado_llamada_id=estado_id)
+        
+        # Búsqueda por número de teléfono
+        telefono = request.query_params.get('telefono')
+        if telefono:
+            telefono_limpio = telefono.replace('+', '').replace(' ', '').replace('-', '')
+            queryset = queryset.filter(
+                django_models.Q(telefono_destino__icontains=telefono) |
+                django_models.Q(telefono_destino__icontains=telefono_limpio)
+            )
+        
+        # Búsqueda por nombre de cliente
+        cliente = request.query_params.get('cliente')
+        if cliente:
+            queryset = queryset.filter(cliente__nombre__icontains=cliente)
+        
+        # Búsqueda por nombre de agente (útil para coordinadores y backoffice)
+        agente_nombre = request.query_params.get('agente_nombre')
+        if agente_nombre:
+            queryset = queryset.filter(
+                django_models.Q(agente__first_name__icontains=agente_nombre) |
+                django_models.Q(agente__last_name__icontains=agente_nombre)
+            )
+        
+        return queryset
+    
+    def _apply_specific_filters(self, queryset, request):
+        """Aplica filtros específicos de BackOffice y Coordinador."""
+        # Filtro por estado de auditoría (solo si presente)
+        estado_auditoria = request.query_params.get('estado_auditoria')
+        if estado_auditoria:
+            estado_id = get_estado_id('ESTADO_AUDITORIA', estado_auditoria.upper())
+            if estado_id:
+                queryset = queryset.filter(estado_auditoria_id=estado_id)
+
+        # Filtro por estado de reporte (solo si presente)
+        estado_reportada = request.query_params.get('estado_reportada')
+        if estado_reportada:
+            estado_id = get_estado_id('ESTADO_REPORTE', estado_reportada.upper())
+            if estado_id:
+                queryset = queryset.filter(estado_reportada_id=estado_id)
+
+        # NOTA: No aplicamos filtro por estado_venta aquí porque el requisito
+        # indica que BackOffice solo filtra por estado de auditoría, fecha y estado de reporte.
+        return queryset
+
+    def _validate_filters_for_role(self, user, params):
+        """Valida que los parámetros de query sean permitidos según el rol.
+
+        Retorna None si todo está bien, o una cadena con el error si hay filtros no permitidos.
+        """
+        # Normalizar keys (omitimos page/page_size siempre permitidos)
+        provided = set([k for k in params.keys() if k not in ['page', 'page_size']])
+
+        # Definir conjuntos permitidos por rol
+        coordinator_allowed = {'agente_nombre', 'telefono', 'estado'}
+        backoffice_allowed = {'estado_auditoria', 'fecha_desde', 'fecha_hasta', 'estado_reportada'}
+        admin_allowed = {'fecha_desde', 'fecha_hasta', 'estado', 'telefono', 'cliente', 'agente_nombre', 'estado_auditoria', 'estado_reportada'}
+        agent_allowed = {'fecha_desde', 'fecha_hasta', 'estado', 'telefono', 'cliente'}
+
+        if user.is_admin():
+            allowed = admin_allowed
+        elif user.is_backoffice():
+            allowed = backoffice_allowed
+        elif user.is_coordinador():
+            allowed = coordinator_allowed
+        else:
+            # Agentes y demás roles
+            allowed = agent_allowed
+
+        # Determine disallowed
+        disallowed = provided - allowed
+        if disallowed:
+            return f"Filtros no permitidos para el rol {user.get_role_value()}: {', '.join(sorted(disallowed))}"
+
+        return None
+    
+    def _apply_role_ordering(self, queryset, user):
+        """
+        Aplica ordenamiento según el rol del usuario.
+        
+        BackOffice: Prioriza según:
+          1. Ventas sin auditar (más recientes primero)
+          2. No ventas sin auditar (más recientes primero)
+          3. Ventas auditadas (más recientes primero)
+          4. No ventas auditadas (más recientes primero)
+        
+        Otros roles: Orden cronológico descendente (más recientes primero).
+        """
+        if user.is_backoffice():
+            # Obtener IDs de estados
+            estado_venta_id = get_estado_id('ESTADO_VENTA', 'VENTA')
+            estado_no_auditada_id = get_estado_id('ESTADO_AUDITORIA', 'NO_AUDITADA')
+            
+            from django.db.models import Case, When, IntegerField
+
+            queryset = queryset.annotate(
+                prioridad=Case(
+                    # Prioridad 1: Ventas sin auditar
+                    When(
+                        estado_venta_id=estado_venta_id,
+                        estado_auditoria_id=estado_no_auditada_id,
+                        then=1
+                    ),
+                    # Prioridad 2: No ventas sin auditar
+                    When(
+                        estado_auditoria_id=estado_no_auditada_id,
+                        then=2
+                    ),
+                    # Prioridad 3: Ventas auditadas
+                    When(
+                        estado_venta_id=estado_venta_id,
+                        then=3
+                    ),
+                    # Prioridad 4: No ventas auditadas (default)
+                    default=4,
+                    output_field=IntegerField()
+                )
+            ).order_by('prioridad', '-fecha_hora_inicio')
+        else:
+            # Orden cronológico descendente para otros roles
+            queryset = queryset.order_by('-fecha_hora_inicio')
+        
+        return queryset
+    
+    def _get_page_size(self, request):
+        """Obtiene y valida el tamaño de página."""
+        page_size = request.query_params.get('page_size', 20)
+        try:
+            page_size = int(page_size)
+            if page_size < 1:
+                page_size = 20
+            elif page_size > 100:
+                page_size = 100
+        except ValueError:
+            page_size = 20
+        return page_size
+    
+    def _get_page_number(self, request):
+        """Obtiene y valida el número de página."""
+        page = request.query_params.get('page', 1)
+        try:
+            page = int(page)
+            if page < 1:
+                page = 1
+        except ValueError:
+            page = 1
+        return page
 
 
 class FormularioVentaViewSet(viewsets.ModelViewSet):

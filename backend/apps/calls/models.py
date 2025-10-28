@@ -138,6 +138,36 @@ class Llamada(models.Model):
         max_length=20
     )
     
+    # Campos de auditoría para BackOffice
+    estado_auditoria = models.ForeignKey(
+        TiposParametros,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='llamadas_estado_auditoria',
+        help_text='Estado: auditada, no auditada',
+        default=None  # Se establecerá en save()
+    )
+    fecha_auditoria = models.DateTimeField(
+        'Fecha de Auditoría',
+        null=True,
+        blank=True,
+        help_text='Fecha y hora en que se auditó la llamada'
+    )
+    auditado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='llamadas_auditadas',
+        help_text='Usuario que auditó la llamada'
+    )
+    notas_auditoria = models.TextField(
+        'Notas de Auditoría',
+        blank=True,
+        help_text='Observaciones del auditor'
+    )
+    
     created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
     updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
     
@@ -158,10 +188,19 @@ class Llamada(models.Model):
         return f"Llamada {self.id} - {agente_nombre}"
     
     def save(self, *args, **kwargs):
-        """Calcula duración automáticamente."""
+        """Calcula duración automáticamente y establece estado de auditoría por defecto."""
+        # Establecer estado_auditoria por defecto si es None
+        if self.estado_auditoria_id is None:
+            from common.estados_helper import get_estado_id
+            estado_no_auditada_id = get_estado_id('ESTADO_AUDITORIA', 'NO_AUDITADA')
+            if estado_no_auditada_id:
+                self.estado_auditoria_id = estado_no_auditada_id
+        
+        # Calcular duración si está disponible
         if self.fecha_hora_fin and self.fecha_hora_inicio:
             delta = self.fecha_hora_fin - self.fecha_hora_inicio
             self.duracion = int(delta.total_seconds())
+        
         super().save(*args, **kwargs)
     
     @property
