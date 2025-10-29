@@ -485,6 +485,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
         """
         Criterio 1.3: Listar todos los equipos del centro.
         Criterio 5.1: La lista se actualiza automáticamente.
+        Soporta paginación y filtrado por coordinador.
         """
         queryset = self.get_queryset()
         
@@ -500,11 +501,26 @@ class EquipoViewSet(viewsets.ModelViewSet):
                 Q(campana__nombre__icontains=search)
             )
         
-        serializer = self.get_serializer(queryset, many=True)
+        # Paginación
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        
+        total_count = queryset.count()
+        paginator = Paginator(queryset, page_size)
+        
+        try:
+            paginated_queryset = paginator.page(page)
+        except:
+            paginated_queryset = paginator.page(1)
+        
+        serializer = self.get_serializer(paginated_queryset, many=True)
         
         return Response({
             'success': True,
-            'count': queryset.count(),
+            'count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': paginator.num_pages,
             'equipos': serializer.data
         }, status=status.HTTP_200_OK)
     

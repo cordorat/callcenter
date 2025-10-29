@@ -294,17 +294,34 @@ class KPIViewSet(viewsets.ViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Filtrar agentes (todos si es admin, solo asignados si es coordinador)
+        # Filtrar agentes (todos si es admin, solo del equipo si es coordinador)
         if request.user.is_admin():
             agentes = User.objects.filter(
                 rol=get_estado('ROL_USUARIO', 'AGENTE'),
                 is_active=True
             ).order_by('first_name', 'last_name')
         else:
-            # Los coordinadores ven todos los agentes por ahora
-            # En el futuro se puede restringir según equipo asignado
+            # Los coordinadores solo ven agentes de sus equipos asignados
+            # Obtener equipos donde el usuario actual es coordinador
+            from apps.campaigns.models import Equipo
+            
+            equipos_coordinados = Equipo.objects.filter(
+                coordinador=request.user,
+                is_active=True
+            )
+            
+            # Obtener los IDs de agentes en esos equipos usando la tabla intermedia
+            agentes_ids = []
+            for equipo in equipos_coordinados:
+                ids_equipo = equipo.agentes_detalle.values_list('agente_id', flat=True)
+                agentes_ids.extend(ids_equipo)
+            
+            # Eliminar duplicados
+            agentes_ids = list(set(agentes_ids))
+            
+            # Filtrar agentes por sus documento_id
             agentes = User.objects.filter(
-                rol=get_estado('ROL_USUARIO', 'AGENTE'),
+                documento_id__in=agentes_ids,
                 is_active=True
             ).order_by('first_name', 'last_name')
         

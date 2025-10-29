@@ -65,7 +65,7 @@ export default function Teams({
       if (response.success) {
         setEquipos(response.equipos || []);
         setTotalCount(response.count || 0);
-        setTotalPages(Math.ceil((response.count || 0) / pageSize));
+        setTotalPages(response.total_pages || 1);
       } else {
         setError('No se pudieron cargar los equipos');
       }

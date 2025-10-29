@@ -17,12 +17,12 @@ def create_coordinators():
     
     coordinadores = [
         {
-            'email': 'coordinador@callcenter.com',
+            'email': 'coordinador12 @callcenter.com',
             'password': 'coordinador123!',
             'first_name': 'Carlos',
             'last_name': 'García',
             'phone': '+573001234568',
-            'documento_id': '0987654321'
+            'documento_id': '0987542345'
         }
     ]
     

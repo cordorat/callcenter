@@ -9,16 +9,21 @@ import apiClient from "./apiClient";
 
 /**
  * Obtiene la lista de equipos del jefe de centro autenticado.
+ * Si el usuario es COORDINADOR, solo obtiene los equipos que coordina.
  * @param {Object} params - Parámetros de filtrado opcionales
  * @param {number} params.campana_id - Filtrar por ID de campaña
  * @param {string} params.search - Buscar por nombre de equipo o campaña
- * @returns {Promise<Object>} { success, count, equipos }
+ * @param {number} params.page - Número de página (por defecto 1)
+ * @param {number} params.page_size - Cantidad de registros por página (por defecto 10)
+ * @returns {Promise<Object>} { success, count, page, page_size, total_pages, equipos }
  */
 export const getEquipos = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams();
     if (params.campana_id) queryParams.append('campana_id', params.campana_id);
     if (params.search) queryParams.append('search', params.search);
+    if (params.page) queryParams.append('page', params.page);
+    if (params.page_size) queryParams.append('page_size', params.page_size);
     
     const url = `/api/campaigns/equipos/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     const response = await apiClient.get(url);
