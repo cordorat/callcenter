@@ -146,10 +146,12 @@ export default function CrearUsuario({ onCancel, onUserCreated }) {
   };
 
   const handleCancel = () => {
-    if (typeof onCancel === 'function') {
-      onCancel(); // Cierra el popup igual que la X
-    }
-  };
+   if (typeof onCancel === 'function') {
+     onCancel(); // Cierra el popup igual que la X
+   } else {
+     navigate(-1); // Navega hacia atrás si no es un modal
+   }
+ };
 
   const handleTogglePassword = () => {
     setShowPassword((prev) => !prev);
