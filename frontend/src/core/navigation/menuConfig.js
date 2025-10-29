@@ -34,7 +34,7 @@ export const menuItems = [
     label: 'Agentes',
     path: '/kpis/agentes',
     icon: AssignmentIndIcon,
-    roles: ['COORDINADOR', 'ADMIN']
+    roles: ['COORDINADOR']
   },
   {
     label: 'Usuarios',
