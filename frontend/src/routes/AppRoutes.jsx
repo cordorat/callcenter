@@ -12,6 +12,8 @@ import Settings from '../pages/Settings/Settings';
 import CampaingJefeCentro from '../pages/Campaing/CampaingJefeCentro';
 import Usuarios from '../pages/Usuario/Usuarios';
 import CrearUsuario from '../pages/Usuario/CrearUsuario';
+import AgentesPage from '../pages/Kpis/AgentesPage';
+import AgentDetailPage from '../pages/Kpis/AgentDetailPage';
 import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
 
 const AppRoutes = () => {
@@ -44,15 +46,7 @@ const AppRoutes = () => {
             </PrivateRoute>
           } 
         />
-        <Route 
-          path="/productos" 
-          element={
-            <PrivateRoute>
-              <CampaingJefeCentro />
-            </PrivateRoute>
-          } 
-        />
-
+        
          <Route
           path="/historial"
           element={
@@ -67,6 +61,25 @@ const AppRoutes = () => {
           element={
             <PrivateRoute>
               <Kpis />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Rutas de KPI Coordinador */}
+        <Route
+          path="/kpis/agentes"
+          element={
+            <PrivateRoute>
+              <AgentesPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/kpis/agentes/:documentoId"
+          element={
+            <PrivateRoute>
+              <AgentDetailPage />
             </PrivateRoute>
           }
         />

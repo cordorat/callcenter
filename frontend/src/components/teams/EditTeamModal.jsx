@@ -20,7 +20,7 @@ import {
   Search as SearchIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
-import { updateEquipo, getCampanasActivas, getAgentesDisponibles } from '@/core/api/equipos';
+import { updateEquipo, getCampanasActivas, getAgentesDisponibles, getCoordinadoresDisponibles } from '@/core/api/equipos';
 
 /**
  * Modal para editar equipo existente
@@ -30,16 +30,19 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
   // Estados del formulario
   const [nombre, setNombre] = useState('');
   const [campanaSeleccionada, setCampanaSeleccionada] = useState(null);
+  const [coordinadorSeleccionado, setCoordinadorSeleccionado] = useState(null);
   const [agentesSeleccionados, setAgentesSeleccionados] = useState([]);
   
   // Estados de datos
   const [campanas, setCampanas] = useState([]);
+  const [coordinadores, setCoordinadores] = useState([]);
   const [agentesDisponibles, setAgentesDisponibles] = useState([]);
   const [searchAgentes, setSearchAgentes] = useState('');
   
   // Estados de UI
   const [loading, setLoading] = useState(false);
   const [loadingCampanas, setLoadingCampanas] = useState(false);
+  const [loadingCoordinadores, setLoadingCoordinadores] = useState(false);
   const [loadingAgentes, setLoadingAgentes] = useState(false);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
@@ -50,7 +53,17 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
       setNombre(equipo.nombre || '');
       setCampanaSeleccionada(equipo.campana_info || null);
       setAgentesSeleccionados(equipo.agentes || []);
+      
+      // Cargar coordinador actual si existe
+      if (equipo.coordinador) {
+        setCoordinadorSeleccionado({
+          documento_id: equipo.coordinador,
+          full_name: equipo.coordinador_nombre || 'Coordinador actual'
+        });
+      }
+      
       loadCampanasActivas();
+      loadCoordinadoresDisponibles();
       loadAgentesDisponibles('');
     } else {
       resetForm();
@@ -71,6 +84,7 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
   const resetForm = () => {
     setNombre('');
     setCampanaSeleccionada(null);
+    setCoordinadorSeleccionado(null);
     setAgentesSeleccionados([]);
     setSearchAgentes('');
     setErrors({});
@@ -89,6 +103,21 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
       console.error('[EditTeamModal] Error cargando campañas:', err);
     } finally {
       setLoadingCampanas(false);
+    }
+  };
+
+  const loadCoordinadoresDisponibles = async () => {
+    try {
+      setLoadingCoordinadores(true);
+      const response = await getCoordinadoresDisponibles();
+      
+      if (response.success) {
+        setCoordinadores(response.coordinadores || []);
+      }
+    } catch (err) {
+      console.error('[EditTeamModal] Error cargando coordinadores:', err);
+    } finally {
+      setLoadingCoordinadores(false);
     }
   };
 
@@ -126,6 +155,10 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
       newErrors.campana = 'Debe seleccionar una campaña';
     }
 
+    if (!coordinadorSeleccionado) {
+      newErrors.coordinador = 'Debe seleccionar un coordinador';
+    }
+
     if (agentesSeleccionados.length === 0) {
       newErrors.agentes = 'Debe seleccionar al menos un agente';
     }
@@ -144,6 +177,7 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
       const data = {
         nombre: nombre.trim(),
         campana: campanaSeleccionada.id,
+        coordinador: coordinadorSeleccionado.documento_id,
         agentes_ids: agentesSeleccionados.map(a => a.documento_id)
       };
 
@@ -250,6 +284,49 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
           />
         </Box>
 
+        {/* Campo: Coordinador */}
+        <Box sx={{ mb: 3 }}>
+          <Autocomplete
+            options={coordinadores}
+            getOptionLabel={(option) => option.full_name || ''}
+            value={coordinadorSeleccionado}
+            onChange={(event, newValue) => {
+              setCoordinadorSeleccionado(newValue);
+              setErrors(prev => ({ ...prev, coordinador: null }));
+            }}
+            loading={loadingCoordinadores}
+            disabled={loading || !!successMessage}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Coordinador *"
+                error={!!errors.coordinador}
+                helperText={errors.coordinador}
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {loadingCoordinadores ? <CircularProgress size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+            renderOption={(props, option) => (
+              <li {...props}>
+                <Box>
+                  <Typography variant="body2">{option.full_name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {option.email}
+                  </Typography>
+                </Box>
+              </li>
+            )}
+          />
+        </Box>
+
+        {/* Campo: Agentes */}
         <Box sx={{ mb: 2 }}>
           <Autocomplete
             multiple

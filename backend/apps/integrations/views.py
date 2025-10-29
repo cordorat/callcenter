@@ -56,12 +56,6 @@ def generate_twilio_client_token(request):
             'error': 'Twilio no está configurado. Contacta al administrador.'
         }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     
-    # Verificar que sea un agente
-    if not user.is_agent():
-        return Response({
-            'error': 'Solo los agentes pueden generar tokens de Twilio Client.'
-        }, status=status.HTTP_403_FORBIDDEN)
-    
     try:
         # Identity única del agente (usar pk que funciona con cualquier primary key)
         identity = f"agent_{user.pk}"
@@ -493,7 +487,8 @@ def twilio_call_status_webhook(request, llamada_id=None):
             elif call_status == 'in-progress':
                 estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
                 llamada.estado_llamada = estado_en_curso
-                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> EN_CURSO")
+                llamada.fue_contestada = True  # ✅ MARCAMOS QUE FUE CONTESTADA
+                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> EN_CURSO (CONTESTADA)")
                 
                 # Asegurar que el agente se mantenga EN_LLAMADA (no cambiar a AFTERCALL todavía)
                 estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')

@@ -1,6 +1,6 @@
 """
-Script para crear usuarios agentes de prueba.
-Ejecutar con: python create_agent.py
+Script para crear usuarios coordinadores.
+Ejecutar con: python create_coordinator.py
 """
 import os
 import django
@@ -12,34 +12,39 @@ django.setup()
 from apps.users.models import User
 from common.estados_helper import get_estado
 
-def create_agents():
-    """Crea usuarios agentes de prueba."""
+def create_coordinators():
+    """Crea usuarios coordinadores."""
     
-    agentes = [
+    coordinadores = [
         {
-            'email': 'agente123456@callcenter.com',
-            'password': 'agente123456!',
-            'first_name': 'Miguel',
-            'last_name': 'Castañeda',
-            'phone': '+573002367677',
-            'documento_id': '12312312'
+            'email': 'coordinador12@callcenter.com',
+            'password': 'coordinador123!',
+            'first_name': 'Carlos',
+            'last_name': 'García',
+            'phone': '+573001234568',
+            'documento_id': '0987542345'
         }
     ]
     
     print("=" * 70)
-    print("CREANDO USUARIOS AGENTES")
+    print("CREANDO USUARIOS COORDINADORES")
     print("=" * 70)
     
-    rol_agente = get_estado('ROL_USUARIO', 'AGENTE')
+    rol_coordinador = get_estado('ROL_USUARIO', 'COORDINADOR')
     
-    for data in agentes:
+    if not rol_coordinador:
+        print("❌ Error: El rol 'COORDINADOR' no existe en la base de datos.")
+        print("   Ejecuta primero: python poblar_tipos_parametros.py")
+        return
+    
+    for data in coordinadores:
         email = data['email']
         
         if User.objects.filter(email=email).exists():
             print(f'⚠️  El usuario {email} ya existe.')
             continue
         
-        # Crear el usuario agente
+        # Crear el usuario coordinador
         user = User.objects.create_user(
             email=email,
             password=data['password'],
@@ -47,7 +52,7 @@ def create_agents():
             last_name=data['last_name'],
             phone=data['phone'],
             documento_id=data['documento_id'],
-            rol=rol_agente
+            rol=rol_coordinador
         )
         
         print(f'✅ Usuario creado: {email}')
@@ -58,8 +63,8 @@ def create_agents():
         print()
     
     print("=" * 70)
-    print("✨ Agentes creados exitosamente!")
+    print("✨ Coordinadores creados exitosamente!")
     print("=" * 70)
 
 if __name__ == '__main__':
-    create_agents()
+    create_coordinators()

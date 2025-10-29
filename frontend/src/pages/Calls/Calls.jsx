@@ -1,3 +1,4 @@
+import { useAgentState } from '@/hooks/useAgentState';
 import * as React from 'react';
 import MainLayout from '@/core/components/layout/MainLayout';
 import { useAuth } from '@/core/context/AuthContext';
@@ -11,6 +12,8 @@ import ClientInfoSection from '@/components/sales/ClientInfoSection';
 import SaleInfoSection from '@/components/sales/SaleInfoSection';
 
 const Calls = () => {
+    // Estado del agente (para saber si está en llamada o aftercall)
+    const { frontendState } = useAgentState({ autoLoad: true, refreshInterval: 5000 });
     const { user } = useAuth();
     const [phoneNumber, setPhoneNumber] = React.useState('');
     const [isExpanded, setIsExpanded] = React.useState(false); 
@@ -53,16 +56,56 @@ const Calls = () => {
         rejectIncomingCall,
         sendDigit,
         formatDuration,
+        currentCallInfo,
     } = useTwilioCall();
+    // Sincronizar datos de llamada automática y limpiar al salir de EN_LLAMADA/AFTERCALL
+    React.useEffect(() => {
+        const isEnLlamadaOAfterCall = frontendState === 'CALL' || frontendState === 'AFTERCALL' || frontendState === 'EN_LLAMADA';
+        
+        console.log('[Calls.jsx][SYNC] Estado:', frontendState, '| currentCallInfo:', currentCallInfo);
+        
+        // Si hay información de llamada Y estamos en CALL/AFTERCALL, actualizar datos
+        if (currentCallInfo && isEnLlamadaOAfterCall) {
+            console.log('[Calls.jsx][SYNC] Actualizando datos del formulario con info de llamada automática:', currentCallInfo);
+            setPhoneNumber(currentCallInfo.telefono || '');
+            setCliente({
+                nombre: currentCallInfo.nombre || '',
+                documento: currentCallInfo.documento || '',
+                telefono: currentCallInfo.telefono || '',
+                direccion: currentCallInfo.direccion || '',
+                correo: currentCallInfo.correo || '',
+                ciudad: currentCallInfo.ciudad || '',
+            });
+        } 
+        // Si NO estamos en CALL ni AFTERCALL, limpiar los datos
+        else if (!isEnLlamadaOAfterCall) {
+            console.log('[Calls.jsx][SYNC] Limpiando datos del formulario - fuera de CALL/AFTERCALL');
+            setPhoneNumber('');
+            setCliente({
+                nombre: '',
+                documento: '',
+                telefono: '',
+                direccion: '',
+                correo: '',
+                ciudad: '',
+            });
+        }
+        // Si estamos en CALL/AFTERCALL pero no hay currentCallInfo, mantener los datos actuales
+        else {
+            console.log('[Calls.jsx][SYNC] Manteniendo datos actuales - en CALL/AFTERCALL sin nueva info');
+        }
+    }, [currentCallInfo, frontendState]);
 
     // Mostrar alerta cuando hay llamada entrante
     React.useEffect(() => {
-        if (incomingCall) {
+        // Solo mostrar alerta si hay llamada entrante Y el estado del agente NO es EN_LLAMADA/CALL/AFTERCALL
+        const isEnLlamada = frontendState === 'CALL' || frontendState === 'AFTERCALL' || frontendState === 'EN_LLAMADA';
+        if (incomingCall && !isEnLlamada) {
             setShowIncomingAlert(true);
         } else {
             setShowIncomingAlert(false);
         }
-    }, [incomingCall]);
+    }, [incomingCall, frontendState]);
 
     // Resetear estado expandido cuando termina la llamada
     React.useEffect(() => {
