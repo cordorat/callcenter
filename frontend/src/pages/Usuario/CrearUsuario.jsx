@@ -214,7 +214,7 @@ export default function CrearUsuario({ onCancel, onUserCreated }) {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Primer nombre"
+                  label="Nombre"
                   name="first_name"
                   value={formData.first_name}
                   onChange={handleChange}
