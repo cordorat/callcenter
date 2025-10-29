@@ -21,7 +21,7 @@ def create_agents():
             'password': 'agente123456!',
             'first_name': 'Miguel',
             'last_name': 'Castañeda',
-            'phone': '+573002367u677',
+            'phone': '+573002367677',
             'documento_id': '12312312'
         }
     ]
