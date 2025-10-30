@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import models as django_models
 
-from apps.calls.models import Llamada, FormularioVenta
+from apps.calls.models import Llamada, FormularioVenta, Venta
 from apps.campaigns.models import Cliente, Campana
 from apps.users.models import User
 from apps.users.permissions import IsAdmin, IsAdminOrOwner
@@ -21,7 +21,9 @@ from apps.calls.serializers import (
     IniciarLlamadaSerializer,
     CompletarLlamadaSerializer,
     RechazarLlamadaSerializer,
-    TransferirLlamadaSerializer
+    TransferirLlamadaSerializer,
+    RegistrarVentaSerializer,
+    VentaSerializer
 )
 from common.estados_helper import get_estado_id
 from apps.campaigns.serializers import ClienteSerializer
@@ -822,3 +824,130 @@ class FormularioVentaViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         
         return Response(serializer.data)
+
+
+class VentaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de ventas.
+    
+    list: Listar ventas (agentes solo ven las suyas, admins/coordinadores/backoffice ven todas)
+    retrieve: Obtener una venta específica
+    create: No usar este método, usar la acción 'registrar_venta'
+    registrar_venta: Registrar una nueva venta desde el módulo de llamadas
+    """
+    serializer_class = VentaSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """
+        Filtra las ventas según el rol del usuario.
+        - Agentes: solo sus ventas (a través de llamadas)
+        - Coordinadores: ventas de su equipo (a través de llamadas)
+        - BackOffice/Admin: todas las ventas
+        
+        La relación es: Venta <- Llamada -> Agente
+        """
+        user = self.request.user
+        
+        if user.is_admin() or user.is_backoffice():
+            # Admin y BackOffice ven todas las ventas
+            queryset = Venta.objects.all()
+        elif user.is_coordinador():
+            # Coordinador ve ventas de agentes de su equipo
+            # Accedemos al agente a través de la llamada
+            from apps.campaigns.models import Equipo
+            equipos = Equipo.objects.filter(coordinador=user, is_active=True)
+            agentes_list = []
+            for equipo in equipos:
+                agentes_list.extend(list(equipo.get_agentes()))
+            # Filtrar ventas donde la llamada asociada tenga un agente del equipo
+            queryset = Venta.objects.filter(llamadas__agente__in=agentes_list)
+        else:
+            # Agentes ven solo sus ventas (a través de llamadas)
+            queryset = Venta.objects.filter(llamadas__agente=user)
+        
+        return queryset.select_related('campana').order_by('-venta_id').distinct()
+    
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def registrar_venta(self, request):
+        """
+        Registra una nueva venta desde el módulo de llamadas.
+        
+        Campos requeridos:
+        - llamada_id: ID de la llamada asociada
+        - cliente_nombre: Nombre completo del cliente
+        - cliente_documento: Número de documento/identificación
+        - producto_id: ID del producto o servicio adquirido
+        
+        Campos opcionales:
+        - monto: Monto de la venta (si no se proporciona, se usa el precio del producto)
+        - observaciones: Comentarios adicionales
+        
+        Returns:
+            201: Venta registrada exitosamente con ID único
+            400: Datos inválidos o faltantes
+            403: Sin permisos para registrar venta en esta llamada
+            404: Llamada o producto no encontrado
+        """
+        serializer = RegistrarVentaSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        
+        if serializer.is_valid():
+            venta = serializer.save()
+            return Response(
+                serializer.to_representation(venta),
+                status=status.HTTP_201_CREATED
+            )
+        
+        return Response(
+            {
+                'error': 'Datos inválidos',
+                'detalles': serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    @action(detail=False, methods=['get'])
+    def mis_ventas(self, request):
+        """
+        Obtiene todas las ventas del agente autenticado.
+        Incluye información completa de cada venta.
+        Accede al agente a través de la llamada.
+        """
+        ventas = Venta.objects.filter(
+            llamadas__agente=request.user
+        ).select_related('campana').order_by('-venta_id').distinct()
+        
+        serializer = self.get_serializer(ventas, many=True)
+        return Response({
+            'total': ventas.count(),
+            'ventas': serializer.data
+        })
+    
+    @action(detail=False, methods=['get'])
+    def productos_disponibles(self, request):
+        """
+        Lista todos los productos disponibles para venta.
+        Útil para poblar el dropdown del formulario de cierre de venta.
+        """
+        from apps.campaigns.models import Producto
+        
+        productos = Producto.objects.filter(activo=True).order_by('nombre')
+        
+        productos_data = [
+            {
+                'id': p.pk,
+                'nombre': p.nombre,
+                'descripcion': p.descripcion,
+                'precio': str(p.precio)
+            }
+            for p in productos
+        ]
+        
+        return Response({
+            'total': len(productos_data),
+            'productos': productos_data
+        })
+

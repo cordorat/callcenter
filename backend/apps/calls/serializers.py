@@ -3,8 +3,9 @@ Serializadores para gestión de llamadas del call center.
 """
 from rest_framework import serializers
 from django.utils import timezone
+from django.db import transaction
 from apps.calls.models import Llamada, IteracionCliente, Venta, FormularioVenta
-from apps.campaigns.models import Cliente, Campana
+from apps.campaigns.models import Cliente, Campana, Producto
 from apps.users.models import User, EstadoAgenteActual, EstadoAgenteDetalle, TiposParametros
 from common.estados_helper import EstadosHelper, get_estado, get_estado_id
 
@@ -68,6 +69,224 @@ class VentaSerializer(serializers.ModelSerializer):
         model = Venta
         fields = ['venta_id', 'campana_id', 'monto']
         read_only_fields = ['venta_id']
+
+
+class RegistrarVentaSerializer(serializers.Serializer):
+    """
+    Serializer para registrar una nueva venta desde el módulo de llamadas.
+    
+    Valida todos los campos requeridos y crea tanto el registro de venta
+    como actualiza el estado de la llamada.
+    """
+    # Campos requeridos
+    llamada_id = serializers.IntegerField(
+        required=True,
+        help_text='ID de la llamada asociada a la venta'
+    )
+    cliente_nombre = serializers.CharField(
+        required=True,
+        max_length=255,
+        help_text='Nombre completo del cliente',
+        error_messages={
+            'required': 'El nombre del cliente es obligatorio.',
+            'blank': 'El nombre del cliente no puede estar vacío.'
+        }
+    )
+    cliente_documento = serializers.CharField(
+        required=True,
+        max_length=50,
+        help_text='Número de documento o identificación del cliente',
+        error_messages={
+            'required': 'El número de documento es obligatorio.',
+            'blank': 'El número de documento no puede estar vacío.'
+        }
+    )
+    producto_id = serializers.IntegerField(
+        required=True,
+        help_text='ID del producto o servicio adquirido',
+        error_messages={
+            'required': 'Debe seleccionar un producto.',
+        }
+    )
+    
+    # Campos opcionales
+    observaciones = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text='Observaciones adicionales sobre la venta'
+    )
+    monto = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        help_text='Monto de la venta (opcional, se puede tomar del producto)'
+    )
+    
+    def validate_llamada_id(self, value):
+        """Valida que la llamada exista y pertenezca al agente autenticado."""
+        user = self.context.get('request').user
+        
+        try:
+            llamada = Llamada.objects.select_related('agente', 'cliente').get(pk=value)
+        except Llamada.DoesNotExist:
+            raise serializers.ValidationError(
+                f'No existe una llamada con ID {value}.'
+            )
+        
+        # Verificar que la llamada pertenezca al agente
+        if llamada.agente != user and not user.is_admin():
+            raise serializers.ValidationError(
+                'No tienes permiso para registrar ventas en esta llamada.'
+            )
+        
+        # Verificar que no tenga ya una venta asociada
+        if llamada.venta:
+            raise serializers.ValidationError(
+                f'Esta llamada ya tiene una venta registrada (ID: {llamada.venta.venta_id}).'
+            )
+        
+        return value
+    
+    def validate_producto_id(self, value):
+        """Valida que el producto exista y esté activo."""
+        try:
+            producto = Producto.objects.get(pk=value)
+        except Producto.DoesNotExist:
+            raise serializers.ValidationError(
+                f'No existe un producto con ID {value}.'
+            )
+        
+        if not producto.activo:
+            raise serializers.ValidationError(
+                f'El producto "{producto.nombre}" no está disponible.'
+            )
+        
+        return value
+    
+    def validate_cliente_documento(self, value):
+        """Valida que el documento tenga un formato válido."""
+        # Eliminar espacios
+        value = value.strip()
+        
+        # Validar que no esté vacío después de eliminar espacios
+        if not value:
+            raise serializers.ValidationError(
+                'El número de documento no puede estar vacío.'
+            )
+        
+        # Validar que tenga caracteres válidos (alfanuméricos y guiones)
+        import re
+        if not re.match(r'^[A-Za-z0-9\-]+$', value):
+            raise serializers.ValidationError(
+                'El documento solo puede contener letras, números y guiones.'
+            )
+        
+        return value
+    
+    @transaction.atomic
+    def create(self, validated_data):
+        """
+        Crea el registro de venta y actualiza la llamada.
+        
+        Proceso:
+        1. Obtener la llamada y producto
+        2. Crear el registro de venta (solo campaña y monto según MER)
+        3. Guardar datos del formulario en FormularioVenta.campos_json
+        4. Vincular la venta a la llamada
+        5. Actualizar el estado de la llamada a "VENTA"
+        
+        Returns:
+            Venta: Instancia de la venta creada
+        """
+        # Obtener datos validados
+        llamada_id = validated_data['llamada_id']
+        producto_id = validated_data['producto_id']
+        
+        # Obtener instancias
+        llamada = Llamada.objects.select_related(
+            'agente', 'cliente', 'cliente__campana'
+        ).get(pk=llamada_id)
+        producto = Producto.objects.get(pk=producto_id)
+        
+        # Determinar el monto (del request o del producto)
+        monto = validated_data.get('monto') or producto.precio
+        
+        # Crear la venta (solo campos del MER)
+        # La campaña viene del cliente de la llamada
+        venta = Venta.objects.create(
+            campana_id=llamada.cliente.campana if llamada.cliente else None,
+            monto=monto
+        )
+        
+        # Guardar los datos del formulario en FormularioVenta
+        FormularioVenta.objects.create(
+            llamada=llamada,
+            agente=llamada.agente,
+            completado=True,
+            fecha_completado=timezone.now(),
+            campos_json={
+                'cliente_nombre': validated_data['cliente_nombre'],
+                'cliente_documento': validated_data['cliente_documento'],
+                'producto_id': producto_id,
+                'producto_nombre': producto.nombre,
+                'observaciones': validated_data.get('observaciones', ''),
+                'monto': str(monto)
+            }
+        )
+        
+        # Actualizar la llamada para vincular la venta
+        llamada.venta = venta
+        
+        # Cambiar estado de la llamada a VENTA
+        estado_venta = get_estado('ESTADO_VENTA', 'VENTA')
+        if estado_venta:
+            llamada.estado_venta = estado_venta
+        
+        llamada.save()
+        
+        return venta
+    
+    def to_representation(self, instance):
+        """
+        Personaliza la respuesta para incluir información completa de la venta.
+        Obtiene datos del agente y formulario desde la llamada asociada.
+        """
+        # Obtener la llamada asociada a esta venta
+        llamada = instance.llamadas.first()
+        agente_info = None
+        formulario_data = {}
+        
+        if llamada:
+            # Información del agente
+            if llamada.agente:
+                agente_info = {
+                    'id': llamada.agente.documento_id,
+                    'nombre': llamada.agente.full_name
+                }
+            
+            # Datos del formulario
+            formulario = llamada.formularios.first()
+            if formulario:
+                formulario_data = formulario.campos_json
+        
+        return {
+            'venta_id': instance.venta_id,
+            'mensaje': f'La venta ha sido registrada exitosamente con ID #{instance.venta_id}',
+            'venta': {
+                'id': instance.venta_id,
+                'cliente_nombre': formulario_data.get('cliente_nombre', ''),
+                'cliente_documento': formulario_data.get('cliente_documento', ''),
+                'producto': {
+                    'id': formulario_data.get('producto_id'),
+                    'nombre': formulario_data.get('producto_nombre', ''),
+                    'precio': formulario_data.get('monto', '0')
+                },
+                'monto': str(instance.monto) if instance.monto else None,
+                'observaciones': formulario_data.get('observaciones', ''),
+                'agente': agente_info
+            }
+        }
 
 
 class IteracionClienteSerializer(serializers.ModelSerializer):
