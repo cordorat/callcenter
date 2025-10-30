@@ -90,11 +90,11 @@ const ConfirmDialog = ({
         <Button
           onClick={onClose}
           sx={{
-            backgroundColor: cancelColor,
+            backgroundColor: (theme) => typeof cancelColor === 'function' ? cancelColor(theme) : cancelColor,
             color: 'white',
             textTransform: 'none',
             '&:hover': {
-              backgroundColor: cancelColor,
+              backgroundColor: (theme) => typeof cancelColor === 'function' ? cancelColor(theme) : cancelColor,
               opacity: 0.9
             }
           }}
@@ -104,11 +104,11 @@ const ConfirmDialog = ({
         <Button
           onClick={handleConfirm}
           sx={{
-            backgroundColor: confirmColor,
+            backgroundColor: (theme) => typeof confirmColor === 'function' ? confirmColor(theme) : confirmColor,
             color: 'white',
             textTransform: 'none',
             '&:hover': {
-              backgroundColor: confirmColor,
+              backgroundColor: (theme) => typeof confirmColor === 'function' ? confirmColor(theme) : confirmColor,
               opacity: 0.9
             }
           }}

@@ -1,6 +1,7 @@
 import apiClient from "@/core/api/apiClient";
 import { ENDPOINTS } from "@/core/api/endpoints";
 
+// KPIs del agente autenticado (existentes)
 export async function getKpiOverview({ from, to }) {
   const { data } = await apiClient.get(ENDPOINTS.KPIS_OVERVIEW, { params: { from, to } });
   return data;
@@ -13,5 +14,22 @@ export async function getKpisByHour({ from, to }) {
 
 export async function getKpiTargets() {
   const { data } = await apiClient.get(ENDPOINTS.KPIS_TARGETS);
+  return data;
+}
+
+// KPIs para Coordinador - Listar agentes
+export async function getAgentes() {
+  const { data } = await apiClient.get("/api/kpis/agentes/");
+  return data;
+}
+
+// KPIs para Coordinador - Detalle de agente
+export async function getAgenteKpiDetail(documentoId, { fecha_desde, fecha_hasta }) {
+  const { data } = await apiClient.get(
+    `/api/kpis/agentes/${documentoId}/detalle/`,
+    {
+      params: { fecha_desde, fecha_hasta }
+    }
+  );
   return data;
 }

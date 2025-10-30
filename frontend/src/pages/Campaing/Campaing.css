@@ -10,12 +10,242 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 20px;
+    gap: 20px;
+}
+
+.campaign-left-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.campaign-control {
+    display: flex;
+    align-items: center;
+}
+
+.campaign-select {
+    padding: 12px 16px;
+    border: 1px solid var(--segmented-border, rgba(12, 21, 90, 0.12));
+    border-radius: 8px;
+    background: var(--campaign-filter-bg, #F8FAFB);
+    color: var(--text-primary, #0C155A);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 220px;
+    /* Forzar color del texto en el select */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    /* Agregar flecha personalizada */
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+.campaign-select:hover {
+    border-color: var(--primary-main, #0C155A);
+    box-shadow: 0 2px 8px rgba(12, 21, 90, 0.1);
+}
+
+.campaign-select:focus {
+    outline: none;
+    border-color: var(--primary-main, #0C155A);
+    box-shadow: 0 0 0 3px rgba(12, 21, 90, 0.1);
+}
+
+.campaign-select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Estilos para las opciones del dropdown */
+.campaign-select option {
+    background: var(--campaign-filter-bg, #F8FAFB);
+    color: var(--text-primary, #0C155A);
+    padding: 10px;
+}
+
+.campaign-select option:disabled {
+    color: var(--segmented-text, rgba(12, 21, 90, 0.5));
+}
+
+.campaign-select option:checked {
+    background: var(--primary-main, #0C155A);
+    color: white;
+}
+
+.sales-goal-control {
+    display: flex;
+    align-items: center;
+}
+
+.sales-goal-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border: 1px solid var(--segmented-border, rgba(12, 21, 90, 0.12));
+    border-radius: 8px;
+    background: var(--campaign-filter-bg, #F8FAFB);
+    transition: all 0.2s ease;
+}
+
+.sales-goal-input-wrapper:focus-within {
+    border-color: var(--primary-main, #0C155A);
+    box-shadow: 0 0 0 3px rgba(12, 21, 90, 0.1);
+}
+
+.input-prefix {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #0C155A);
+    white-space: nowrap;
+}
+
+.sales-goal-input {
+    border: none;
+    background: transparent;
+    color: var(--text-primary, #0C155A);
+    font-size: 14px;
+    font-weight: 600;
+    width: 80px;
+    padding: 4px 0;
+    text-align: right;
+}
+
+.sales-goal-input:focus {
+    outline: none;
+}
+
+.sales-goal-input:read-only {
+    cursor: default;
+}
+
+.sales-goal-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.sales-goal-input::placeholder {
+    color: var(--segmented-text, rgba(12, 21, 90, 0.4));
+}
+
+/* Remover estilos de spinner del input number */
+.sales-goal-input::-webkit-outer-spin-button,
+.sales-goal-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.sales-goal-input[type=number] {
+    appearance: textfield;
+    -moz-appearance: textfield;
 }
 
 .campaign-actions {
     display: flex;
     align-items: center;
     gap: 14px;
+}
+
+.campaign-actions .date-input-label {
+    display: flex;
+    align-items: center;
+}
+
+/* Contenedor para fecha y hora separados */
+.date-time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.date-time-inputs .date-input,
+.date-time-inputs .time-input {
+    padding: 12px 14px;
+    border: 1px solid var(--segmented-border, rgba(12, 21, 90, 0.12));
+    border-radius: 8px;
+    background: var(--campaign-filter-bg, #F8FAFB);
+    color: var(--text-primary, #0C155A);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.date-time-inputs .date-input {
+    min-width: 145px;
+}
+
+.date-time-inputs .time-input {
+    min-width: 100px;
+}
+
+.date-time-inputs .date-input:hover,
+.date-time-inputs .time-input:hover {
+    border-color: var(--primary-main, #0C155A);
+    box-shadow: 0 2px 8px rgba(12, 21, 90, 0.1);
+}
+
+.date-time-inputs .date-input:focus,
+.date-time-inputs .time-input:focus {
+    outline: none;
+    border-color: var(--primary-main, #0C155A);
+    box-shadow: 0 0 0 3px rgba(12, 21, 90, 0.1);
+}
+
+/* Estilos para los iconos del calendario y reloj */
+.date-time-inputs .date-input::-webkit-calendar-picker-indicator,
+.date-time-inputs .time-input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.date-time-inputs .date-input::-webkit-calendar-picker-indicator:hover,
+.date-time-inputs .time-input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+/* Estilos legacy para datetime-local (por si se cambia) */
+.campaign-actions .date-input-label input[type="datetime-local"] {
+    padding: 12px 16px;
+    border: 1px solid var(--segmented-border, rgba(12, 21, 90, 0.12));
+    border-radius: 8px;
+    background: var(--campaign-filter-bg, #F8FAFB);
+    color: var(--text-primary, #0C155A);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 200px;
+}
+
+.campaign-actions .date-input-label input[type="datetime-local"]:hover {
+    border-color: var(--primary-main, #0C155A);
+    box-shadow: 0 2px 8px rgba(12, 21, 90, 0.1);
+}
+
+.campaign-actions .date-input-label input[type="datetime-local"]:focus {
+    outline: none;
+    border-color: var(--primary-main, #0C155A);
+    box-shadow: 0 0 0 3px rgba(12, 21, 90, 0.1);
+}
+
+/* Estilos para el icono del calendario */
+.campaign-actions .date-input-label input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.campaign-actions .date-input-label input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
 }
 
 .campaign-filters {

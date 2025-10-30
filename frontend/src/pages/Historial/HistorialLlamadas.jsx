@@ -13,7 +13,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
 import { useAuth } from "@/core/context/AuthContext";
-import { callsService } from "@/core/api/calls"; // 👈 nuevo import
+import { callsService } from "@/core/api/calls";
 
 import {
   Box,
@@ -41,6 +41,7 @@ import {
   TableRow,
   Collapse,
   Button,
+  Pagination,
 } from "@mui/material";
 
 import SearchIcon from "@mui/icons-material/Search";
@@ -56,14 +57,25 @@ const formatearDuracion = (seg) => {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 };
 
-const estadoToChip = (estado) => {
+const estadoToChip = (fueContestada, estado) => {
+  // Primero verificar si fue contestada (campo booleano de la BD)
+  if (fueContestada === true) {
+    return { label: "Contestada", color: "success" };
+  }
+  
+  // Si no fue contestada, mostrar el motivo según estado_llamada
   const map = {
-    COMPLETADA: { label: "Contestada", color: "success" },
     NO_CONTESTADA: { label: "No contestada", color: "warning" },
-    FALLIDA: { label: "Fallida", color: "error" },
     RECHAZADA: { label: "Rechazada", color: "default" },
+    COLGADA: { label: "Colgada", color: "error" },
+    OCUPADO: { label: "Ocupado", color: "warning" },
+    ERROR: { label: "Error", color: "error" },
+    TIMBRADO: { label: "Timbrando", color: "info" },
+    COMPLETADA: { label: "No contestada", color: "warning" }, // Completada pero no contestada
+    EN_CURSO: { label: "En curso", color: "primary" },
+    TRANSFERIDA: { label: "Transferida", color: "info" },
   };
-  return map[estado] || { label: estado || "N/A", color: "default" };
+  return map[estado] || { label: estado || "Sin respuesta", color: "default" };
 };
 
 const toYMD = (d) => {
@@ -125,7 +137,7 @@ function RefreshCircle({ onClick, loading }) {
 }
 
 // ======================== Componente principal ========================
-export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
+export default function HistorialLlamadas() {
   const { user } = useAuth();
   const today = toYMD(new Date());
 
@@ -139,6 +151,8 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [snack, setSnack] = useState(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage] = useState(6);
   const debounceRef = useRef(null);
 
   // ======================== Fetch Data ========================
@@ -150,18 +164,36 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
     const trimmed = q.trim();
     const isNumber = /^[\d\s\+\-]+$/.test(trimmed);
 
-    const payload = await callsService.getHistory({
+    // Construir parámetros base
+    const params = {
       fecha_desde: fechaInicio || undefined,
       fecha_hasta: fechaFin || undefined,
-      estado: estado === "todos" ? undefined : estado.toUpperCase(),
-      ...(trimmed
-        ? isNumber
-          ? { telefono: trimmed }
-          : { cliente: trimmed }
-        : {}),
       page: 1,
       page_size: 50,
-    });
+    };
+
+    // Agregar búsqueda por teléfono o cliente
+    if (trimmed) {
+      if (isNumber) {
+        params.telefono = trimmed;
+      } else {
+        params.cliente = trimmed;
+      }
+    }
+
+    // Manejar filtro de estado
+    if (estado === 'contestada') {
+      // Filtrar por fue_contestada=true
+      params.fue_contestada = true;
+    } else if (estado === 'no_contestada') {
+      // Filtrar por fue_contestada=false (llamadas completadas pero no contestadas)
+      params.fue_contestada = false;
+    } else if (estado !== 'todos') {
+      // Filtrar por estado específico (RECHAZADA, COLGADA, etc.)
+      params.estado = estado.toUpperCase();
+    }
+
+    const payload = await callsService.getHistory(params);
 
     const list = Array.isArray(payload) ? payload : payload.results || [];
     list.sort((a, b) => new Date(b.fecha_hora_inicio) - new Date(a.fecha_hora_inicio));
@@ -175,23 +207,31 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
 }, [q, estado, fechaInicio, fechaFin]);
 
 
-  // auto-refresh
+  // Cargar datos solo al montar el componente o cuando cambian los filtros
   useEffect(() => {
     fetchData();
-    if (!autoRefreshMs) return;
-    const id = setInterval(fetchData, autoRefreshMs);
-    return () => clearInterval(id);
-  }, [fetchData, autoRefreshMs]);
+  }, [fetchData]);
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setQ(value);
+    setPage(0); // Reset a página 0 al buscar
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(fetchData, 400);
   };
 
   const toggleRow = (id) => setOpenRows((prev) => ({ ...prev, [id]: !prev[id] }));
   const total = useMemo(() => rows.length, [rows]);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  // Obtener solo los registros de la página actual
+  const paginatedRows = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    return rows.slice(startIndex, startIndex + rowsPerPage);
+  }, [rows, page, rowsPerPage]);
 
   // ======================== Render ========================
   return (
@@ -281,13 +321,18 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
                 labelId="estado-label"
                 value={estado}
                 label="Estado"
-                onChange={(e) => { setEstado(e.target.value); fetchData(); }}
+                onChange={(e) => { 
+                  setEstado(e.target.value); 
+                  setPage(0);
+                }}
               >
                 <MenuItem value="todos">Todos</MenuItem>
                 <MenuItem value="contestada">Contestada</MenuItem>
                 <MenuItem value="no_contestada">No contestada</MenuItem>
-                <MenuItem value="fallida">Fallida</MenuItem>
                 <MenuItem value="rechazada">Rechazada</MenuItem>
+                <MenuItem value="colgada">Colgada</MenuItem>
+                <MenuItem value="ocupado">Ocupado</MenuItem>
+                <MenuItem value="error">Error</MenuItem>
               </Select>
             </FormControl>
 
@@ -299,9 +344,11 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
                 type="date"
                 size="small"
                 value={i === 0 ? fechaInicio : fechaFin}
-                onChange={(e) =>
-                  i === 0 ? setFechaInicio(e.target.value) : setFechaFin(e.target.value)
-                }
+                onChange={(e) => {
+                  if (i === 0) setFechaInicio(e.target.value);
+                  else setFechaFin(e.target.value);
+                  setPage(0);
+                }}
                 onBlur={fetchData}
                 InputLabelProps={{
                   shrink: true,
@@ -339,6 +386,7 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
                 setEstado("todos");
                 setFechaInicio(today);
                 setFechaFin(today);
+                setPage(0);
                 setSnack("Filtros restablecidos");
                 fetchData();
               }}
@@ -354,14 +402,15 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
         </Paper>
 
         {/* Tabla */}
-        <TableContainer component={Paper} variant="outlined" sx={(t) => ({ ...cardSx(t), mb: 1 })}>
-          <Table size="small">
+        <Paper variant="outlined" sx={(t) => ({ ...cardSx(t), mb: 2, p: 0, overflow: 'hidden' })}>
+          <TableContainer>
+            <Table size="small">
             <TableHead>
-              <TableRow>
-                <TableCell>Cliente / Teléfono</TableCell>
-                <TableCell>Fecha y hora</TableCell>
-                <TableCell>Duración</TableCell>
-                <TableCell>Estado</TableCell>
+              <TableRow sx={(t) => ({ backgroundColor: t.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)' })}>
+                <TableCell sx={(t) => ({ fontWeight: 700, fontSize: '0.9rem', color: t.palette.text.primary, borderBottom: `2px solid ${t.palette.primary.main}`, py: 2, textAlign: 'center' })}>Cliente / Teléfono</TableCell>
+                <TableCell sx={(t) => ({ fontWeight: 700, fontSize: '0.9rem', color: t.palette.text.primary, borderBottom: `2px solid ${t.palette.primary.main}`, py: 2, textAlign: 'center' })}>Fecha y hora</TableCell>
+                <TableCell sx={(t) => ({ fontWeight: 700, fontSize: '0.9rem', color: t.palette.text.primary, borderBottom: `2px solid ${t.palette.primary.main}`, py: 2, textAlign: 'center' })}>Duración</TableCell>
+                <TableCell sx={(t) => ({ fontWeight: 700, fontSize: '0.9rem', color: t.palette.text.primary, borderBottom: `2px solid ${t.palette.primary.main}`, py: 2, textAlign: 'center' })}>Estado</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -385,8 +434,8 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
               )}
 
               {!loading &&
-                rows.map((row) => {
-                  const chip = estadoToChip(row.estado_llamada_valor);
+                paginatedRows.map((row, index) => {
+                  const chip = estadoToChip(row.fue_contestada, row.estado_llamada_valor);
                   const id = row.id;
                   const isOpen = !!openRows[id];
                   return (
@@ -396,20 +445,16 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
                         onClick={() => toggleRow(id)}
                         sx={(t) => ({
                           cursor: "pointer",
-                          backgroundColor: isOpen
-                            ? t.palette.mode === "light"
-                              ? "rgba(12,21,90,0.04)"
-                              : "rgba(255,255,255,0.05)"
-                            : "inherit",
-                          "&:hover": {
-                            backgroundColor:
-                              t.palette.mode === "light"
-                                ? "rgba(12,21,90,0.08)"
-                                : "rgba(255,255,255,0.08)",
+                          '&:hover': {
+                            backgroundColor: t.palette.mode === 'light' ? '#F8FBFF' : 'rgba(255, 255, 255, 0.05)',
                           },
+                          backgroundColor: t.palette.mode === 'light'
+                            ? (index % 2 === 0 ? 'white' : '#FAFCFE')
+                            : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
+                          transition: 'background-color 0.2s ease',
                         })}
                       >
-                        <TableCell>
+                        <TableCell sx={(t) => ({ color: t.palette.text.primary, fontWeight: 600, fontSize: '0.85rem', borderBottom: t.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' })}>
                           <Stack spacing={0.3}>
                             <Typography variant="body2" fontWeight={600}>
                               {row.cliente_nombre || row.telefono_destino || "N/A"}
@@ -419,15 +464,15 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
                             </Typography>
                           </Stack>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={(t) => ({ color: t.palette.text.primary, fontSize: '0.85rem', borderBottom: t.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' })}>
                           <Typography variant="body2">
                             {new Date(row.fecha_hora_inicio).toLocaleString()}
                           </Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={(t) => ({ color: t.palette.text.primary, fontSize: '0.85rem', borderBottom: t.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' })}>
                           <Typography variant="body2">{formatearDuracion(row.duracion)}</Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={(t) => ({ borderBottom: t.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' })}>
                           <Chip size="small" label={chip.label} color={chip.color} />
                         </TableCell>
                       </TableRow>
@@ -476,10 +521,34 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
                   );
                 })}
             </TableBody>
-          </Table>
-        </TableContainer>
+              </Table>
+            </TableContainer>
+            {/* Paginación */}
+        {!loading && rows.length > 0 && (
+          <Box sx={(t) => ({ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            p: 2,
+            backgroundColor: t.palette.background.paper,
+            borderRadius: '0 0 9px 9px',
+          })}>
+            <Typography variant="body2" color="text.secondary">
+              Mostrando {paginatedRows.length} de {total} llamadas
+            </Typography>
+            <Pagination
+              count={Math.ceil(total / rowsPerPage)}
+              page={page + 1}
+              onChange={(event, value) => handleChangePage(event, value - 1)}
+              color="primary"
+              shape="rounded"
+              size="medium"
+            />
+          </Box>
+        )} 
+          </Paper>
 
-        {/* Pie */}
+               {/* Pie */}
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
@@ -490,9 +559,7 @@ export default function HistorialLlamadas({ autoRefreshMs = 15000 }) {
             Total: {total} llamadas
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {autoRefreshMs
-              ? `Actualiza cada ${Math.round(autoRefreshMs / 1000)}s`
-              : "Actualización manual"}
+            Actualización manual
           </Typography>
         </Stack>
 

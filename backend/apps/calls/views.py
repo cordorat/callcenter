@@ -25,6 +25,7 @@ from apps.calls.serializers import (
 )
 from common.estados_helper import get_estado_id
 from apps.campaigns.serializers import ClienteSerializer
+from rest_framework.decorators import api_view
 
 class ClienteViewSet(viewsets.ModelViewSet):
     """
@@ -450,6 +451,7 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         - /api/calls/llamadas/historial/?fecha_desde=2025-10-01&fecha_hasta=2025-10-23
         - /api/calls/llamadas/historial/?estado=COMPLETADA&page=2&page_size=50
         - /api/calls/llamadas/historial/?estado_auditoria=NO_AUDITADA&estado_venta=VENTA
+        - /api/calls/llamadas/historial/?fue_contestada=true
         - /api/calls/llamadas/historial/?telefono=+57300&cliente=Juan
         """
         user = request.user
@@ -470,6 +472,65 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         
         # Aplicar ordenamiento según el rol
         queryset = self._apply_role_ordering(queryset, user)
+        # Obtener parámetros de query
+        fecha_desde = request.query_params.get('fecha_desde')
+        fecha_hasta = request.query_params.get('fecha_hasta')
+        estado = request.query_params.get('estado')
+        fue_contestada = request.query_params.get('fue_contestada')
+        telefono = request.query_params.get('telefono')
+        cliente = request.query_params.get('cliente')
+        
+        # Filtro por rango de fechas
+        if fecha_desde:
+            try:
+                queryset = queryset.filter(fecha_hora_inicio__date__gte=fecha_desde)
+            except Exception:
+                return Response(
+                    {'error': 'Formato de fecha_desde inválido. Use YYYY-MM-DD'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        if fecha_hasta:
+            try:
+                queryset = queryset.filter(fecha_hora_inicio__date__lte=fecha_hasta)
+            except Exception:
+                return Response(
+                    {'error': 'Formato de fecha_hasta inválido. Use YYYY-MM-DD'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Filtro por estado de llamada
+        if estado:
+            estado_id = get_estado_id('ESTADO_LLAMADA', estado.upper())
+            if estado_id:
+                queryset = queryset.filter(estado_llamada_id=estado_id)
+            else:
+                return Response(
+                    {'error': f'Estado "{estado}" no válido'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Filtro por fue_contestada (llamadas que realmente fueron contestadas)
+        if fue_contestada is not None:
+            if fue_contestada.lower() in ['true', '1', 'yes']:
+                queryset = queryset.filter(fue_contestada=True)
+            elif fue_contestada.lower() in ['false', '0', 'no']:
+                queryset = queryset.filter(fue_contestada=False)
+        
+        # Búsqueda por número de teléfono (solo en destino)
+        # Limpia el + y espacios para mejor compatibilidad
+        if telefono:
+            telefono_limpio = telefono.replace('+', '').replace(' ', '').replace('-', '')
+            queryset = queryset.filter(
+                django_models.Q(telefono_destino__icontains=telefono) |
+                django_models.Q(telefono_destino__icontains=telefono_limpio)
+            )
+        
+        # Búsqueda por nombre de cliente (solo campo nombre)
+        if cliente:
+            queryset = queryset.filter(
+                cliente__nombre__icontains=cliente
+            )
         
         # Optimizar consulta con select_related y prefetch_related
         queryset = queryset.select_related(

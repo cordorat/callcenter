@@ -276,8 +276,8 @@
   text-align: center;
   color: var(--text-primary, #132051);
   font-weight: 800;
-  pointer-events: none; /* ⬅️ Permite que el cursor pase a través del texto */
-  z-index: 1; /* ⬅️ Mantiene el texto visible pero debajo del tooltip */
+  pointer-events: none; /* Permite que el cursor pase a través del texto */
+  z-index: 1; /* Mantiene el texto visible pero debajo del tooltip */
   animation: fadeInScale 0.8s ease-out;
   width: 120px;
 }
@@ -313,7 +313,7 @@
 
 /* Asegurar que el tooltip de recharts aparezca por encima */
 .recharts-tooltip-wrapper {
-  z-index: 1000 !important; /* ⬅️ Tooltip siempre encima */
+  z-index: 1000 !important; /* Tooltip siempre encima */
 }
 
 /* Estilos mejorados para el gráfico de donut */
