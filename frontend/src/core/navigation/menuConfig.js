@@ -67,6 +67,12 @@ export const menuItems = [
     roles: ['AGENTE']
   },
   {
+    label: 'Historial',
+    path: '/historial/coordinador',
+    icon: HistoryIcon,
+    roles: ['COORDINADOR']
+  },
+  {
     label: 'Comisiones',
     path: '/comisiones',
     icon: AttachMoneyIcon,

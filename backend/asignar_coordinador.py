@@ -16,7 +16,7 @@ from apps.users.models import User
 # CONFIGURA ESTOS VALORES
 # ============================================================================
 EQUIPO_ID = 3  # ID del equipo al que quieres asignar el coordinador
-COORDINADOR_DOC_ID = "1234567893"  # Documento ID del coordinador
+COORDINADOR_DOC_ID = "999"  # Documento ID del coordinador
 # ============================================================================
 
 def asignar_coordinador():

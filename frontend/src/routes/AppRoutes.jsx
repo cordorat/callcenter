@@ -15,7 +15,7 @@ import CrearUsuario from '../pages/Usuario/CrearUsuario';
 import AgentesPage from '../pages/Kpis/AgentesPage';
 import AgentDetailPage from '../pages/Kpis/AgentDetailPage';
 import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
-
+import CoordinadorCallHistoryAgents from '@/pages/Historial/CoordinadorCallHistoryAgents';
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
 
@@ -55,7 +55,14 @@ const AppRoutes = () => {
             </PrivateRoute>
           }
         />
-
+         <Route
+          path="/historial/coordinador"
+          element={
+            <PrivateRoute>
+              <CoordinadorCallHistoryAgents />
+            </PrivateRoute>
+          }
+        />
         <Route
           path="/kpis"
           element={
