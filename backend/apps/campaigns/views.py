@@ -5,6 +5,7 @@ from django.utils import timezone
 import csv
 import chardet
 import random
+import io
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets, serializers
@@ -16,7 +17,7 @@ from .serializers import (
     EquipoSerializer, EquipoCreateSerializer, EquipoUpdateSerializer,
     AgenteSimpleSerializer, CampanaSimpleSerializer, ProductoSerializer
 )
-from apps.users.models import User
+from apps.users.models import User, Centro
 from common.estados_helper import get_estado_id
 from django.core.paginator import Paginator
 
@@ -44,12 +45,13 @@ class CargarBaseDatosView(APIView):
 
         # Decodificar con la codificación detectada
         try:
-            decoded_file = raw_data.decode(encoding, errors="replace").splitlines()
+            decoded_file = raw_data.decode(encoding, errors="replace")
         except Exception as e:
             return Response({"error": f"Error al decodificar el archivo: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Leer CSV de forma segura
-        reader = csv.DictReader(decoded_file)
+        # Leer CSV de forma segura usando StringIO
+        csv_file = io.StringIO(decoded_file)
+        reader = csv.DictReader(csv_file)
 
         clientes_creados = 0
         for row in reader:
@@ -93,6 +95,7 @@ def listar_bases_datos(request):
     page_obj = paginator.get_page(page)
     serializer = BaseDatosCargadaSerializer(page_obj.object_list, many=True)
     return Response({
+        "count": paginator.count,
         "total_pages": paginator.num_pages,
         "current_page": page_obj.number,
         "page_size": paginator.per_page,
@@ -403,24 +406,40 @@ class EquipoViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """
-        Criterio 1.3: Mostrar automáticamente lista de todos los equipos del centro.
-        Filtrar por jefe_centro si el usuario tiene ese rol.
+        Filtrar equipos según el rol del usuario:
+        - Jefe de Centro: equipos cuyas campañas pertenecen a su centro (relación indirecta)
+        - Coordinador: equipos asignados directamente
+        - Admin: todos los equipos
+        - Otros roles: sin acceso
         """
         user = self.request.user
         
-        # Si es jefe de centro, solo mostrar sus equipos
+        # Si es jefe de centro, mostrar equipos cuyas campañas pertenecen a su centro
         rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
         if user.rol_id == rol_jefe_centro_id:
+            # Obtener los centros donde este usuario es jefe
+            centros = Centro.objects.filter(jefe_centro=user)
+            
+            # Filtrar equipos por campañas que pertenecen a esos centros
+            # Relación indirecta: Equipo -> Campaña -> Centro
             return Equipo.objects.filter(
-                jefe_centro=user,
+                campana__centro__in=centros,
                 is_active=True
-            ).select_related('jefe_centro', 'campana').prefetch_related('agentes_detalle')
+            ).select_related('campana', 'coordinador').prefetch_related('agentes_detalle')
+        
+        # Si es coordinador, mostrar sus equipos asignados
+        rol_coordinador_id = get_estado_id('ROL_USUARIO', 'COORDINADOR')
+        if user.rol_id == rol_coordinador_id:
+            return Equipo.objects.filter(
+                coordinador=user,
+                is_active=True
+            ).select_related('campana', 'coordinador').prefetch_related('agentes_detalle')
         
         # Si es admin, mostrar todos
         if user.is_admin():
             return Equipo.objects.filter(
                 is_active=True
-            ).select_related('jefe_centro', 'campana').prefetch_related('agentes_detalle')
+            ).select_related('campana', 'coordinador').prefetch_related('agentes_detalle')
         
         # Otros roles no tienen acceso
         return Equipo.objects.none()
@@ -466,6 +485,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
         """
         Criterio 1.3: Listar todos los equipos del centro.
         Criterio 5.1: La lista se actualiza automáticamente.
+        Soporta paginación y filtrado por coordinador.
         """
         queryset = self.get_queryset()
         
@@ -481,11 +501,26 @@ class EquipoViewSet(viewsets.ModelViewSet):
                 Q(campana__nombre__icontains=search)
             )
         
-        serializer = self.get_serializer(queryset, many=True)
+        # Paginación
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        
+        total_count = queryset.count()
+        paginator = Paginator(queryset, page_size)
+        
+        try:
+            paginated_queryset = paginator.page(page)
+        except:
+            paginated_queryset = paginator.page(1)
+        
+        serializer = self.get_serializer(paginated_queryset, many=True)
         
         return Response({
             'success': True,
-            'count': queryset.count(),
+            'count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': paginator.num_pages,
             'equipos': serializer.data
         }, status=status.HTTP_200_OK)
     
@@ -500,12 +535,23 @@ class EquipoViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
     
     def update(self, request, *args, **kwargs):
-        """Actualizar equipo completo."""
+        """
+        Actualizar equipo completo.
+        Verifica permisos usando relación indirecta: Equipo -> Campaña -> Centro
+        """
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
-        # Verificar permisos (solo el jefe de centro dueño o admin)
-        if instance.jefe_centro != request.user and not request.user.is_admin():
+        # Verificar permisos: admin o jefe del centro de la campaña del equipo
+        tiene_permiso = request.user.is_admin()
+        
+        if not tiene_permiso and instance.campana and instance.campana.centro:
+            # Verificar si el usuario es jefe del centro de la campaña
+            rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+            if request.user.rol_id == rol_jefe_centro_id:
+                tiene_permiso = instance.campana.centro.jefe_centro == request.user
+        
+        if not tiene_permiso:
             return Response({
                 'success': False,
                 'message': 'No tiene permisos para modificar este equipo'
@@ -535,11 +581,20 @@ class EquipoViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         """
         Soft delete: marcar equipo como inactivo.
+        Verifica permisos usando relación indirecta: Equipo -> Campaña -> Centro
         """
         instance = self.get_object()
         
-        # Verificar permisos
-        if instance.jefe_centro != request.user and not request.user.is_admin():
+        # Verificar permisos: admin o jefe del centro de la campaña del equipo
+        tiene_permiso = request.user.is_admin()
+        
+        if not tiene_permiso and instance.campana and instance.campana.centro:
+            # Verificar si el usuario es jefe del centro de la campaña
+            rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+            if request.user.rol_id == rol_jefe_centro_id:
+                tiene_permiso = instance.campana.centro.jefe_centro == request.user
+        
+        if not tiene_permiso:
             return Response({
                 'success': False,
                 'message': 'No tiene permisos para eliminar este equipo'
@@ -603,15 +658,24 @@ class EquipoViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='campanas-activas')
     def campanas_activas(self, request):
         """
-        Criterio 2.2: Lista de campañas activas para seleccionar.
-        Criterio 4.4: Solo se pueden asignar campañas activas.
+        Lista de campañas activas para seleccionar.
+        Si el usuario es jefe de centro, solo muestra campañas de su centro.
         
         GET /api/campaigns/equipos/campanas-activas/
         """
         estado_activo_id = get_estado_id('ESTADO_CAMPANA', 'ACTIVA')
         queryset = Campana.objects.filter(
             estado_id=estado_activo_id
-        ).order_by('nombre')
+        )
+        
+        # Si es jefe de centro, filtrar por campañas de su centro
+        user = request.user
+        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        if user.rol_id == rol_jefe_centro_id:
+            centros = Centro.objects.filter(jefe_centro=user)
+            queryset = queryset.filter(centro__in=centros)
+        
+        queryset = queryset.order_by('nombre')
         
         serializer = CampanaSimpleSerializer(queryset, many=True)
         
@@ -619,6 +683,95 @@ class EquipoViewSet(viewsets.ModelViewSet):
             'success': True,
             'count': queryset.count(),
             'campanas': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='coordinadores-disponibles')
+    def coordinadores_disponibles(self, request):
+        """
+        Obtiene lista de usuarios con rol COORDINADOR activos.
+        
+        GET /api/campaigns/equipos/coordinadores-disponibles/
+        
+        Retorna:
+        - Lista de coordinadores disponibles
+        """
+        rol_coordinador_id = get_estado_id('ROL_USUARIO', 'COORDINADOR')
+        
+        # Obtener coordinadores activos
+        coordinadores = User.objects.filter(
+            rol_id=rol_coordinador_id,
+            is_active=True
+        ).order_by('first_name', 'last_name')
+        
+        # Serializar datos
+        coordinadores_data = [{
+            'documento_id': coord.documento_id,
+            'full_name': coord.full_name,
+            'email': coord.email,
+            'phone': coord.phone
+        } for coord in coordinadores]
+        
+        return Response({
+            'success': True,
+            'count': len(coordinadores_data),
+            'coordinadores': coordinadores_data
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='mi-centro')
+    def mi_centro(self, request):
+        """
+        Obtiene información del centro del jefe de centro autenticado.
+        Usa relación indirecta: muestra equipos cuyas campañas pertenecen a su centro.
+        
+        GET /api/campaigns/equipos/mi-centro/
+        
+        Retorna:
+        - Información del centro
+        - Cantidad de equipos (filtrados por campañas del centro)
+        - Lista de equipos activos
+        """
+        user = request.user
+        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        
+        # Verificar que sea jefe de centro
+        if user.rol_id != rol_jefe_centro_id:
+            return Response({
+                'success': False,
+                'message': 'Solo los jefes de centro pueden acceder a esta información'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Obtener centro(s) del jefe
+        centros = Centro.objects.filter(jefe_centro=user)
+        
+        if not centros.exists():
+            return Response({
+                'success': False,
+                'message': 'No tiene un centro asignado'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Tomar el primer centro (asumiendo que un jefe maneja un centro)
+        centro = centros.first()
+        
+        # Obtener equipos usando relación indirecta: Equipo -> Campaña -> Centro
+        equipos = Equipo.objects.filter(
+            campana__centro=centro,
+            is_active=True
+        ).select_related('campana', 'coordinador').prefetch_related('agentes_detalle')
+        
+        # Serializar equipos
+        equipos_data = EquipoSerializer(equipos, many=True).data
+        
+        return Response({
+            'success': True,
+            'centro': {
+                'centro_id': centro.pk,
+                'nombre': centro.nombre,
+                'direccion': centro.direccion,
+                'jefe_nombre': centro.jefe_centro.full_name if centro.jefe_centro else None
+            },
+            'total_equipos': equipos.count(),
+            'equipos': equipos_data,
+            'nota': 'Los equipos se filtran por campañas que pertenecen a este centro'
         }, status=status.HTTP_200_OK)
 
 class ProductoViewSet(viewsets.ModelViewSet):

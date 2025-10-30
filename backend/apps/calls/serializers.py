@@ -339,13 +339,13 @@ class LlamadaSerializer(serializers.ModelSerializer):
             'fecha_hora_inicio', 'fecha_hora_fin', 'duracion',
             'duracion_total_formateada', 'grabacion_url',
             'twilio_call_sid', 'twilio_status', 'twilio_recording_sid',
-            'twilio_recording_url', 'transcipcion',
+            'twilio_recording_url', 'transcipcion', 'fue_contestada',
             'estado_llamada', 'estado_llamada_valor',
             'estado_venta', 'estado_venta_valor',
             'estado_reportada', 'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'duracion', 'created_at', 'updated_at'
+            'id', 'duracion', 'fue_contestada', 'created_at', 'updated_at'
         ]
 
 
@@ -399,7 +399,7 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             'telefono_origen', 'telefono_destino',
             'fecha_hora_inicio', 'fecha_hora_fin', 'duracion',
             'duracion_total_formateada', 'tiene_grabacion', 'grabacion_url',
-            'twilio_call_sid', 'twilio_recording_url',
+            'twilio_call_sid', 'twilio_recording_url', 'fue_contestada',
             'estado_llamada', 'estado_llamada_valor',
             'estado_venta', 'estado_venta_valor', 'es_venta',
             'estado_reportada', 'estado_reportada_valor',
@@ -409,7 +409,7 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'duracion', 'created_at', 'updated_at'
+            'id', 'duracion', 'fue_contestada', 'created_at', 'updated_at'
         ]
     
     def get_cliente_nombre(self, obj):
@@ -497,13 +497,7 @@ class RecibirLlamadaSerializer(serializers.Serializer):
         request = self.context.get('request')
         user = request.user
         
-        # Validar que el usuario sea agente
-        if not hasattr(user, 'rol_id') or user.rol_id != get_estado_id('ROL_USUARIO', 'AGENTE'):
-            raise serializers.ValidationError(
-                'Solo los agentes pueden recibir llamadas.'
-            )
-        
-        # Validar que el agente esté disponible
+        # Validar que el usuario esté disponible
         try:
             estado_actual = EstadoAgenteActual.objects.get(agente_id=user)
             estado_disponible = get_estado_id('ESTADO_AGENTE', 'DISPONIBLE')
@@ -512,11 +506,11 @@ class RecibirLlamadaSerializer(serializers.Serializer):
                 estado_obj = estado_actual.estado_id
                 estado_nombre = estado_obj.valor if estado_obj else 'Desconocido'
                 raise serializers.ValidationError({
-                    'agente': f'El agente no está disponible. Estado actual: {estado_nombre}'
+                    'agente': f'El usuario no está disponible. Estado actual: {estado_nombre}'
                 })
         except EstadoAgenteActual.DoesNotExist:
             raise serializers.ValidationError(
-                'No se encontró el estado del agente.'
+                'No se encontró el estado del usuario.'
             )
         
         # Validar que la campaña exista

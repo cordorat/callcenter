@@ -27,6 +27,7 @@ from apps.calls.serializers import (
 )
 from common.estados_helper import get_estado_id
 from apps.campaigns.serializers import ClienteSerializer
+from rest_framework.decorators import api_view
 
 class ClienteViewSet(viewsets.ModelViewSet):
     """

@@ -265,9 +265,11 @@ class CampanaSimpleSerializer(serializers.ModelSerializer):
 class EquipoSerializer(serializers.ModelSerializer):
     """
     Serializer para lectura de equipos.
-    Incluye información detallada de jefe de centro, campaña y agentes.
+    Incluye información de coordinador, campaña y agentes.
+    El centro se obtiene indirectamente a través de la campaña.
     """
-    jefe_centro_nombre = serializers.SerializerMethodField()
+    centro_nombre = serializers.SerializerMethodField()
+    coordinador_nombre = serializers.SerializerMethodField()
     campana_info = CampanaSimpleSerializer(source='campana', read_only=True)
     agentes = serializers.SerializerMethodField()
     cantidad_agentes = serializers.SerializerMethodField()
@@ -275,16 +277,23 @@ class EquipoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Equipo
         fields = [
-            'equipo_id', 'nombre', 'jefe_centro', 'jefe_centro_nombre',
+            'equipo_id', 'nombre', 'centro_nombre',
+            'coordinador', 'coordinador_nombre',
             'campana', 'campana_info', 'agentes', 'cantidad_agentes',
             'is_active'
         ]
         read_only_fields = ['equipo_id']
     
-    def get_jefe_centro_nombre(self, obj):
-        """Retorna el nombre completo del jefe de centro."""
-        if obj.jefe_centro:
-            return obj.jefe_centro.full_name
+    def get_centro_nombre(self, obj):
+        """Retorna el nombre del centro a través de la campaña."""
+        if obj.campana and obj.campana.centro:
+            return obj.campana.centro.nombre
+        return None
+    
+    def get_coordinador_nombre(self, obj):
+        """Retorna el nombre completo del coordinador."""
+        if obj.coordinador:
+            return obj.coordinador.full_name
         return None
     
     def get_agentes(self, obj):
@@ -316,7 +325,7 @@ class EquipoCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Equipo
-        fields = ['nombre', 'campana', 'agentes_ids']
+        fields = ['nombre', 'campana', 'coordinador', 'agentes_ids']
     
     def validate_nombre(self, value):
         """Validar que el nombre no esté vacío y sea único."""
@@ -328,9 +337,30 @@ class EquipoCreateSerializer(serializers.ModelSerializer):
         
         return value.strip()
     
+    def validate_coordinador(self, value):
+        """Validar que el coordinador sea obligatorio y tenga el rol correcto."""
+        if not value:
+            raise serializers.ValidationError('El coordinador es obligatorio.')
+        
+        # Verificar que el usuario tenga rol de coordinador
+        rol_coordinador_id = get_estado_id('ROL_USUARIO', 'COORDINADOR')
+        if value.rol_id != rol_coordinador_id:
+            raise serializers.ValidationError(
+                f'El usuario "{value.full_name}" no tiene el rol de coordinador.'
+            )
+        
+        # Verificar que el coordinador esté activo
+        if not value.is_active:
+            raise serializers.ValidationError(
+                f'El coordinador "{value.full_name}" no está activo.'
+            )
+        
+        return value
+    
     def validate_campana(self, value):
         """
         Criterio 4.4: El equipo solo se puede asignar a campañas activas.
+        Además, si el usuario es jefe de centro, la campaña debe pertenecer a su centro.
         """
         if not value:
             raise serializers.ValidationError('La campaña es obligatoria.')
@@ -341,6 +371,23 @@ class EquipoCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f'La campaña "{value.nombre}" no está activa. Solo se pueden asignar campañas activas.'
             )
+        
+        # Si el usuario es jefe de centro, verificar que la campaña pertenezca a su centro
+        request = self.context.get('request')
+        if request and request.user:
+            from apps.users.models import Centro
+            
+            rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+            if request.user.rol_id == rol_jefe_centro_id:
+                # Obtener centros del jefe
+                centros_jefe = Centro.objects.filter(jefe_centro=request.user)
+                
+                # Verificar que la campaña pertenezca a uno de sus centros
+                if value.centro not in centros_jefe:
+                    raise serializers.ValidationError(
+                        f'La campaña "{value.nombre}" no pertenece a su centro. '
+                        f'Solo puede asignar campañas de su centro.'
+                    )
         
         return value
     
@@ -402,15 +449,9 @@ class EquipoCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Crear equipo y asignar agentes.
+        El centro se determina automáticamente a través de la campaña seleccionada.
         """
         agentes_ids = validated_data.pop('agentes_ids')
-        
-        # Obtener jefe_centro del request context
-        request = self.context.get('request')
-        if not request or not request.user:
-            raise serializers.ValidationError('No se pudo identificar al jefe de centro.')
-        
-        validated_data['jefe_centro'] = request.user
         
         # Crear equipo
         equipo = Equipo.objects.create(**validated_data)
@@ -442,7 +483,25 @@ class EquipoUpdateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Equipo
-        fields = ['nombre', 'campana', 'is_active', 'agentes_ids']
+        fields = ['nombre', 'campana', 'coordinador', 'is_active', 'agentes_ids']
+    
+    def validate_coordinador(self, value):
+        """Validar que el coordinador tenga el rol correcto."""
+        if value:
+            # Verificar que el usuario tenga rol de coordinador
+            rol_coordinador_id = get_estado_id('ROL_USUARIO', 'COORDINADOR')
+            if value.rol_id != rol_coordinador_id:
+                raise serializers.ValidationError(
+                    f'El usuario "{value.full_name}" no tiene el rol de coordinador.'
+                )
+            
+            # Verificar que el coordinador esté activo
+            if not value.is_active:
+                raise serializers.ValidationError(
+                    f'El coordinador "{value.full_name}" no está activo.'
+                )
+        
+        return value
     
     def validate_campana(self, value):
         """Validar que la campaña esté activa."""

@@ -3,12 +3,13 @@
 
 import * as React from "react";
 import { useEffect, useState, useCallback } from "react";
-import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert, Pagination } from '@mui/material';
+import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert, Button, Pagination } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import apiClient from '@/core/api/apiClient';
 import { ENDPOINTS } from '@/core/api/endpoints';
+import DeleteIcon from '@mui/icons-material/Delete';
 
-export default function Campaing({ selectedFile = null, onClearFile = null }) {
+export default function Campaing({ selectedFile = null, onClearFile = null, onSelectBase = null, selectedBaseId = null }) {
   const theme = useTheme();
   const [bases, setBases] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const pageSize = 10; // cantidad de registros por página
+  const pageSize = 6; // cantidad de registros por página
 
   const fetchBases = useCallback(async (pageNumber = 1) => {
     try {
@@ -88,8 +89,21 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFile]);
 
+  // Selección de base
+  const [internalSelectedBaseId, setInternalSelectedBaseId] = useState(null);
+
+  // Si el padre controla la selección, usar ese valor
+  const selectedId = selectedBaseId !== undefined && selectedBaseId !== null ? selectedBaseId : internalSelectedBaseId;
+
+  const handleRowClick = (id) => {
+    setInternalSelectedBaseId(id);
+    if (typeof onSelectBase === 'function') {
+      onSelectBase(id);
+    }
+  };
+
   return (
-    <Box sx={{ p: 2 }}>
+  <Box sx={{ p: 0 }}>
       <Snackbar
         open={snackOpen}
         autoHideDuration={4000}
@@ -107,17 +121,17 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
             borderRadius: '10px',
             backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)',
             borderWidth: '2px',
-            borderColor: snackSeverity === 'success' ? '#0f9d58' : 
-                        snackSeverity === 'error' ? '#d32f2f' : 
-                        snackSeverity === 'warning' ? '#f57c00' : theme.palette.primary.main,
-            boxShadow: theme.palette.mode === 'light' 
-              ? '0 4px 12px rgba(12, 21, 90, 0.15)' 
+            borderColor: snackSeverity === 'success' ? '#0f9d58' :
+              snackSeverity === 'error' ? '#d32f2f' :
+                snackSeverity === 'warning' ? '#f57c00' : theme.palette.primary.main,
+            boxShadow: theme.palette.mode === 'light'
+              ? '0 4px 12px rgba(12, 21, 90, 0.15)'
               : '0 4px 12px rgba(0, 0, 0, 0.5)',
             '& .MuiAlert-icon': {
               fontSize: '1.3rem',
-              color: snackSeverity === 'success' ? '#0f9d58' : 
-                     snackSeverity === 'error' ? '#d32f2f' : 
-                     snackSeverity === 'warning' ? '#f57c00' : theme.palette.primary.main,
+              color: snackSeverity === 'success' ? '#0f9d58' :
+                snackSeverity === 'error' ? '#d32f2f' :
+                  snackSeverity === 'warning' ? '#f57c00' : theme.palette.primary.main,
             },
             '& .MuiAlert-message': {
               fontSize: '0.9rem',
@@ -143,10 +157,12 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
       ) : (
         <Paper
           elevation={0}
-          sx={{ 
+          sx={{
             backgroundColor: theme.palette.background.paper,
             borderRadius: 2,
             overflow: 'hidden',
+            width: '100%',
+            mx: 0
           }}
         >
           {error && (
@@ -155,11 +171,12 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
             </Box>
           )}
 
-          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)' }}>
                   <TableCell 
+                    align="center"
                     sx={{ 
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -171,6 +188,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                     ID
                   </TableCell>
                   <TableCell
+                    align="center"
                     sx={{
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -182,6 +200,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                     Nombre
                   </TableCell>
                   <TableCell
+                    align="center"
                     sx={{
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -192,12 +211,36 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                   >
                     Campaña
                   </TableCell>
+                  <TableCell 
+                    align="center"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
+                      py: 2,
+                    }}
+                  >
+                    Fecha de iteración
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      color: theme.palette.text.primary,
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
+                      py: 2,
+                    }}
+                  >
+                    Acciones
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {bases.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} sx={{ border: 'none' }}>
+                    <TableCell colSpan={5} sx={{ border: 'none' }}>
                       <Box sx={{
                         display: 'flex',
                         alignItems: 'center',
@@ -206,10 +249,10 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                         flexDirection: 'column',
                         gap: 2,
                       }}>
-                        <Typography 
-                          sx={{ 
-                            color: theme.palette.mode === 'light' 
-                              ? 'rgba(12, 21, 90, 0.5)' 
+                        <Typography
+                          sx={{
+                            color: theme.palette.mode === 'light'
+                              ? 'rgba(12, 21, 90, 0.5)'
                               : 'rgba(255, 255, 255, 0.5)',
                             fontSize: '1.1rem',
                             fontWeight: 500,
@@ -217,10 +260,10 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                         >
                           No hay bases cargadas
                         </Typography>
-                        <Typography 
-                          sx={{ 
-                            color: theme.palette.mode === 'light' 
-                              ? 'rgba(12, 21, 90, 0.4)' 
+                        <Typography
+                          sx={{
+                            color: theme.palette.mode === 'light'
+                              ? 'rgba(12, 21, 90, 0.4)'
                               : 'rgba(255, 255, 255, 0.4)',
                             fontSize: '0.9rem',
                           }}
@@ -234,24 +277,27 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                   bases.map((b, index) => (
                     <TableRow
                       key={b.id}
+                      hover
+                      selected={selectedId === b.id}
+                      onClick={() => handleRowClick(b.id)}
                       sx={{
-                        '&:hover': {
-                          backgroundColor: theme.palette.mode === 'light' 
-                            ? '#F8FBFF' 
-                            : 'rgba(255, 255, 255, 0.05)',
-                        },
-                        backgroundColor: theme.palette.mode === 'light'
-                          ? (index % 2 === 0 ? 'white' : '#FAFCFE')
-                          : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
+                        cursor: 'pointer',
+                        backgroundColor:
+                          selectedId === b.id
+                            ? (theme.palette.mode === 'light' ? '#D2E4FC' : '#223A5A')
+                            : theme.palette.mode === 'light'
+                              ? (index % 2 === 0 ? 'white' : '#FAFCFE')
+                              : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
                         transition: 'background-color 0.2s ease',
                       }}
                     >
                       <TableCell 
+                        align="center"
                         sx={{ 
                           color: theme.palette.text.primary,
                           fontWeight: 600,
                           fontSize: '0.85rem',
-                          borderBottom: theme.palette.mode === 'light' 
+                          borderBottom: theme.palette.mode === 'light'
                             ? '1px solid rgba(12, 21, 90, 0.1)'
                             : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
@@ -259,10 +305,11 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                         {b.id}
                       </TableCell>
                       <TableCell 
+                        align="center"
                         sx={{ 
                           color: theme.palette.text.primary,
                           fontSize: '0.85rem',
-                          borderBottom: theme.palette.mode === 'light' 
+                          borderBottom: theme.palette.mode === 'light'
                             ? '1px solid rgba(12, 21, 90, 0.1)'
                             : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
@@ -270,6 +317,19 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                         {b.nombre_bd}
                       </TableCell>
                       <TableCell 
+                        align="center"
+                        sx={{ 
+                          color: theme.palette.text.secondary,
+                          fontSize: '0.85rem',
+                          borderBottom: theme.palette.mode === 'light'
+                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
+                        }}
+                      >
+                        {b.campana || '-'}
+                      </TableCell>
+                      <TableCell 
+                        align="center"
                         sx={{ 
                           color: theme.palette.text.secondary,
                           fontSize: '0.85rem',
@@ -278,7 +338,21 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                             : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
                       >
-                        {b.campana || '-'}
+                        {b.fecha_hora_inicio_iteracion ? new Date(b.fecha_hora_inicio_iteracion).toLocaleString() : '-'}
+                      </TableCell>
+                      <TableCell 
+                        align="center"
+                        sx={{ 
+                          color: theme.palette.text.secondary,
+                          fontSize: '0.85rem',
+                          borderBottom: theme.palette.mode === 'light' 
+                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
+                        }}
+                      >
+                        <Button>
+                          <DeleteIcon />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -287,8 +361,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
             </Table>
 
             {/* Paginación */}
-            {bases.length > 0 && (
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
                 <Typography variant="body2" color="text.secondary">
                   Mostrando {bases.length} de {totalCount} bases de datos
                 </Typography>
@@ -301,8 +374,7 @@ export default function Campaing({ selectedFile = null, onClearFile = null }) {
                   size="medium"
                 />
               </Box>
-            )}
-          </Box>
+            </Box>
         </Paper>
       )}
     </Box>

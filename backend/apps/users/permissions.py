@@ -10,6 +10,30 @@ class IsAdmin(BasePermission):
         return request.user and request.user.is_authenticated and request.user.rol==get_estado('ROL_USUARIO', 'ADMIN')
 
 
+class IsCoordinador(BasePermission):
+    """
+    Permiso personalizado para permitir solo a coordinadores.
+    """
+    
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.rol==get_estado('ROL_USUARIO', 'COORDINADOR')
+
+
+class IsAdminOrCoordinador(BasePermission):
+    """
+    Permiso personalizado para permitir a administradores o coordinadores.
+    """
+    
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        
+        admin_role = get_estado('ROL_USUARIO', 'ADMIN')
+        coordinador_role = get_estado('ROL_USUARIO', 'COORDINADOR')
+        
+        return request.user.rol in [admin_role, coordinador_role]
+
+
 class IsAdminOrOwner(BasePermission):
     """
     Permiso personalizado para permitir a administradores o al propietario del recurso.

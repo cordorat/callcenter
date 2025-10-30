@@ -1,0 +1,66 @@
+### Variables
+@baseUrl = http://localhost:8000/api
+@coordinadorEmail = coordinador@callcenter.com
+@coordinadorPassword = coordinador123!
+@agentEmail = agente12@callcenter.com
+@agentPassword = agente123!
+@coordinadorToken = 
+@agentDocumentoId = 1234567890
+
+###############################################################################
+# 1. LOGIN COORDINADOR
+###############################################################################
+### Login como coordinador
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+  "email": "{{coordinadorEmail}}",
+  "password": "{{coordinadorPassword}}"
+}
+
+###
+
+@coordinadorToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxMTMzODg3LCJpYXQiOjE3NjExMDUwODcsImp0aSI6IjIzODFhNWZlNThkMjRkNDRhNmQyZGMzYmZmYTVmZTlhIiwiZG9jdW1lbnRvX2lkIjoiMDk4NzY1NDMyMSJ9.HG7196QMkdOn2boBpGvzgT-84qeRWy5xi1lzu2DN054
+
+###############################################################################
+# 2. LISTAR AGENTES (Coordinador puede verlos)
+###############################################################################
+### Listar agentes como coordinador
+GET {{baseUrl}}/kpis/agentes/
+Authorization: Bearer {{coordinadorToken}}
+
+###############################################################################
+# 3. VER KPI DETALLADO DE UN AGENTE (Hoy)
+###############################################################################
+### KPI detallado de agente (fecha hoy)
+GET {{baseUrl}}/kpis/agentes/1234567890/detalle/?fecha_desde=2025-10-21&fecha_hasta=2025-10-21
+Authorization: Bearer {{coordinadorToken}}
+
+###############################################################################
+# 4. VER KPI DETALLADO DE UN AGENTE (Rango personalizado)
+###############################################################################
+### KPI detallado de agente (últimos 7 días)
+GET {{baseUrl}}/kpis/agentes/1234567890/detalle/?fecha_desde=2025-10-15&fecha_hasta=2025-10-21
+Authorization: Bearer {{coordinadorToken}}
+
+###############################################################################
+# 5. VALIDACIÓN: FECHA FUTURA (Debe fallar)
+###############################################################################
+### Intentar acceder con fecha futura (debe fallar)
+GET {{baseUrl}}/kpis/agentes/1234567890/detalle/?fecha_desde=2025-10-21&fecha_hasta=2025-10-25
+Authorization: Bearer {{coordinadorToken}}
+
+###############################################################################
+# 6. VALIDACIÓN: FECHA INICIAL > FECHA FINAL (Debe fallar)
+###############################################################################
+### Intentar acceder con fechas invertidas (debe fallar)
+GET {{baseUrl}}/kpis/agentes/1234567890/detalle/?fecha_desde=2025-10-21&fecha_hasta=2025-10-15
+Authorization: Bearer {{coordinadorToken}}
+
+###############################################################################
+# 7. VALIDACIÓN: Falta parámetro fecha_desde (Debe fallar)
+###############################################################################
+### Intentar acceder sin fecha_desde (debe fallar)
+GET {{baseUrl}}/kpis/agentes/1234567890/detalle/?fecha_hasta=2025-10-21
+Authorization: Bearer {{coordinadorToken}}

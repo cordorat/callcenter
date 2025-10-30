@@ -13,7 +13,8 @@ import{
   Settings as SettingsIcon,
   Equalizer as EqualizerIcon,
   History as HistoryIcon,
-  Groups as GroupsIcon
+  Groups as GroupsIcon,
+  AssignmentInd as AssignmentIndIcon
 } from '@mui/icons-material';
 
 export const menuItems = [
@@ -21,13 +22,19 @@ export const menuItems = [
     label: 'Dashboard',
     path: '/dashboard',
     icon: DashboardIcon, // Opcional, nombre del ícono de MUI
-    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO'] 
+    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO', 'JEFE_CAMPAÑA', 'COORDINADOR'] // Roles permitidos
   },
   {
     label: 'Equipos',
     path: '/equipos',
     icon: GroupsIcon,
     roles: ['JEFE_CENTRO']
+  },
+  {
+    label: 'Agentes',
+    path: '/kpis/agentes',
+    icon: AssignmentIndIcon,
+    roles: ['COORDINADOR']
   },
   {
     label: 'Usuarios',
@@ -39,13 +46,13 @@ export const menuItems = [
     label: 'Campaña',
     path: '/campana',
     icon: CampaignIcon,
-    roles: ['ADMIN']
+    roles: ['ADMIN', 'JEFE_CAMPAÑA', 'JEFE_CENTRO']
   },
   {
     label: 'Llamadas',
     path: '/llamadas',
     icon: PhoneIcon,
-    roles: ['AGENTE']
+    roles: ['AGENTE', 'JEFE_CAMPAÑA', 'COORDINADOR', 'JEFE_CENTRO']
   },
   {
     label: 'KPIs',
@@ -63,13 +70,13 @@ export const menuItems = [
     label: 'Comisiones',
     path: '/comisiones',
     icon: AttachMoneyIcon,
-    roles: ['AGENTE']
+    roles: []
   },
   {
     label: 'Configuración',
     path: '/configuracion',
     icon: SettingsIcon,
-    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO']
+    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO', 'JEFE_CAMPAÑA', 'COORDINADOR']
   }
 ];
 
