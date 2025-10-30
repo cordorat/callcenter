@@ -27,6 +27,12 @@ const AppRoutes = () => {
           path="/" 
           element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
         />
+
+        {/* Ruta pública: Reset Password */}
+        <Route 
+          path="/reset-password" 
+          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
+        />
         
         {/* Rutas protegidas */}
         <Route 

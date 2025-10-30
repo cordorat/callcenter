@@ -3,9 +3,16 @@
 import axios from "axios";
 import { ENDPOINTS } from "@/core/api/endpoints";
 
+// Usar la variable de entorno para la base URL
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+
 const apiClient = axios.create({
-  baseURL: "http://localhost:8000", 
-  headers: { "Content-Type": "application/json" },
+  baseURL: BASE_URL, 
+  headers: { 
+    "Content-Type": "application/json",
+    // Header necesario para bypass de la página de advertencia de ngrok
+    "ngrok-skip-browser-warning": "69420"
+  },
 });
 
 // Refrescar token cuando expira
@@ -59,7 +66,13 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
       try {
         const { refresh } = JSON.parse(storedUser);
-        const res = await axios.post(ENDPOINTS.REFRESH, { refresh });
+        // Usar la ruta relativa para refresh ya que apiClient tiene baseURL configurado
+        const res = await axios.post(`${BASE_URL}/auth/refresh/`, { refresh }, {
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "69420"
+          }
+        });
 
         const newAccess = res.data.access;
         const newUser = { ...JSON.parse(storedUser), access: newAccess };
