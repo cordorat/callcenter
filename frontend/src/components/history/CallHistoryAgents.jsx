@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -11,8 +11,12 @@ import {
   Paper,
   CircularProgress,
   Pagination,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import CallDetailsModal from "./CallDetailsModal";
 const cellBaseSx = (theme) => ({
   color: theme.palette.text.primary,
   fontSize: "0.85rem",
@@ -31,9 +35,21 @@ export default function TablaLlamadas({
   onPageChange,
 }) {
   const theme = useTheme();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedCall, setSelectedCall] = useState(null);
 
   const handlePageChange = (event, value) => {
     if (onPageChange) onPageChange(value);
+  };
+
+  const handleOpenModal = (call) => {
+    setSelectedCall(call);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedCall(null);
   };
 
   return (
@@ -65,6 +81,7 @@ export default function TablaLlamadas({
                   "Duración",
                   "Estado Llamada",
                   "Estado Venta",
+                  "Acciones",
                 ].map((col) => (
                   <TableCell
                     key={col}
@@ -86,7 +103,7 @@ export default function TablaLlamadas({
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                     <CircularProgress size={24} />
                     <Typography
                       variant="body2"
@@ -100,7 +117,7 @@ export default function TablaLlamadas({
               ) : llamadas.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     align="center"
                     sx={{ py: 5, color: "text.secondary" }}
                   >
@@ -146,6 +163,22 @@ export default function TablaLlamadas({
                     <TableCell align="center" sx={cellBaseSx(theme)}>
                       {row.resultado_llamada?.venta_realizada === true ? "Sí" : "No"}
                     </TableCell>
+                    <TableCell align="center" sx={cellBaseSx(theme)}>
+                      <Tooltip title="Ver detalles">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleOpenModal(row)}
+                          sx={{
+                            "&:hover": {
+                              backgroundColor: theme.palette.primary.main + "20",
+                            },
+                          }}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -175,6 +208,13 @@ export default function TablaLlamadas({
           />
         </Box>
       </Paper>
+
+      {/* Modal de detalles */}
+      <CallDetailsModal
+        open={modalOpen}
+        onClose={handleCloseModal}
+        callData={selectedCall}
+      />
     </Box>
   );
 }
