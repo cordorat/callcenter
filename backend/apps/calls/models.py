@@ -4,7 +4,7 @@ Modelos para gestión de llamadas del call center.
 from django.db import models
 from django.utils import timezone
 from apps.users.models import User, TiposParametros
-from apps.campaigns.models import Cliente, Campana
+from apps.campaigns.models import Cliente, Campana, Producto
 
 class Venta(models.Model):
     """
@@ -23,6 +23,7 @@ class Venta(models.Model):
         db_table = 'venta'
         verbose_name = 'Venta'
         verbose_name_plural = 'Ventas'
+        ordering = ['-venta_id']
     
     def __str__(self):
         return f"Venta {self.venta_id}"

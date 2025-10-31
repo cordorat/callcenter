@@ -17,13 +17,13 @@ def create_agents():
     
     agentes = [
         {
-            'email': 'agente123456@callcenter.com',
-            'password': 'agente123456!',
-            'first_name': 'Miguel',
-            'last_name': 'Castañeda',
-            'phone': '+573002367677',
-            'documento_id': '12312312'
-        }
+            'email': 'backoffice@callcenter.com',
+            'password': 'backoffice123@',
+            'first_name': 'x',
+            'last_name': 'x',
+            'phone': '+573001234567',
+            'documento_id': '1'
+        },
     ]
     
     print("=" * 70)
