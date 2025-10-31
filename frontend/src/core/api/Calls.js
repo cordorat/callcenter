@@ -40,6 +40,7 @@ export const callsService = {
     fue_contestada, // boolean - filtrar por llamadas contestadas
     telefono,
     cliente,
+    agente_nombre, // Filtrar por nombre del agente (first_name o last_name)
     page = 1,
     page_size = 50,
   } = {}) => {
@@ -52,6 +53,7 @@ export const callsService = {
     if (fue_contestada !== undefined) params.fue_contestada = fue_contestada;
     if (telefono) params.telefono = telefono;
     if (cliente) params.cliente = cliente;
+    if (agente_nombre) params.agente_nombre = agente_nombre;
     if (page) params.page = page;
     if (page_size) params.page_size = page_size;
 

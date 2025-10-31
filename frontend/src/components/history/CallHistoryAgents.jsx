@@ -13,6 +13,15 @@ import {
   Pagination,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+const cellBaseSx = (theme) => ({
+  color: theme.palette.text.primary,
+  fontSize: "0.85rem",
+  borderBottom:
+    theme.palette.mode === "light"
+      ? "1px solid rgba(12, 21, 90, 0.1)"
+      : "1px solid rgba(255, 255, 255, 0.1)",
+  textAlign: "center",
+});
 
 export default function TablaLlamadas({
   llamadas = [],
@@ -39,7 +48,7 @@ export default function TablaLlamadas({
       >
         <TableContainer>
           <Table>
-            {/* 🔹 Encabezado */}
+
             <TableHead>
               <TableRow
                 sx={{
@@ -50,12 +59,12 @@ export default function TablaLlamadas({
                 }}
               >
                 {[
-                  "Cliente",
-                  "Teléfono",
+                  "Nombre del cliente",
+                  "Teléfono del cliente",
                   "Agente",
                   "Duración",
-                  "Contestada",
-                  "Hubo Venta",
+                  "Estado Llamada",
+                  "Estado Venta",
                 ].map((col) => (
                   <TableCell
                     key={col}
@@ -74,7 +83,6 @@ export default function TablaLlamadas({
               </TableRow>
             </TableHead>
 
-            {/* 🔹 Cuerpo */}
             <TableBody>
               {loading ? (
                 <TableRow>
@@ -124,19 +132,19 @@ export default function TablaLlamadas({
                       {row.cliente_nombre || "N/A"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      {row.telefono || "N/A"}
+                      {row.cliente_telefono || "N/A"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
                       {row.agente_nombre || "N/A"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      {row.duracion ? `${row.duracion}s` : "-"}
+                      {row.duracion_total_formateada || "00:00"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      {row.fue_contestada ? "Sí" : "No"}
+                      {row.resultado_llamada?.estado_llamada ==="COMPLETADA"? "Contestada":"No Contestada" || "N/A"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      {row.hubo_venta ? "Sí" : "No"}
+                      {row.resultado_llamada?.venta_realizada === true ? "Sí" : "No"}
                     </TableCell>
                   </TableRow>
                 ))
@@ -145,7 +153,6 @@ export default function TablaLlamadas({
           </Table>
         </TableContainer>
 
-        {/* 🔹 Paginación (siempre visible) */}
         <Box
           sx={{
             display: "flex",
@@ -171,14 +178,3 @@ export default function TablaLlamadas({
     </Box>
   );
 }
-
-// 🔹 Estilos base reutilizables
-const cellBaseSx = (theme) => ({
-  color: theme.palette.text.primary,
-  fontSize: "0.85rem",
-  borderBottom:
-    theme.palette.mode === "light"
-      ? "1px solid rgba(12, 21, 90, 0.1)"
-      : "1px solid rgba(255, 255, 255, 0.1)",
-  textAlign: "center",
-});

@@ -706,7 +706,7 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         provided = set([k for k in params.keys() if k not in ['page', 'page_size']])
 
         # Definir conjuntos permitidos por rol
-        coordinator_allowed = {'agente_nombre', 'telefono', 'estado'}
+        coordinator_allowed = {'agente_nombre', 'telefono', 'estado',  'fecha_desde', 'fecha_hasta'}
         backoffice_allowed = {'estado_auditoria', 'fecha_desde', 'fecha_hasta', 'estado_reportada'}
         admin_allowed = {'fecha_desde', 'fecha_hasta', 'estado', 'telefono', 'cliente', 'agente_nombre', 'estado_auditoria', 'estado_reportada'}
         agent_allowed = {'fecha_desde', 'fecha_hasta', 'estado', 'telefono', 'cliente'}
