@@ -390,6 +390,7 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
     notas = serializers.SerializerMethodField()
     resultado_llamada = serializers.SerializerMethodField()
     es_venta = serializers.SerializerMethodField()
+    venta_info = serializers.SerializerMethodField()
     
     class Meta:
         model = Llamada
@@ -405,7 +406,7 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             'estado_reportada', 'estado_reportada_valor',
             'estado_auditoria', 'estado_auditoria_valor',
             'fecha_auditoria', 'auditado_por', 'auditado_por_nombre', 'notas_auditoria',
-            'notas', 'resultado_llamada',
+            'notas', 'resultado_llamada', 'venta_info',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -466,6 +467,30 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             resultado['monto_venta'] = None
         
         return resultado
+    
+    def get_venta_info(self, obj):
+        """Obtiene información completa de la venta si existe."""
+        if not obj.venta:
+            return None
+        
+        # Información básica de la venta
+        venta_data = {
+            'venta_id': obj.venta.venta_id,
+            'monto': str(obj.venta.monto) if obj.venta.monto else None,
+            'campana_id': obj.venta.campana_id.id if obj.venta.campana_id else None,
+            'campana_nombre': obj.venta.campana_id.nombre if obj.venta.campana_id else None,
+        }
+        
+        # Obtener datos del formulario de venta si existe
+        formulario = obj.formularios.filter(completado=True).first()
+        if formulario and formulario.campos_json:
+            venta_data['cliente_nombre'] = formulario.campos_json.get('cliente_nombre')
+            venta_data['cliente_documento'] = formulario.campos_json.get('cliente_documento')
+            venta_data['producto_id'] = formulario.campos_json.get('producto_id')
+            venta_data['producto_nombre'] = formulario.campos_json.get('producto_nombre')
+            venta_data['observaciones'] = formulario.campos_json.get('observaciones')
+        
+        return venta_data
 
 
 class RecibirLlamadaSerializer(serializers.Serializer):
