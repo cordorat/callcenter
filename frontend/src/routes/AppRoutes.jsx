@@ -16,6 +16,7 @@ import AgentesPage from '../pages/Kpis/AgentesPage';
 import AgentDetailPage from '../pages/Kpis/AgentDetailPage';
 import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
 import CoordinadorCallHistoryAgents from '@/pages/Historial/CoordinadorCallHistoryAgents';
+import BackofficeCallsList from '@/pages/Backoffice/BackofficeCallsList';
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
 
@@ -60,6 +61,14 @@ const AppRoutes = () => {
           element={
             <PrivateRoute>
               <CoordinadorCallHistoryAgents />
+            </PrivateRoute>
+          }
+        />
+         <Route
+          path="/auditoria-llamadas"
+          element={
+            <PrivateRoute>
+              <BackofficeCallsList />
             </PrivateRoute>
           }
         />
