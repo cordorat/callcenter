@@ -11,11 +11,32 @@ import {
   Paper,
   CircularProgress,
   Pagination,
-  IconButton,
-  Tooltip,
+  Chip
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import VisibilityIcon from "@mui/icons-material/Visibility";
+
+
+const formatearFechaHora = (fechaHoraISO) => {
+  if (!fechaHoraISO) return "N/A";
+  
+  try {
+    const fecha = new Date(fechaHoraISO);
+    
+    // Formatear fecha como YY-MM-DD
+    const year = fecha.getFullYear().toString().slice(-4); 
+    const month = String(fecha.getMonth() + 1).padStart(2, '0');
+    const day = String(fecha.getDate()).padStart(2, '0');
+    
+    // Formatear hora como HH:MM
+    const hours = String(fecha.getHours()).padStart(2, '0');
+    const minutes = String(fecha.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} , ${hours}:${minutes}`;
+  } catch (error) {
+    return "N/A";
+  }
+};
+
 const cellBaseSx = (theme) => ({
   color: theme.palette.text.primary,
   fontSize: "0.85rem",
@@ -34,7 +55,53 @@ export default function TablaLlamadasBackoffice({
   onPageChange,
 }) {
   const theme = useTheme();
+  const getAuditoriaChip = (estado) => {
+    if (estado === "AUDITADA")
+      return (
+        <Chip 
+          label="Auditada" 
+          size="small" 
+          sx={{
+            backgroundColor: theme.palette.success.main,
+            color: theme.palette.success.contrastText,
+          }} 
+        />
+      );
+    return (
+      <Chip 
+        label="No auditada" 
+        size="small" 
+        sx={{
+          backgroundColor: theme.palette.error.main,
+          color: theme.palette.error.contrastText,
+        }} 
+      />
+    );
+  };
 
+  const getReportadaChip = (estado) => {
+    if (estado === "REPORTADA")
+      return (
+        <Chip 
+          label="Reportada" 
+          size="small" 
+          sx={{
+            backgroundColor: theme.palette.info.main,
+            color: theme.palette.info.contrastText,
+          }} 
+        />
+      );
+    return (
+      <Chip 
+        label="No reportada" 
+        size="small" 
+        sx={{
+          backgroundColor: theme.palette.warning.main,
+          color: theme.palette.warning.contrastText,
+        }} 
+      />
+    );
+  };
   const handlePageChange = (event, value) => {
     if (onPageChange) onPageChange(value);
   };
@@ -64,13 +131,12 @@ export default function TablaLlamadasBackoffice({
                 }}
               >
                 {[
-                  "Nombre del cliente",
-                  "Teléfono del cliente",
+                  "Fecha y Hora",
+                  "Duracion",
                   "Agente",
-                  "Duración",
-                  "Estado Llamada",
-                  "Estado Venta",
-                  "Acciones",
+                  "Tipo de Llamada",
+                  "Estado Auditoria",
+                  "Estado Reportada",
                 ].map((col) => (
                   <TableCell
                     key={col}
@@ -135,38 +201,22 @@ export default function TablaLlamadasBackoffice({
                     }}
                   >
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      {row.cliente_nombre || "N/A"}
+                      {formatearFechaHora(row.fecha_hora_inicio)}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      {row.cliente_telefono || "N/A"}
+                      {row.duracion_total_formateada || "N/A"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
                       {row.agente_nombre || "N/A"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      {row.duracion_total_formateada || "00:00"}
+                      {row.resultado_llamada?.venta_realizada === true ? "Venta" : "No Venta" || "N/A"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      {row.resultado_llamada?.estado_llamada ==="COMPLETADA"? "Contestada":"No Contestada" || "N/A"}
+                      {getAuditoriaChip(row.estado_auditoria_valor)  || "N/A"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      {row.resultado_llamada?.venta_realizada === true ? "Sí" : "No"}
-                    </TableCell>
-                    <TableCell align="center" sx={cellBaseSx(theme)}>
-                      <Tooltip title="Ver detalles">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleOpenModal(row)}
-                          sx={{
-                            "&:hover": {
-                              backgroundColor: theme.palette.primary.main + "20",
-                            },
-                          }}
-                        >
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      {getReportadaChip(row.estado_reportada_valor) || "N/A"}
                     </TableCell>
                   </TableRow>
                 ))
