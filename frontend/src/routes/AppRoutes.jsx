@@ -15,6 +15,7 @@ import CrearUsuario from '../pages/Usuario/CrearUsuario';
 import AgentesPage from '../pages/Kpis/AgentesPage';
 import AgentDetailPage from '../pages/Kpis/AgentDetailPage';
 import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
+import ProfilePage from '@/pages/Profile/ProfilePage';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -35,6 +36,8 @@ const AppRoutes = () => {
         />
         
         {/* Rutas protegidas */}
+
+        {/* Ruta Dashboard */}
         <Route 
           path="/dashboard" 
           element={
@@ -44,6 +47,7 @@ const AppRoutes = () => {
           } 
         />
 
+        {/* Ruta Llamadas */}
         <Route 
           path="/llamadas" 
           element={
@@ -53,6 +57,7 @@ const AppRoutes = () => {
           } 
         />
         
+        {/* Ruta Historial de Llamadas */}
          <Route
           path="/historial"
           element={
@@ -62,6 +67,7 @@ const AppRoutes = () => {
           }
         />
 
+        {/* Ruta KPIs */}
         <Route
           path="/kpis"
           element={
@@ -90,33 +96,38 @@ const AppRoutes = () => {
           }
         />
 
+        {/* Rutas de Campaña */}
         <Route path="/campana" element={
           <PrivateRoute>
             <Campaing />
           </PrivateRoute>
         } />
 
+        {/* Rutas de Usuarios */}
         <Route path="/usuarios" element={
           <PrivateRoute>
             <Usuarios />
           </PrivateRoute>
-        } />
+        } />  
 
-        <Route path="/crear-usuario" element={
-          <PrivateRoute>
-            <CrearUsuario />
-          </PrivateRoute>
-        } />        
-
+        {/* Ruta para equipos */}
         <Route path="/equipos" element={
           <PrivateRoute>
             <Teams />
           </PrivateRoute>
         } />
 
+        {/* Ruta para configuracion */}
         <Route path="/configuracion" element={
           <PrivateRoute>
             <Settings />
+          </PrivateRoute>
+        } />
+
+        {/* Ruta para perfil */}
+        <Route path="/perfil" element={
+          <PrivateRoute>
+            <ProfilePage />
           </PrivateRoute>
         } />
 

@@ -19,14 +19,14 @@ export async function getKpiTargets() {
 
 // KPIs para Coordinador - Listar agentes
 export async function getAgentes() {
-  const { data } = await apiClient.get("/api/kpis/agentes/");
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_AGENTES);
   return data;
 }
 
 // KPIs para Coordinador - Detalle de agente
 export async function getAgenteKpiDetail(documentoId, { fecha_desde, fecha_hasta }) {
   const { data } = await apiClient.get(
-    `/api/kpis/agentes/${documentoId}/detalle/`,
+    ENDPOINTS.KPIS_AGENTE_DETALLE(documentoId),
     {
       params: { fecha_desde, fecha_hasta }
     }

@@ -11,6 +11,7 @@ export const ENDPOINTS = {
   // --- USERS ---
   USERS: `${BASE_URL}/users/`,
   USER_ME: `${BASE_URL}/users/me/`,
+  USER_PROFILE: `${BASE_URL}/users/profile/`,
 
   // --- AGENT STATES ---
   AGENT_STATES_CURRENT: `${BASE_URL}/users/estados/current/`,
@@ -31,6 +32,10 @@ export const ENDPOINTS = {
   // (opcional) series adicionales:
   KPIS_BY_HOUR: `${BASE_URL}/kpis/by-hour/`,       // GET ?from=&to=
   KPIS_TARGETS: `${BASE_URL}/kpis/targets/`,       // GET metas del agente
+  
+  // KPIs Coordinador
+  KPIS_AGENTES: `${BASE_URL}/kpis/agentes/`,       // GET lista de agentes
+  KPIS_AGENTE_DETALLE: (documentoId) => `${BASE_URL}/kpis/agentes/${documentoId}/detalle/`, // GET detalle de agente
   
   // --- CAMPAIGNS / BASES DE DATOS ---
   CAMPAIGNS_UPLOAD: `${BASE_URL}/campaigns/cargar-base-datos/`,    // POST multipart file + campana_id

@@ -1,44 +1,392 @@
 // PATH: src/pages/Dashboard/CoordinadorDashboard.jsx
+// Página de dashboard para el rol COORDINADOR
+
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
-import { Box, Typography } from "@mui/material";
-import ConstructionIcon from "@mui/icons-material/Construction";
+import {
+  Box,
+  Typography,
+  Tooltip,
+  Stack,
+  Card,
+  CardContent,
+  Paper,
+  LinearProgress,
+} from "@mui/material";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import IconButton from "@mui/material/IconButton";
+import Alert from "@mui/material/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
 import { useTheme } from "@mui/material/styles";
+
+const toLocalDateString = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
 
 export default function CoordinadorDashboard() {
   const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
+  const today = React.useMemo(() => toLocalDateString(new Date()), []);
+  const [range] = React.useState({ from: today, to: today });
+
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+  const [kpi, setKpi] = React.useState({
+    llamadasEnCurso: 0,
+    agentesDisponibles: 0,
+    tiempoPromedioCalls: 0,
+    llamadasRealizadas: 0,
+    tasaConversion: 0,
+  });
+
+  const load = React.useCallback(async () => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const data = await getEquipoKpiOverview({ from: range.from, to: range.to });
+
+      // Mapear los valores del API al estado
+      const llamadasEnCurso = Number(data.llamadas_en_curso ?? 0);
+      const agentesDisponibles = Number(data.agentes_disponibles ?? 0);
+      const tiempoPromedioCalls = Number(data.tiempo_promedio_llamada ?? 0);
+      const llamadasRealizadas = Number(data.llamadas_realizadas ?? 0);
+      const tasaConvPct = Number(data.tasa_conversion ?? 0);
+
+      setKpi({
+        llamadasEnCurso,
+        agentesDisponibles,
+        tiempoPromedioCalls,
+        llamadasRealizadas,
+        tasaConversion: tasaConvPct,
+      });
+    } catch (e) {
+      console.error(e);
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [range]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <MainLayout title="Panel de Control">
-      <Box
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        justifyContent="center"
-        height="80vh"
-        textAlign="center"
-      >
-        <Typography
-          variant="h4"
-          sx={{ color: theme.palette.text.primary, mb: 2 }}
-        >
-          Panel de Control
-        </Typography>
-
-        <ConstructionIcon
+      <Box sx={{ width: "100%", p: 3 }}>
+        {/* Header con título y botón refresh */}
+        <Box
           sx={{
-            fontSize: 100,
-            color: theme.palette.warning.main,
-            mb: 2,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 4,
           }}
-        />
+        >
+          <Typography
+            variant="h4"
+            fontWeight={700}
+            sx={{
+              color: "text.primary",
+              letterSpacing: "0.5px",
+            }}
+          >
+            Estadísticas del día del equipo
+          </Typography>
+          <Tooltip title="Actualizar">
+            <IconButton
+              onClick={load}
+              disabled={loading}
+              aria-label="Actualizar"
+              size="large"
+              sx={{
+                backgroundColor: isDark ? "#2A3B70" : "#0C155A",
+                color: "#fff",
+                transition: "all 0.3s ease",
+                '&:hover': {
+                  backgroundColor: isDark ? "#1F2E57" : "#0A1147",
+                  transform: "rotate(180deg)",
+                },
+                '&.Mui-disabled': {
+                  backgroundColor: isDark ? "rgba(42, 59, 112, 0.5)" : "rgba(12, 21, 90, 0.5)",
+                  color: "rgba(255, 255, 255, 0.5)",
+                },
+              }}
+            >
+              <RefreshIcon
+                sx={{
+                  transition: "transform 0.6s ease",
+                  animation: loading ? "spin 1s linear infinite" : "none",
+                  "@keyframes spin": {
+                    "0%": { transform: "rotate(0deg)" },
+                    "100%": { transform: "rotate(360deg)" },
+                  },
+                }}
+              />
+            </IconButton>
+          </Tooltip>
+        </Box>
 
-        <Typography variant="h6" sx={{ color: theme.palette.text.secondary }}>
-          Esta sección se encuentra en construcción.
-        </Typography>
-        <Typography variant="body2" sx={{ color: theme.palette.text.disabled }}>
-          Próximamente podrás ver las métricas y estadísticas del sistema.
-        </Typography>
+        {/* Error Alert */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            No se pudieron cargar los KPIs.
+          </Alert>
+        )}
+
+        {/* Loading State */}
+        {loading ? (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+            }}
+          >
+            <CircularProgress size={60} />
+          </Box>
+        ) : (
+          <>
+            {/* KPI Cards Row */}
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={3}
+              sx={{ mb: 4 }}
+            >
+              {/* Tarjeta Llamadas en Curso */}
+              <Card
+                sx={{
+                  flex: 1,
+                  backgroundColor: "background.paper",
+                  borderRadius: 4,
+                  boxShadow: isDark
+                    ? "0 6px 16px rgba(0,0,0,0.35)"
+                    : "0 6px 16px rgba(12,21,90,0.10)",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    boxShadow: isDark
+                      ? "0 8px 18px rgba(0,0,0,0.45)"
+                      : "0 8px 18px rgba(12,21,90,0.18)",
+                    transform: "translateY(-4px)",
+                  },
+                }}
+              >
+                <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      mb: 2,
+                    }}
+                  >
+                    Llamadas en Curso
+                  </Typography>
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      color: "text.primary",
+                      fontWeight: 700,
+                      fontSize: "2.5rem",
+                    }}
+                  >
+                    {kpi.llamadasEnCurso}
+                  </Typography>
+                </CardContent>
+              </Card>
+
+              {/* Tarjeta Agentes Disponibles */}
+              <Card
+                sx={{
+                  flex: 1,
+                  backgroundColor: "background.paper",
+                  borderRadius: 4,
+                  boxShadow: isDark
+                    ? "0 6px 16px rgba(0,0,0,0.35)"
+                    : "0 6px 16px rgba(12,21,90,0.10)",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    boxShadow: isDark
+                      ? "0 8px 18px rgba(0,0,0,0.45)"
+                      : "0 8px 18px rgba(12,21,90,0.18)",
+                    transform: "translateY(-4px)",
+                  },
+                }}
+              >
+                <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      mb: 2,
+                    }}
+                  >
+                    Agentes Disponibles
+                  </Typography>
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      color: "text.primary",
+                      fontWeight: 700,
+                      fontSize: "2.5rem",
+                    }}
+                  >
+                    {kpi.agentesDisponibles}
+                  </Typography>
+                </CardContent>
+              </Card>
+
+              {/* Tarjeta Tiempo Promedio de Llamada */}
+              <Card
+                sx={{
+                  flex: 1,
+                  backgroundColor: "background.paper",
+                  borderRadius: 4,
+                  boxShadow: isDark
+                    ? "0 6px 16px rgba(0,0,0,0.35)"
+                    : "0 6px 16px rgba(12,21,90,0.10)",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    boxShadow: isDark
+                      ? "0 8px 18px rgba(0,0,0,0.45)"
+                      : "0 8px 18px rgba(12,21,90,0.18)",
+                    transform: "translateY(-4px)",
+                  },
+                }}
+              >
+                <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      mb: 2,
+                    }}
+                  >
+                    Tiempo Promedio Llamada
+                  </Typography>
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      color: "text.primary",
+                      fontWeight: 700,
+                      fontSize: "2.5rem",
+                    }}
+                  >
+                    {Math.floor(kpi.tiempoPromedioCalls / 60)}
+                    <span style={{ fontSize: '0.6em' }}>m</span>
+                  </Typography>
+                </CardContent>
+              </Card>
+
+              {/* Tarjeta Llamadas Realizadas */}
+              <Card
+                sx={{
+                  flex: 1,
+                  backgroundColor: "background.paper",
+                  borderRadius: 4,
+                  boxShadow: isDark
+                    ? "0 6px 16px rgba(0,0,0,0.35)"
+                    : "0 6px 16px rgba(12,21,90,0.10)",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    boxShadow: isDark
+                      ? "0 8px 18px rgba(0,0,0,0.45)"
+                      : "0 8px 18px rgba(12,21,90,0.18)",
+                    transform: "translateY(-4px)",
+                  },
+                }}
+              >
+                <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      mb: 2,
+                    }}
+                  >
+                    Llamadas Realizadas
+                  </Typography>
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      color: "text.primary",
+                      fontWeight: 700,
+                      fontSize: "2.5rem",
+                    }}
+                  >
+                    {kpi.llamadasRealizadas}
+                  </Typography>
+                </CardContent>
+              </Card>
+
+              {/* Tarjeta Tasa de Conversión */}
+              <Card
+                sx={{
+                  flex: 1,
+                  backgroundColor: "background.paper",
+                  borderRadius: 4,
+                  boxShadow: isDark
+                    ? "0 6px 16px rgba(0,0,0,0.35)"
+                    : "0 6px 16px rgba(12,21,90,0.10)",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    boxShadow: isDark
+                      ? "0 8px 18px rgba(0,0,0,0.45)"
+                      : "0 8px 18px rgba(12,21,90,0.18)",
+                    transform: "translateY(-4px)",
+                  },
+                }}
+              >
+                <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      mb: 2,
+                    }}
+                  >
+                    Tasa de Conversión
+                  </Typography>
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      color: "text.primary",
+                      fontWeight: 700,
+                      fontSize: "2.5rem",
+                    }}
+                  >
+                    {kpi.tasaConversion}%
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Stack>
+          </>
+        )}
       </Box>
     </MainLayout>
   );
