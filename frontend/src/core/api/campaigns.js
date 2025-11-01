@@ -11,7 +11,7 @@ import { ENDPOINTS } from './endpoints';
  */
 export const getCampaigns = async (params = {}) => {
   try {
-    const response = await apiClient.get('/api/campaigns/', { params });
+    const response = await apiClient.get('/campaigns/', { params });
     return response.data;
   } catch (error) {
     console.error('[campaigns.js] Error al obtener campañas:', error);
@@ -24,7 +24,7 @@ export const getCampaigns = async (params = {}) => {
  */
 export const getActiveCampaigns = async () => {
   try {
-    const response = await apiClient.get('/api/campaigns/equipos/campanas-activas/');
+    const response = await apiClient.get('/campaigns/equipos/campanas-activas/');
     return response.data;
   } catch (error) {
     console.error('[campaigns.js] Error al obtener campañas activas:', error);
@@ -55,7 +55,7 @@ export const updateSalesGoal = async (campaignId, objetivo_ventas) => {
  */
 export const programarIteracionBase = async (baseId, payload) => {
   try {
-    const response = await apiClient.put(`/api/campaigns/base-datos/${baseId}/programar-iteracion/`, payload);
+    const response = await apiClient.put(`/campaigns/base-datos/${baseId}/programar-iteracion/`, payload);
     return response.data;
   } catch (error) {
     console.error('[campaigns.js] Error al programar/iniciar iteración:', error);

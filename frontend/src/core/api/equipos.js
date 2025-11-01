@@ -25,7 +25,7 @@ export const getEquipos = async (params = {}) => {
     if (params.page) queryParams.append('page', params.page);
     if (params.page_size) queryParams.append('page_size', params.page_size);
     
-    const url = `/api/campaigns/equipos/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const url = `/campaigns/equipos/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     const response = await apiClient.get(url);
     return response.data;
   } catch (error) {
@@ -41,7 +41,7 @@ export const getEquipos = async (params = {}) => {
  */
 export const getEquipo = async (equipoId) => {
   try {
-    const response = await apiClient.get(`/api/campaigns/equipos/${equipoId}/`);
+    const response = await apiClient.get(`/campaigns/equipos/${equipoId}/`);
     return response.data;
   } catch (error) {
     console.error('[API Equipos] Error obteniendo equipo:', error);
@@ -59,7 +59,7 @@ export const getEquipo = async (equipoId) => {
  */
 export const createEquipo = async (data) => {
   try {
-    const response = await apiClient.post('/api/campaigns/equipos/', data);
+    const response = await apiClient.post('/campaigns/equipos/', data);
     return response.data;
   } catch (error) {
     console.error('[API Equipos] Error creando equipo:', error);
@@ -78,7 +78,7 @@ export const createEquipo = async (data) => {
  */
 export const updateEquipo = async (equipoId, data) => {
   try {
-    const response = await apiClient.patch(`/api/campaigns/equipos/${equipoId}/`, data);
+    const response = await apiClient.patch(`/campaigns/equipos/${equipoId}/`, data);
     return response.data;
   } catch (error) {
     console.error('[API Equipos] Error actualizando equipo:', error);
@@ -93,7 +93,7 @@ export const updateEquipo = async (equipoId, data) => {
  */
 export const deleteEquipo = async (equipoId) => {
   try {
-    const response = await apiClient.delete(`/api/campaigns/equipos/${equipoId}/`);
+    const response = await apiClient.delete(`/campaigns/equipos/${equipoId}/`);
     return { success: true, message: 'Equipo eliminado correctamente' };
   } catch (error) {
     console.error('[API Equipos] Error eliminando equipo:', error);
@@ -108,7 +108,7 @@ export const deleteEquipo = async (equipoId) => {
  */
 export const getAgentesDisponibles = async (search = '') => {
   try {
-    const url = `/api/campaigns/equipos/agentes-disponibles/${search ? '?search=' + encodeURIComponent(search) : ''}`;
+    const url = `/campaigns/equipos/agentes-disponibles/${search ? '?search=' + encodeURIComponent(search) : ''}`;
     const response = await apiClient.get(url);
     return response.data;
   } catch (error) {
@@ -123,7 +123,7 @@ export const getAgentesDisponibles = async (search = '') => {
  */
 export const getCampanasActivas = async () => {
   try {
-    const response = await apiClient.get('/api/campaigns/equipos/campanas-activas/');
+    const response = await apiClient.get('/campaigns/equipos/campanas-activas/');
     return response.data;
   } catch (error) {
     console.error('[API Equipos] Error obteniendo campañas activas:', error);
@@ -137,7 +137,7 @@ export const getCampanasActivas = async () => {
  */
 export const getCoordinadoresDisponibles = async () => {
   try {
-    const response = await apiClient.get('/api/campaigns/equipos/coordinadores-disponibles/');
+    const response = await apiClient.get('/campaigns/equipos/coordinadores-disponibles/');
     return response.data;
   } catch (error) {
     console.error('[API Equipos] Error obteniendo coordinadores:', error);
