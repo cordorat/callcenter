@@ -41,7 +41,6 @@ class CargarBaseDatosView(APIView):
         raw_data = file.read()
         result = chardet.detect(raw_data)
         encoding = result["encoding"] or "utf-8"
-        print(f"📄 Codificación detectada: {encoding}")
 
         # Decodificar con la codificación detectada
         try:
@@ -56,20 +55,12 @@ class CargarBaseDatosView(APIView):
         sample = csv_file.read(1024)
         csv_file.seek(0)
         
-        # Imprimir muestra del archivo para debugging
-        print(f"📝 Muestra del archivo (primeros 200 caracteres):")
-        print(sample[:200])
-        print("=" * 80)
-        
         try:
             dialect = csv.Sniffer().sniff(sample, delimiters=',;\t|')
             delimiter = dialect.delimiter
-            print(f"📋 Delimitador detectado automáticamente: '{delimiter}' (ASCII: {ord(delimiter)})")
-        except csv.Error as e:
+        except csv.Error:
             # Si falla la detección, usar coma por defecto
             delimiter = ','
-            print(f"⚠️ No se pudo detectar delimitador automáticamente: {e}")
-            print(f"📋 Usando delimitador por defecto: '{delimiter}'")
         
         reader = csv.DictReader(csv_file, delimiter=delimiter)
         
@@ -77,9 +68,6 @@ class CargarBaseDatosView(APIView):
         first_row = None
         try:
             first_row = next(reader)
-            print(f"📋 Columnas detectadas: {list(reader.fieldnames)}")
-            print(f"📋 Primera fila de datos: {first_row}")
-            print("=" * 80)
         except StopIteration:
             return Response(
                 {"error": "El archivo CSV está vacío o no tiene datos"},
