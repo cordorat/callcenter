@@ -12,7 +12,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'callcenter.settings')
 django.setup()
 
 from apps.users.models import User
-from apps.campaigns.models import Cliente, Campana, BaseDatosCargada
+from apps.campaigns.models import Cliente, Campana, BaseDatosCargada, Producto
 from apps.calls.models import Venta, Llamada
 from common.estados_helper import get_estado, get_estado_id
 
@@ -25,10 +25,10 @@ def create_venta():
     
     # 1. Buscar el agente con documento_id = "3456"
     try:
-        agente = User.objects.get(documento_id="3456")
+        agente = User.objects.get(documento_id="10101010")
         print(f"✅ Agente encontrado: {agente.get_full_name()} ({agente.email})")
     except User.DoesNotExist:
-        print("❌ Error: No se encontró un agente con documento_id='3456'")
+        print("❌ Error: No se encontró un agente con documento_id='10101010'")
         print("   Por favor, crea primero un agente con ese documento_id")
         return
     
@@ -78,26 +78,38 @@ def create_venta():
     # 4. Crear un cliente inventado
     cliente = Cliente.objects.create(
         campana=campana,
-        nombre="Juan Carlos Rodríguez",
-        telefono="+573001234567",
+        nombre="Miguel Roberto",
+        telefono="+573114598741",
         base_datos=base_datos,
         otros_datos={
-            "email": "juan.rodriguez@example.com",
-            "ciudad": "Bogotá",
+            "email": "roberto@gmail.com",
+            "ciudad": "Cali",
             "edad": 35,
-            "interes": "Seguros de vida"
+            "interes": "Casino"
         }
     )
     print(f"✅ Cliente creado: {cliente.nombre} ({cliente.telefono})")
     
-    # 5. Crear la venta
+    # 5. Buscar el producto con ID 2
+    try:
+        producto = Producto.objects.get(id=2)
+        print(f"✅ Producto encontrado: {producto.nombre} - ${producto.precio}")
+    except Producto.DoesNotExist:
+        print("❌ Error: No se encontró un producto con ID=2")
+        print("   Productos disponibles:")
+        for p in Producto.objects.all()[:5]:
+            print(f"   - ID {p.id}: {p.nombre} - ${p.precio}")
+        return
+    
+    # 6. Crear la venta con el monto del producto
     venta = Venta.objects.create(
         campana_id=campana,
-        monto=150000.00  # $150,000 COP
+        monto=producto.precio  # Usar el precio del producto
     )
     print(f"✅ Venta creada con ID: {venta.venta_id} - Monto: ${venta.monto}")
+    print(f"   Producto vendido: {producto.nombre}")
     
-    # 6. Crear la llamada asociada a la venta
+    # 7. Crear la llamada asociada a la venta
     # Obtener los estados necesarios
     estado_completada = get_estado('ESTADO_LLAMADA', 'COMPLETADA')
     estado_venta_realizada = get_estado('ESTADO_VENTA', 'VENTA')
@@ -147,7 +159,8 @@ def create_venta():
     print("=" * 70)
     print(f"📞 Llamada ID: {llamada.id}")
     print(f"💰 Venta ID: {venta.venta_id}")
-    print(f"💵 Monto: ${venta.monto:,.2f} COP")
+    print(f"📦 Producto: {producto.nombre}")
+    print(f"� Monto: ${venta.monto:,.2f} COP")
     print(f"👤 Cliente: {cliente.nombre}")
     print(f"📱 Teléfono: {cliente.telefono}")
     print(f"👔 Agente: {agente.get_full_name()}")

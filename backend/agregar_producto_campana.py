@@ -15,13 +15,13 @@ from apps.campaigns.models import Producto, Campana, ProductoCampanaDetalle
 # CONFIGURA ESTOS VALORES
 # ============================================================================
 # Datos del producto
-PRODUCTO_NOMBRE = "Plan Premium"
-PRODUCTO_DESCRIPCION = "Acceso completo por 12 meses"
-PRODUCTO_PRECIO = 200000
+PRODUCTO_NOMBRE = "papa"
+PRODUCTO_DESCRIPCION = "pastusa"
+PRODUCTO_PRECIO = 2000
 PRODUCTO_ACTIVO = True
 
 # ID de la campaña
-CAMPANA_ID = 2
+CAMPANA_ID = 1
 # ============================================================================
 
 def crear_y_agregar_producto():

@@ -44,7 +44,7 @@ export default function CallDetailsModal({ open, onClose, callData }) {
       }}
     >
       <DialogContent sx={{ mt: 1 }}>
-        {/* Información del Cliente */}
+
         <Typography variant="subtitle1" fontWeight={600} gutterBottom>
           Información del Cliente
         </Typography>
@@ -59,7 +59,7 @@ export default function CallDetailsModal({ open, onClose, callData }) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Información del Agente */}
+
         <Typography variant="subtitle1" fontWeight={600} gutterBottom>
           Información del Agente
         </Typography>
@@ -67,7 +67,7 @@ export default function CallDetailsModal({ open, onClose, callData }) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Información de la Llamada */}
+
         <Typography variant="subtitle1" fontWeight={600} gutterBottom>
           Información de la Llamada
         </Typography>
@@ -111,8 +111,8 @@ export default function CallDetailsModal({ open, onClose, callData }) {
           )}
         </Grid>
 
-        {/* Información de Venta (si aplica) */}
-        {isVenta && (
+
+        {isVenta && callData.venta_info && (
           <>
             <Divider sx={{ my: 2 }} />
             <Typography
@@ -131,35 +131,28 @@ export default function CallDetailsModal({ open, onClose, callData }) {
                 border: `1px solid ${theme.palette.success.main}`,
               }}
             >
-              <Typography fontWeight={600} color="success.main">
-                Venta realizada
-              </Typography>
-              {callData.resultado_llamada?.comentarios_venta && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  {callData.resultado_llamada.comentarios_venta}
-                </Typography>
-              )}
-            </Box>
-          </>
-        )}
-
-        {/* Comentarios generales */}
-        {callData.resultado_llamada?.comentarios && !isVenta && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-              Comentarios
-            </Typography>
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                backgroundColor: "rgba(0,0,0,0.02)",
-              }}
-            >
-              <Typography variant="body2">
-                {callData.resultado_llamada.comentarios}
-              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <DetailItem 
+                    label="Producto" 
+                    value={callData.venta_info.producto_nombre} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <DetailItem 
+                    label="Monto" 
+                    value={`$${parseFloat(callData.venta_info.monto).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} COP`} 
+                  />
+                </Grid>
+                {callData.venta_info.observaciones && (
+                  <Grid item xs={12}>
+                    <DetailItem 
+                      label="Observaciones" 
+                      value={callData.venta_info.observaciones} 
+                    />
+                  </Grid>
+                )}
+              </Grid>
             </Box>
           </>
         )}
