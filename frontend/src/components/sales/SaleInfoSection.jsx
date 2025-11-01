@@ -1,9 +1,44 @@
 //Path: frontend/src/components/sales/SaleInfoSection.jsx
 
 import * as React from "react";
-import { Grid, Box, Typography, TextField, Button } from "@mui/material";
+import { Grid, Box, Typography, TextField, Button, InputLabel, Select, MenuItem, FormControl } from "@mui/material";
+import {getProductosCampana} from "@/core/api/products";
+import { createSale } from "@/core/api/sales";
+export default function SaleInfoSection({cliente, llamada_id, onVentaChange }) {
+    const [productos, setProductos] = React.useState([]);
+    const [venta, setVenta] = React.useState({
+        producto: "",
+        monto: "",
+        observaciones: "",
+    });
 
-export default function SaleInfoSection({ venta, handleStartSale }) {
+    React.useEffect(() => {
+        const fetchProductos = async () => {
+            const res = await getProductosCampana(); 
+            setProductos(res.data);
+        };
+        fetchProductos();
+    }, []);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        const nuevaVenta = { ...venta, [name]: value };
+        setVenta(nuevaVenta);
+        onVentaChange?.(nuevaVenta); 
+    };
+
+    const handleCreateVenta = async () => {
+        const data = {
+            cliente_id: cliente?.cliente_id,
+            llamada_id: llamada_id,
+            producto: producto,
+            monto: monto,
+            observaciones: observaciones,
+        };
+
+        const res = await createSale(data);
+        console.log("Venta creada:", res);
+    };    
     return (
         <Box
             sx={{
@@ -40,11 +75,42 @@ export default function SaleInfoSection({ venta, handleStartSale }) {
 
             <Grid container spacing={2.5} alignItems="center">
                 <Grid item xs={12} md={5}>
+                <FormControl fullWidth>
+                    <InputLabel id="producto-label">Producto</InputLabel>
+                    <Select
+                    labelId="producto-label"
+                    value={productos || ""}
+                    label="Producto"
+                    onChange={(e) => setVenta({ ...venta, producto: e.target.value })}
+                    sx={{
+                        backgroundColor: (theme) =>
+                        theme.palette.mode === 'light'
+                            ? '#EBF5FE'
+                            : 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '10px',
+                        '& fieldset': {
+                        borderColor: (theme) =>
+                            theme.palette.mode === 'light'
+                            ? 'rgba(12, 21, 90, 0.15)'
+                            : 'rgba(255, 255, 255, 0.15)',
+                        borderWidth: '1.5px',
+                        },
+                    }}
+                    >
+                    <MenuItem value="">Seleccionar producto</MenuItem>
+                    {productos.map((producto) => (
+                        <MenuItem key={producto.id} value={producto.id}>
+                        {producto.nombre}
+                        </MenuItem>
+                    ))}
+                    </Select>
+                </FormControl>
+                </Grid>
+                <Grid item xs={12} md={5}>
                     <TextField
                         fullWidth
-                        label="Producto"
-                        value={venta.producto}
-                        InputProps={{ readOnly: true }}
+                        label="Monto"
+                        value={monto}
                         sx={{
                             '& .MuiOutlinedInput-root': {
                                 backgroundColor: (theme) => theme.palette.mode === 'light'
@@ -72,9 +138,10 @@ export default function SaleInfoSection({ venta, handleStartSale }) {
                 <Grid item xs={12} md={5}>
                     <TextField
                         fullWidth
-                        label="Valor"
-                        value={venta.valor}
-                        InputProps={{ readOnly: true }}
+                        label="Observaciones"
+                        multiline
+                        rows={3}
+                        value={observaciones}
                         sx={{
                             '& .MuiOutlinedInput-root': {
                                 backgroundColor: (theme) => theme.palette.mode === 'light'
@@ -103,7 +170,7 @@ export default function SaleInfoSection({ venta, handleStartSale }) {
                     <Button
                         fullWidth
                         variant="contained"
-                        onClick={handleStartSale}
+                        onClick={handleCreateVenta}
                         sx={{
                             backgroundColor: (theme) => theme.palette.primary.main,
                             color: 'white',

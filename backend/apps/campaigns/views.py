@@ -775,6 +775,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 class ProductoViewSet(viewsets.ModelViewSet):
+    serializer_class = ProductoSerializer
     def create(self, request, *args, **kwargs):
         # Obtener los IDs de los roles permitidos
         rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
