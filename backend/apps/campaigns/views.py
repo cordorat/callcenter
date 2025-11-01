@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import api_view, action
 from rest_framework.permissions import IsAuthenticated
-from .models import Cliente, BaseDatosCargada, Equipo, EquipoAgenteDetalle, Campana, Producto
+from .models import Cliente, BaseDatosCargada, Equipo, EquipoAgenteDetalle, Campana, Producto, ProductoCampanaDetalle
 from .serializers import (
     BaseDatosCargadaSerializer, ClienteSerializer, ClienteUpdateSerializer,
     EquipoSerializer, EquipoCreateSerializer, EquipoUpdateSerializer,
@@ -775,6 +775,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 class ProductoViewSet(viewsets.ModelViewSet):
+    serializer_class = ProductoSerializer
     def create(self, request, *args, **kwargs):
         # Obtener los IDs de los roles permitidos
         rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
@@ -813,6 +814,13 @@ class ProductoViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
 
         queryset = Producto.objects.all()
+
+        if self.request.query_params.get('campaña'):
+            campana_id = self.request.query_params.get('campaña')
+            productos = ProductoCampanaDetalle.objects.filter(campana=campana_id)
+            queryset = queryset.filter(
+                campanas_detalle__campana_id=campana_id
+            ).distinct()
         
         serializer = self.get_serializer(queryset, many=True)
         
