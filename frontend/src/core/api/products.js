@@ -18,20 +18,7 @@ export const getProducts = async (params = {}) => {
     throw error;
   }
 };
-/**
- * Obtiene la lista de productos.
- * @param {Object} params - Parámetros opcionales para filtrar o paginar.
- * @returns {Promise<Object>} { success, count, results }
- */
-export const getProductsCampana = async (params = {}) => {
-  try {
-    const response = await apiClient.get('/api/campaigns/productos/', { params });
-    return response.data;
-  } catch (error) {
-    console.error('Error obteniendo los productos:', error);
-    throw error;
-  }
-};
+
 
 /**
  * Crea un nuevo producto.
