@@ -12,12 +12,16 @@ import ClientInfoSection from '@/components/sales/ClientInfoSection';
 import SaleInfoSection from '@/components/sales/SaleInfoSection';
 
 const Calls = () => {
-    // Estado del agente (para saber si está en llamada o aftercall)
-    const { frontendState } = useAgentState({ autoLoad: true, refreshInterval: 5000 });
+    // Estado del agente (para saber si está en llamada o aftercall Y obtener campana_actual_id)
+    const { frontendState, currentState } = useAgentState({ autoLoad: true, refreshInterval: 5000 });
     const { user } = useAuth();
     const [phoneNumber, setPhoneNumber] = React.useState('');
     const [isExpanded, setIsExpanded] = React.useState(false); 
     const [showIncomingAlert, setShowIncomingAlert] = React.useState(false);
+
+    // Obtener campana_id desde el estado del agente
+    const campana_id = currentState?.campana_actual_id || null;
+    
 
     // Estados para cliente y venta
     const [cliente, setCliente] = React.useState({
@@ -58,6 +62,7 @@ const Calls = () => {
         formatDuration,
         currentCallInfo,
     } = useTwilioCall();
+    
     // Sincronizar datos de llamada automática y limpiar al salir de EN_LLAMADA/AFTERCALL
     React.useEffect(() => {
         const isEnLlamadaOAfterCall = frontendState === 'CALL' || frontendState === 'AFTERCALL' || frontendState === 'EN_LLAMADA';
@@ -162,17 +167,12 @@ const Calls = () => {
         setShowIncomingAlert(false);
     }
 
-    // Handlers para cliente y venta
+    // Handlers para cliente
     const handleChange = (e) => {
         setCliente({
             ...cliente,
             [e.target.name]: e.target.value,
         });
-    };
-
-    const handleStartSale = () => {
-        console.log("Iniciando venta con datos:", cliente, venta);
-        // Aquí puedes agregar la lógica para iniciar la venta
     };
 
     return (
@@ -801,7 +801,12 @@ const Calls = () => {
                                 display: 'flex',
                             }}
                         >
-                            <SaleInfoSection venta={venta} handleStartSale={handleStartSale} />
+                            <SaleInfoSection 
+                                cliente={cliente} 
+                                llamada_id={currentCallInfo?.id || null}
+                                campana_id={campana_id}
+                                onVentaChange={setVenta}
+                            />
                         </motion.div>
                     </Box>
                 ) : (
@@ -824,7 +829,12 @@ const Calls = () => {
                             gap: 2,
                         }}>
                             <ClientInfoSection cliente={cliente} handleChange={handleChange} />
-                            <SaleInfoSection venta={venta} handleStartSale={handleStartSale} />
+                            <SaleInfoSection 
+                                cliente={cliente} 
+                                llamada_id={currentCallInfo?.id || null}
+                                campana_id={campana_id}
+                                onVentaChange={setVenta}
+                            />
                         </Box>
                     </motion.div>
                 )}

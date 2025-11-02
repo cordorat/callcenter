@@ -2,23 +2,43 @@
 
 import * as React from "react";
 import { Grid, Box, Typography, TextField, Button, InputLabel, Select, MenuItem, FormControl } from "@mui/material";
-import {getProductosCampana} from "@/core/api/products";
+import {getProducts} from "@/core/api/products";
 import { createSale } from "@/core/api/sales";
-export default function SaleInfoSection({cliente, llamada_id, onVentaChange }) {
+
+export default function SaleInfoSection({ cliente, llamada_id, campana_id, onVentaChange }) {
     const [productos, setProductos] = React.useState([]);
+    const [loadingProductos, setLoadingProductos] = React.useState(false);
     const [venta, setVenta] = React.useState({
         producto: "",
         monto: "",
         observaciones: "",
     });
 
+    // Fetch productos cuando cambia campana_id
     React.useEffect(() => {
+        
+        if (!campana_id) {
+            console.log('[SaleInfoSection] No hay campana_id, limpiando productos');
+            setProductos([]);
+            return;
+        }
+
         const fetchProductos = async () => {
-            const res = await getProductosCampana(); 
-            setProductos(res.data);
+            setLoadingProductos(true);
+            
+            try {
+                const res = await getProducts({ campaña: campana_id });
+                setProductos(res.productos || []);
+            } catch (error) {
+                console.error('[SaleInfoSection] Error al obtener productos:', error);
+                setProductos([]);
+            } finally {
+                setLoadingProductos(false);
+            }
         };
+
         fetchProductos();
-    }, []);
+    }, [campana_id]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -31,9 +51,9 @@ export default function SaleInfoSection({cliente, llamada_id, onVentaChange }) {
         const data = {
             cliente_id: cliente?.cliente_id,
             llamada_id: llamada_id,
-            producto: producto,
-            monto: monto,
-            observaciones: observaciones,
+            producto: venta.producto,
+            monto: venta.monto,
+            observaciones: venta.observaciones,
         };
 
         const res = await createSale(data);
@@ -75,13 +95,15 @@ export default function SaleInfoSection({cliente, llamada_id, onVentaChange }) {
 
             <Grid container spacing={2.5} alignItems="center">
                 <Grid item xs={12} md={5}>
-                <FormControl fullWidth>
-                    <InputLabel id="producto-label">Producto</InputLabel>
+                <FormControl fullWidth sx={{ fontSize: '1.2rem', minWidth: '250px' }}>
+                    <InputLabel id="producto-label" >Producto</InputLabel>
                     <Select
                     labelId="producto-label"
-                    value={productos || ""}
-                    label="Producto"
-                    onChange={(e) => setVenta({ ...venta, producto: e.target.value })}
+                    value={venta.producto || ""}
+                    label="Seleccione un producto"
+                    name="producto"
+                    onChange={handleChange}
+                    notched={true}
                     sx={{
                         backgroundColor: (theme) =>
                         theme.palette.mode === 'light'
@@ -99,7 +121,7 @@ export default function SaleInfoSection({cliente, llamada_id, onVentaChange }) {
                     >
                     <MenuItem value="">Seleccionar producto</MenuItem>
                     {productos.map((producto) => (
-                        <MenuItem key={producto.id} value={producto.id}>
+                        <MenuItem key={producto.nombre} value={producto.nombre}>
                         {producto.nombre}
                         </MenuItem>
                     ))}
@@ -110,7 +132,9 @@ export default function SaleInfoSection({cliente, llamada_id, onVentaChange }) {
                     <TextField
                         fullWidth
                         label="Monto"
-                        value={monto}
+                        name="monto"
+                        value={venta.monto}
+                        onChange={handleChange}
                         sx={{
                             '& .MuiOutlinedInput-root': {
                                 backgroundColor: (theme) => theme.palette.mode === 'light'
@@ -139,9 +163,11 @@ export default function SaleInfoSection({cliente, llamada_id, onVentaChange }) {
                     <TextField
                         fullWidth
                         label="Observaciones"
+                        name="observaciones"
                         multiline
                         rows={3}
-                        value={observaciones}
+                        value={venta.observaciones}
+                        onChange={handleChange}
                         sx={{
                             '& .MuiOutlinedInput-root': {
                                 backgroundColor: (theme) => theme.palette.mode === 'light'
