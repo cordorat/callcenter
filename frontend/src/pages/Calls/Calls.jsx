@@ -25,6 +25,7 @@ const Calls = () => {
 
     // Estados para cliente y venta
     const [cliente, setCliente] = React.useState({
+        id: null,
         nombre: "",
         documento: "",
         telefono: "",
@@ -37,7 +38,21 @@ const Calls = () => {
         producto: "",
         valor: "",
     });
-
+    const handleClienteChange = React.useCallback((nuevoCliente) => {
+        console.log('[Calls.jsx] 📥 Cliente actualizado recibido:', nuevoCliente);
+        
+        setCliente({
+            id: nuevoCliente.id || null,
+            nombre: nuevoCliente.nombre || "",
+            // ⭐ CORREGIDO: Aceptar documento_id o documento
+            documento: nuevoCliente.documento_id || nuevoCliente.documento || "",
+            telefono: nuevoCliente.telefono || "",
+            direccion: nuevoCliente.direccion || "",
+            // ⭐ CORREGIDO: Aceptar email o correo
+            correo: nuevoCliente.email || nuevoCliente.correo || "",
+            ciudad: nuevoCliente.ciudad || "",
+        });
+    }, []);
     const toggleExpand = () => setIsExpanded((prev) => !prev);
     
     // Configuración de espaciado vertical del contenedor del teclado
@@ -61,25 +76,33 @@ const Calls = () => {
         sendDigit,
         formatDuration,
         currentCallInfo,
+        currentClientInfo,
+        // ⭐ NUEVO: Datos persistentes para AFTERCALL
+        persistedCallData,
+        llamadaId,
+        clearCallData,
+        recuperarLlamadaId,
     } = useTwilioCall();
     
     // Sincronizar datos de llamada automática y limpiar al salir de EN_LLAMADA/AFTERCALL
     React.useEffect(() => {
         const isEnLlamadaOAfterCall = frontendState === 'CALL' || frontendState === 'AFTERCALL' || frontendState === 'EN_LLAMADA';
         
-        console.log('[Calls.jsx][SYNC] Estado:', frontendState, '| currentCallInfo:', currentCallInfo);
+        console.log('[Calls.jsx][SYNC] Estado:', frontendState, '| persistedCallData:', persistedCallData);
         
-        // Si hay información de llamada Y estamos en CALL/AFTERCALL, actualizar datos
-        if (currentCallInfo && isEnLlamadaOAfterCall) {
-            console.log('[Calls.jsx][SYNC] Actualizando datos del formulario con info de llamada automática:', currentCallInfo);
-            setPhoneNumber(currentCallInfo.telefono || '');
+        // Si hay información de llamada persistente Y estamos en CALL/AFTERCALL, actualizar datos
+        // ⭐ MODIFICADO: Ahora usamos persistedCallData en lugar de currentCallInfo
+        if (persistedCallData && isEnLlamadaOAfterCall) {
+            console.log('[Calls.jsx][SYNC] Actualizando datos del formulario con persistedCallData:', persistedCallData);
+            setPhoneNumber(persistedCallData.telefono || '');
             setCliente({
-                nombre: currentCallInfo.nombre || '',
-                documento: currentCallInfo.documento || '',
-                telefono: currentCallInfo.telefono || '',
-                direccion: currentCallInfo.direccion || '',
-                correo: currentCallInfo.correo || '',
-                ciudad: currentCallInfo.ciudad || '',
+                id: persistedCallData.cliente_id || null, // ⭐ AGREGADO: ID del cliente
+                nombre: persistedCallData.nombre || '',
+                documento: persistedCallData.documento || '',
+                telefono: persistedCallData.telefono || '',
+                direccion: persistedCallData.direccion || '',
+                correo: persistedCallData.correo || '',
+                ciudad: persistedCallData.ciudad || '',
             });
         } 
         // Si NO estamos en CALL ni AFTERCALL, limpiar los datos
@@ -87,6 +110,7 @@ const Calls = () => {
             console.log('[Calls.jsx][SYNC] Limpiando datos del formulario - fuera de CALL/AFTERCALL');
             setPhoneNumber('');
             setCliente({
+                id: null, // ⭐ AGREGADO: Limpiar ID también
                 nombre: '',
                 documento: '',
                 telefono: '',
@@ -95,11 +119,42 @@ const Calls = () => {
                 ciudad: '',
             });
         }
-        // Si estamos en CALL/AFTERCALL pero no hay currentCallInfo, mantener los datos actuales
+        // Si estamos en CALL/AFTERCALL pero no hay persistedCallData, mantener los datos actuales
         else {
             console.log('[Calls.jsx][SYNC] Manteniendo datos actuales - en CALL/AFTERCALL sin nueva info');
         }
-    }, [currentCallInfo, frontendState]);
+    }, [persistedCallData, frontendState]);
+
+    // ⭐ NUEVO: Limpiar datos cuando el agente vuelve a DISPONIBLE
+    React.useEffect(() => {
+        if (frontendState === 'DISPONIBLE') {
+            console.log('[Calls.jsx] Agente volvió a DISPONIBLE, limpiando datos de llamada...');
+            clearCallData();
+        }
+    }, [frontendState, clearCallData]);
+
+    // ⭐ NUEVO: Recuperar llamada_id SOLO si se pierde el estado (fallback)
+    // NO recuperar si estamos cambiando de EN_LLAMADA a AFTERCALL (transición normal)
+    const prevFrontendStateRef = React.useRef(frontendState);
+    
+    React.useEffect(() => {
+        const isAfterCall = frontendState === 'AFTERCALL';
+        const noTieneLlamadaId = !llamadaId && !persistedCallData?.llamada_id;
+        const prevState = prevFrontendStateRef.current;
+        
+        // Solo recuperar si:
+        // 1. Estamos en AFTERCALL sin llamada_id
+        // 2. Y NO venimos de EN_LLAMADA/CALL (es decir, es un refresh o pérdida real de estado)
+        const esTransicionNormal = prevState === 'EN_LLAMADA' || prevState === 'CALL';
+        
+        if (isAfterCall && noTieneLlamadaId && !esTransicionNormal) {
+            console.log('[Calls.jsx] En AFTERCALL sin llamada_id (NO por transición normal), intentando recuperar del backend...');
+            recuperarLlamadaId();
+        }
+        
+        // Actualizar el estado anterior
+        prevFrontendStateRef.current = frontendState;
+    }, [frontendState, llamadaId, persistedCallData, recuperarLlamadaId]);
 
     // Mostrar alerta cuando hay llamada entrante
     React.useEffect(() => {
@@ -138,7 +193,8 @@ const Calls = () => {
             return;
         }
         
-        const success = await makeCall(phoneNumber);
+        // ⭐ MODIFICADO: Pasar campana_id al makeCall para llamadas manuales
+        const success = await makeCall(phoneNumber, campana_id);
         if (!success) {
             console.error('No se pudo iniciar la llamada');
         }
@@ -787,7 +843,7 @@ const Calls = () => {
                                 display: 'flex',
                             }}
                         >
-                            <ClientInfoSection cliente={cliente} handleChange={handleChange} />
+                            <ClientInfoSection cliente={cliente} handleChange={handleClienteChange} />
                         </motion.div>
 
                         <motion.div
@@ -803,7 +859,7 @@ const Calls = () => {
                         >
                             <SaleInfoSection 
                                 cliente={cliente} 
-                                llamada_id={currentCallInfo?.id || null}
+                                llamada_id={llamadaId || currentCallInfo?.id || null}
                                 campana_id={campana_id}
                                 onVentaChange={setVenta}
                             />
@@ -828,10 +884,10 @@ const Calls = () => {
                             flexDirection: 'column',
                             gap: 2,
                         }}>
-                            <ClientInfoSection cliente={cliente} handleChange={handleChange} />
+                            <ClientInfoSection cliente={cliente} handleChange={handleClienteChange} />
                             <SaleInfoSection 
                                 cliente={cliente} 
-                                llamada_id={currentCallInfo?.id || null}
+                                llamada_id={llamadaId || currentCallInfo?.id || null}
                                 campana_id={campana_id}
                                 onVentaChange={setVenta}
                             />

@@ -1,232 +1,245 @@
-//Path: frontend/src/components/sales/SaleInfoSection.jsx
+// Path: frontend/src/components/sales/SaleInfoSection.jsx
 
 import * as React from "react";
-import { Grid, Box, Typography, TextField, Button, InputLabel, Select, MenuItem, FormControl } from "@mui/material";
-import {getProducts} from "@/core/api/products";
+import {
+  Grid,
+  Box,
+  Typography,
+  TextField,
+  Button,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormControl,
+} from "@mui/material";
+import { getProducts } from "@/core/api/products";
 import { createSale } from "@/core/api/sales";
 
 export default function SaleInfoSection({ cliente, llamada_id, campana_id, onVentaChange }) {
-    const [productos, setProductos] = React.useState([]);
-    const [loadingProductos, setLoadingProductos] = React.useState(false);
-    const [venta, setVenta] = React.useState({
-        producto: "",
-        monto: "",
-        observaciones: "",
-    });
+  const [productos, setProductos] = React.useState([]);
+  const [loadingProductos, setLoadingProductos] = React.useState(false);
+  const [localLlamadaId, setLocalLlamadaId] = React.useState(llamada_id);
+  const [venta, setVenta] = React.useState({
+    producto: "",
+    monto: "",
+    observaciones: "",
+  });
 
-    // Fetch productos cuando cambia campana_id
-    React.useEffect(() => {
-        
-        if (!campana_id) {
-            console.log('[SaleInfoSection] No hay campana_id, limpiando productos');
-            setProductos([]);
-            return;
-        }
+  // 🔄 Mantener sincronizado el ID de la llamada
+  React.useEffect(() => {
+    if (llamada_id !== localLlamadaId) {
+      console.log("[SaleInfoSection] 🔄 Actualizando localLlamadaId:", llamada_id);
+      setLocalLlamadaId(llamada_id);
+    }
+  }, [llamada_id]);
 
-        const fetchProductos = async () => {
-            setLoadingProductos(true);
-            
-            try {
-                const res = await getProducts({ campaña: campana_id });
-                setProductos(res.productos || []);
-            } catch (error) {
-                console.error('[SaleInfoSection] Error al obtener productos:', error);
-                setProductos([]);
-            } finally {
-                setLoadingProductos(false);
-            }
-        };
+  // 🔄 Cargar productos según la campaña
+  React.useEffect(() => {
+    if (!campana_id) {
+      console.log("[SaleInfoSection] No hay campana_id, limpiando productos");
+      setProductos([]);
+      return;
+    }
 
-        fetchProductos();
-    }, [campana_id]);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        const nuevaVenta = { ...venta, [name]: value };
-        setVenta(nuevaVenta);
-        onVentaChange?.(nuevaVenta); 
+    const fetchProductos = async () => {
+      setLoadingProductos(true);
+      try {
+        const res = await getProducts({ campaña: campana_id });
+        // ✅ Asegurar que productos sea siempre un array
+        setProductos(res.productos || []);
+      } catch (error) {
+        console.error("[SaleInfoSection] Error al obtener productos:", error);
+        setProductos([]);
+      } finally {
+        setLoadingProductos(false);
+      }
     };
 
-    const handleCreateVenta = async () => {
-        const data = {
-            cliente_id: cliente?.cliente_id,
-            llamada_id: llamada_id,
-            producto: venta.producto,
-            monto: venta.monto,
-            observaciones: venta.observaciones,
-        };
+    fetchProductos();
+  }, [campana_id]);
 
-        const res = await createSale(data);
-        console.log("Venta creada:", res);
-    };    
-    return (
-        <Box
-            sx={{
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-                backgroundColor: (theme) => theme.palette.background.paper,
-                borderRadius: 3,
-                p: 3,
-                boxShadow: (theme) => theme.palette.mode === 'light'
-                    ? '0 2px 8px rgba(12, 21, 90, 0.06)'
-                    : '0 2px 8px rgba(0, 0, 0, 0.3)',
-                transition: 'box-shadow 0.2s ease',
-                '&:hover': {
-                    boxShadow: (theme) => theme.palette.mode === 'light'
-                        ? '0 4px 12px rgba(12, 21, 90, 0.1)'
-                        : '0 4px 12px rgba(0, 0, 0, 0.5)',
-                }
-            }}
-        >
-           <Typography
-                variant="h5"
-                fontWeight={700}
-                color="text.primary"
-                mb={6}
-                sx={{
+  // Manejo de cambios de inputs
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const nuevaVenta = { ...venta, [name]: value };
+    setVenta(nuevaVenta);
+    onVentaChange?.(nuevaVenta);
+  };
 
-                    letterSpacing: '0.5px',
-                }}
+  console.log("🧍 Cliente:", cliente);
+
+  // ✅ Crear venta con los datos actuales
+  const handleCreateVenta = async (datosVenta) => {
+    console.log("[SaleInfo] 📋 Datos para venta:", {
+      llamada_id: localLlamadaId,
+      cliente_nombre: cliente?.nombre,
+      cliente_id: cliente?.id,
+      ...datosVenta,
+    });
+
+    // Validaciones básicas
+    if (!localLlamadaId) {
+      alert("❌ No hay llamada activa para registrar venta");
+      return;
+    }
+
+    if (!cliente?.nombre || !cliente?.id) {
+      alert("❌ Faltan datos del cliente (nombre o id)");
+      console.error("[SaleInfo] Cliente incompleto:", cliente);
+      return;
+    }
+
+    if (!datosVenta?.producto?.id) {
+      alert("❌ Debes seleccionar un producto válido");
+      console.error("[SaleInfo] Producto inválido:", datosVenta?.producto);
+      return;
+    }
+
+    try {
+      const payload = {
+        llamada_id: localLlamadaId,
+        cliente_nombre: cliente.nombre,
+        cliente_id: cliente.id,
+        producto_id: datosVenta.producto.id,
+        monto: datosVenta.monto || null,
+        observaciones: datosVenta.observaciones || "",
+      };
+
+      console.log("[SaleInfo] 📤 Enviando venta:", payload);
+
+      // ✅ createSale devuelve directamente response.data si es exitoso
+      // o lanza error si falla (se captura en catch)
+      const result = await createSale(payload);
+      
+      alert("✅ Venta registrada exitosamente");
+      console.log("[SaleInfo] ✅ Venta registrada:", result);
+
+      // Limpiar formulario
+      const nuevaVenta = { producto: "", monto: "", observaciones: "" };
+      setVenta(nuevaVenta);
+      onVentaChange?.(nuevaVenta);
+      
+    } catch (error) {
+      console.error("[SaleInfo] ❌ Error al registrar venta:", error);
+      
+      // Mostrar mensaje de error específico del backend si existe
+      const errorMessage = error.response?.data?.detail 
+        || error.response?.data?.message 
+        || error.message 
+        || "Error de conexión. Verifica tu red e intenta nuevamente.";
+      
+      alert(`❌ ${errorMessage}`);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: (theme) => theme.palette.background.paper,
+        borderRadius: 3,
+        p: 3,
+        boxShadow: (theme) =>
+          theme.palette.mode === "light"
+            ? "0 2px 8px rgba(12, 21, 90, 0.06)"
+            : "0 2px 8px rgba(0, 0, 0, 0.3)",
+        transition: "box-shadow 0.2s ease",
+        "&:hover": {
+          boxShadow: (theme) =>
+            theme.palette.mode === "light"
+              ? "0 4px 12px rgba(12, 21, 90, 0.1)"
+              : "0 4px 12px rgba(0, 0, 0, 0.5)",
+        },
+      }}
+    >
+      <Typography variant="h5" fontWeight={700} color="text.primary" mb={6}>
+        Información de la Venta
+      </Typography>
+
+      <Grid container spacing={2.5} alignItems="center">
+        {/* ✅ SELECT corregido para manejar producto como objeto */}
+        <Grid item xs={12} md={5}>
+          <FormControl fullWidth sx={{ fontSize: "1.2rem", minWidth: "250px" }}>
+            <InputLabel id="producto-label">Producto</InputLabel>
+            <Select
+              labelId="producto-label"
+              value={venta.producto?.id || ""}
+              label="Seleccione un producto"
+              name="producto"
+              onChange={(e) => {
+                const productoSeleccionado = productos.find(
+                  (p) => p.id === e.target.value
+                );
+                handleChange({
+                  target: { name: "producto", value: productoSeleccionado },
+                });
+              }}
+              sx={{
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "light"
+                    ? "#EBF5FE"
+                    : "rgba(255, 255, 255, 0.05)",
+                borderRadius: "10px",
+                "& fieldset": {
+                  borderColor: (theme) =>
+                    theme.palette.mode === "light"
+                      ? "rgba(12, 21, 90, 0.15)"
+                      : "rgba(255, 255, 255, 0.15)",
+                  borderWidth: "1.5px",
+                },
+              }}
             >
-                Información de la Venta
-            </Typography>
+              <MenuItem value="">Seleccionar producto</MenuItem>
+              {productos.map((producto) => (
+                <MenuItem key={producto.id} value={producto.id}>
+                  {producto.nombre}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
 
-            <Grid container spacing={2.5} alignItems="center">
-                <Grid item xs={12} md={5}>
-                <FormControl fullWidth sx={{ fontSize: '1.2rem', minWidth: '250px' }}>
-                    <InputLabel id="producto-label" >Producto</InputLabel>
-                    <Select
-                    labelId="producto-label"
-                    value={venta.producto || ""}
-                    label="Seleccione un producto"
-                    name="producto"
-                    onChange={handleChange}
-                    notched={true}
-                    sx={{
-                        backgroundColor: (theme) =>
-                        theme.palette.mode === 'light'
-                            ? '#EBF5FE'
-                            : 'rgba(255, 255, 255, 0.05)',
-                        borderRadius: '10px',
-                        '& fieldset': {
-                        borderColor: (theme) =>
-                            theme.palette.mode === 'light'
-                            ? 'rgba(12, 21, 90, 0.15)'
-                            : 'rgba(255, 255, 255, 0.15)',
-                        borderWidth: '1.5px',
-                        },
-                    }}
-                    >
-                    <MenuItem value="">Seleccionar producto</MenuItem>
-                    {productos.map((producto) => (
-                        <MenuItem key={producto.nombre} value={producto.nombre}>
-                        {producto.nombre}
-                        </MenuItem>
-                    ))}
-                    </Select>
-                </FormControl>
-                </Grid>
-                <Grid item xs={12} md={5}>
-                    <TextField
-                        fullWidth
-                        label="Monto"
-                        name="monto"
-                        value={venta.monto}
-                        onChange={handleChange}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: (theme) => theme.palette.mode === 'light'
-                                    ? '#EBF5FE'
-                                    : 'rgba(255, 255, 255, 0.05)',
-                                borderRadius: '10px',
-                                '& fieldset': {
-                                    borderColor: (theme) => theme.palette.mode === 'light'
-                                        ? 'rgba(12, 21, 90, 0.15)'
-                                        : 'rgba(255, 255, 255, 0.15)',
-                                    borderWidth: '1.5px',
-                                },
-                            },
-                            '& .MuiInputLabel-root': {
-                                color: 'text.secondary',
-                                fontWeight: 500,
-                            },
-                            '& .MuiInputBase-input': {
-                                color: 'text.primary',
-                                fontWeight: 500,
-                            },
-                        }}
-                    />
-                </Grid>
-                <Grid item xs={12} md={5}>
-                    <TextField
-                        fullWidth
-                        label="Observaciones"
-                        name="observaciones"
-                        multiline
-                        rows={3}
-                        value={venta.observaciones}
-                        onChange={handleChange}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: (theme) => theme.palette.mode === 'light'
-                                    ? '#EBF5FE'
-                                    : 'rgba(255, 255, 255, 0.05)',
-                                borderRadius: '10px',
-                                '& fieldset': {
-                                    borderColor: (theme) => theme.palette.mode === 'light'
-                                        ? 'rgba(12, 21, 90, 0.15)'
-                                        : 'rgba(255, 255, 255, 0.15)',
-                                    borderWidth: '1.5px',
-                                },
-                            },
-                            '& .MuiInputLabel-root': {
-                                color: 'text.secondary',
-                                fontWeight: 500,
-                            },
-                            '& .MuiInputBase-input': {
-                                color: 'text.primary',
-                                fontWeight: 500,
-                            },
-                        }}
-                    />
-                </Grid>
-                <Grid item xs={12} md={2}>
-                    <Button
-                        fullWidth
-                        variant="contained"
-                        onClick={handleCreateVenta}
-                        sx={{
-                            backgroundColor: (theme) => theme.palette.primary.main,
-                            color: 'white',
-                            height: "56px",
-                            fontWeight: 600,
-                            fontSize: '0.95rem',
-                            borderRadius: '10px',
-                            textTransform: 'none',
-                            boxShadow: (theme) => theme.palette.mode === 'light'
-                                ? '0 2px 8px rgba(12, 21, 90, 0.25)'
-                                : '0 2px 8px rgba(0, 0, 0, 0.5)',
-                            transition: 'all 0.2s ease',
-                            '&:hover': {
-                                backgroundColor: (theme) => theme.palette.mode === 'light'
-                                    ? '#1a2b7a'
-                                    : theme.palette.primary.dark,
-                                boxShadow: (theme) => theme.palette.mode === 'light'
-                                    ? '0 4px 12px rgba(12, 21, 90, 0.35)'
-                                    : '0 4px 12px rgba(0, 0, 0, 0.7)',
-                                transform: 'translateY(-2px)',
-                            },
-                            '&:active': {
-                                transform: 'translateY(0)',
-                            },
-                        }}
-                    >
-                        Iniciar Venta
-                    </Button>
-                </Grid>
-            </Grid>
-        </Box>
-    );
+        <Grid item xs={12} md={5}>
+          <TextField
+            fullWidth
+            label="Monto"
+            name="monto"
+            value={venta.monto}
+            onChange={handleChange}
+          />
+        </Grid>
+
+        <Grid item xs={12} md={5}>
+          <TextField
+            fullWidth
+            label="Observaciones"
+            name="observaciones"
+            multiline
+            rows={3}
+            value={venta.observaciones}
+            onChange={handleChange}
+          />
+        </Grid>
+
+        <Grid item xs={12} md={2}>
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={() => handleCreateVenta(venta)}
+            sx={{
+              height: "56px",
+              fontWeight: 600,
+              borderRadius: "10px",
+              textTransform: "none",
+            }}
+          >
+            Iniciar Venta
+          </Button>
+        </Grid>
+      </Grid>
+    </Box>
+  );
 }
