@@ -571,15 +571,25 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"[by_sid] Buscando llamada con CallSid: {call_sid}")
+        logger.info(f"[by_sid] 🔍 Buscando llamada con CallSid: {call_sid}")
         
         # Debug adicional: Buscar si existe una llamada con 'pending'
         pending_calls = Llamada.objects.filter(twilio_call_sid='pending').count()
         if pending_calls > 0:
             logger.warning(f"[by_sid] ⚠️ Hay {pending_calls} llamada(s) con twilio_call_sid='pending' (llamadas automáticas en proceso)")
         
+        # Debug: Mostrar últimas llamadas con sus CallSids (parent y child)
+        recent_calls = Llamada.objects.order_by('-id')[:5]
+        logger.info(f"[by_sid] 📋 Últimas 5 llamadas en BD:")
+        for call in recent_calls:
+            logger.info(f"[by_sid]   - ID: {call.id}, Parent: '{call.twilio_call_sid}', Child: '{call.twilio_child_call_sid}'")
+        
         try:
-            # Buscar la llamada por twilio_call_sid
+            # 🔍 Buscar la llamada por twilio_call_sid (parent) O twilio_child_call_sid (child)
+            # Esto es necesario porque en llamadas automáticas con <Dial>, el frontend
+            # recibe el CallSid del child (la conexión del agente), pero el backend
+            # guarda inicialmente solo el parent CallSid (la llamada al cliente)
+            from django.db.models import Q
             llamada = Llamada.objects.select_related(
                 'agente',
                 'cliente',
@@ -588,9 +598,59 @@ class LlamadaViewSet(viewsets.ModelViewSet):
                 'estado_venta',
                 'estado_reportada',
                 'estado_auditoria'
-            ).get(twilio_call_sid=call_sid)
+            ).filter(
+                Q(twilio_call_sid=call_sid) | Q(twilio_child_call_sid=call_sid)
+            ).first()
             
-            logger.info(f"[by_sid] ✓ Llamada encontrada: ID={llamada.id}, agente={llamada.agente.get_full_name() if llamada.agente else 'None'}")
+            if not llamada:
+                logger.warning(f"[by_sid] ⚠️ NO se encontró llamada con parent='{call_sid}' ni child='{call_sid}' en BD")
+                
+                # 🔥 ESTRATEGIA ALTERNATIVA: Buscar llamadas recientes con parent call y consultar API de Twilio
+                # Esto es para llamadas automáticas donde el frontend busca con Child CallSid pero aún no está guardado
+                logger.info(f"[by_sid] 🔍 Buscando parent call mediante API de Twilio...")
+                
+                from common.twilio_client import twilio_client
+                
+                if twilio_client.is_configured():
+                    try:
+                        # Consultar la API de Twilio para obtener detalles de esta llamada
+                        call_details = twilio_client.get_call_details(call_sid)
+                        parent_call_sid = call_details.get('parent_call_sid')
+                        
+                        logger.info(f"[by_sid] API Twilio dice: CallSid={call_sid}, ParentCallSid={parent_call_sid}")
+                        
+                        # Si tiene parent call, buscar por ese parent
+                        if parent_call_sid:
+                            logger.info(f"[by_sid] 🔍 Es un child call. Buscando llamada con parent CallSid: {parent_call_sid}")
+                            llamada = Llamada.objects.select_related(
+                                'agente',
+                                'cliente',
+                                'venta',
+                                'estado_llamada',
+                                'estado_venta',
+                                'estado_reportada',
+                                'estado_auditoria'
+                            ).filter(twilio_call_sid=parent_call_sid).first()
+                            
+                            if llamada:
+                                # ✅ Encontramos el parent call! Guardar el child CallSid si no está guardado
+                                if not llamada.twilio_child_call_sid:
+                                    llamada.twilio_child_call_sid = call_sid
+                                    llamada.save(update_fields=['twilio_child_call_sid'])
+                                    logger.info(f"[by_sid] ✅ Child CallSid guardado desde API: {call_sid} → Llamada {llamada.id}")
+                                else:
+                                    logger.info(f"[by_sid] ℹ️ Child CallSid ya estaba guardado")
+                    
+                    except Exception as e:
+                        logger.error(f"[by_sid] ❌ Error consultando API de Twilio: {str(e)}")
+                
+                # Si aún no tenemos llamada, lanzar excepción
+                if not llamada:
+                    logger.error(f"[by_sid] ❌ DEFINITIVAMENTE no se encontró llamada para CallSid: {call_sid}")
+                    raise Llamada.DoesNotExist
+            
+            logger.info(f"[by_sid] ✓ Llamada encontrada: ID={llamada.id}, Parent='{llamada.twilio_call_sid}', Child='{llamada.twilio_child_call_sid}', Agente={llamada.agente.get_full_name() if llamada.agente else 'None'}")
+
             
             # Verificar permisos: el agente solo puede ver sus propias llamadas
             user = request.user
@@ -663,11 +723,42 @@ class LlamadaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
-            # Buscar la llamada por twilio_call_sid
-            llamada = Llamada.objects.select_related('cliente', 'agente').get(
-                twilio_call_sid=call_sid
-            )
+            # 🔍 Buscar la llamada por twilio_call_sid (parent) O twilio_child_call_sid (child)
+            from django.db.models import Q
+            llamada = Llamada.objects.select_related('cliente', 'agente').filter(
+                Q(twilio_call_sid=call_sid) | Q(twilio_child_call_sid=call_sid)
+            ).first()
+            
+            if not llamada:
+                logger.warning(f"[client_by_call_sid] ⚠️ NO se encontró llamada con CallSid: {call_sid}")
+                
+                # 🔥 Consultar API de Twilio como fallback
+                from common.twilio_client import twilio_client
+                
+                if twilio_client.is_configured():
+                    try:
+                        call_details = twilio_client.get_call_details(call_sid)
+                        parent_call_sid = call_details.get('parent_call_sid')
+                        
+                        if parent_call_sid:
+                            logger.info(f"[client_by_call_sid] 🔍 Es child call. Buscando parent: {parent_call_sid}")
+                            llamada = Llamada.objects.select_related('cliente', 'agente').filter(
+                                twilio_call_sid=parent_call_sid
+                            ).first()
+                            
+                            if llamada and not llamada.twilio_child_call_sid:
+                                llamada.twilio_child_call_sid = call_sid
+                                llamada.save(update_fields=['twilio_child_call_sid'])
+                                logger.info(f"[client_by_call_sid] ✅ Child CallSid guardado")
+                    except Exception as e:
+                        logger.error(f"[client_by_call_sid] ❌ Error API Twilio: {str(e)}")
+                
+                if not llamada:
+                    raise Llamada.DoesNotExist
             
             # Verificar permisos
             user = request.user

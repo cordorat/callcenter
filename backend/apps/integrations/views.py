@@ -444,7 +444,8 @@ def twilio_call_status_webhook(request, llamada_id=None):
     Webhook para recibir actualizaciones de estado de llamadas desde Twilio.
     
     Twilio envía POST con:
-    - CallSid: ID de la llamada
+    - CallSid: ID de la llamada (puede ser parent o child)
+    - ParentCallSid: ID del parent call (si este es un child call)
     - CallStatus: queued, ringing, in-progress, completed, busy, failed, no-answer
     - CallDuration: Duración en segundos
     - RecordingUrl: URL de la grabación (si hay)
@@ -458,26 +459,46 @@ def twilio_call_status_webhook(request, llamada_id=None):
         params = request.GET if request.method == 'GET' else request.POST
         
         call_sid = params.get('CallSid')
+        parent_call_sid = params.get('ParentCallSid')  # 🆕 Detectar si es child call
         call_status = params.get('CallStatus')
         call_duration = params.get('CallDuration', 0)
         recording_url = params.get('RecordingUrl', '')
         recording_sid = params.get('RecordingSid', '')
         
-        logger.info(f"[WEBHOOK STATUS] SID={call_sid}, Status={call_status}, Duration={call_duration}")
+        logger.info(f"[WEBHOOK STATUS] SID={call_sid}, ParentSID={parent_call_sid}, Status={call_status}, Duration={call_duration}")
         
         if not call_sid and not llamada_id:
             logger.error("[WEBHOOK STATUS] No se proporcionó CallSid ni llamada_id")
             return HttpResponse(status=200)  # Siempre devolver 200, aunque haya error
         
         try:
-            # Buscar llamada por SID o ID
+            # 🔍 Buscar llamada por SID o ID
             if llamada_id:
                 llamada = Llamada.objects.get(id=llamada_id)
+                logger.info(f"[WEBHOOK STATUS] Llamada encontrada por ID: {llamada_id}")
+            elif parent_call_sid:
+                # Este es un child call, buscar por parent CallSid
+                logger.info(f"[WEBHOOK STATUS] 👶 Es un CHILD CALL - Parent: {parent_call_sid}, Child: {call_sid}")
+                llamada = Llamada.objects.get(twilio_call_sid=parent_call_sid)
+                # Guardar el child CallSid SI NO ESTÁ YA GUARDADO
+                if not llamada.twilio_child_call_sid:
+                    llamada.twilio_child_call_sid = call_sid
+                    llamada.save(update_fields=['twilio_child_call_sid'])  # Guardar inmediatamente
+                    logger.info(f"[WEBHOOK STATUS] ✅ Child CallSid GUARDADO: {call_sid} (Parent: {parent_call_sid})")
+                else:
+                    logger.info(f"[WEBHOOK STATUS] ℹ️ Child CallSid ya estaba guardado: {llamada.twilio_child_call_sid}")
             else:
-                # Buscar por twilio_call_sid
-                llamada = Llamada.objects.get(twilio_call_sid=call_sid)
+                # Buscar por twilio_call_sid (parent) o twilio_child_call_sid (child)
+                logger.info(f"[WEBHOOK STATUS] 🔍 Buscando por CallSid (sin parent): {call_sid}")
+                from django.db.models import Q
+                llamada = Llamada.objects.filter(
+                    Q(twilio_call_sid=call_sid) | Q(twilio_child_call_sid=call_sid)
+                ).first()
+                if not llamada:
+                    raise Llamada.DoesNotExist
             
-            logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} encontrada - Agente: {llamada.agente.email}, Estado actual agente: {llamada.agente.estado_actual.estado_id.descripcion if hasattr(llamada.agente, 'estado_actual') else 'N/A'}")
+            logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} encontrada - Agente: {llamada.agente.email}, Parent: '{llamada.twilio_call_sid}', Child: '{llamada.twilio_child_call_sid}', Estado actual agente: {llamada.agente.estado_actual.estado_id.descripcion if hasattr(llamada.agente, 'estado_actual') else 'N/A'}")
+
             
             # Actualizar estado de Twilio
             llamada.twilio_status = call_status
@@ -673,16 +694,23 @@ def twilio_automated_call_handler(request):
             # Conectar al agente usando Twilio Client
             client_identity = f"agent_{agente.pk}"
             
-            # NO usar 'action' aquí porque se ejecuta cuando el Dial termina,
-            # no cuando la llamada principal termina.
-            # El webhook de estado principal (status_callback en make_call) manejará el estado.
+            # 🆕 Usar 'statusCallback' + 'statusCallbackEvent' para capturar el DialCallSid EN TIEMPO REAL
+            # Esto se ejecuta cuando el agente se CONECTA, no cuando termina
+            dial_status_url = request.build_absolute_uri('/api/webhooks/twilio/dial-status/')
+            
             dial = Dial(
+                action=dial_status_url,  # Se ejecuta cuando el Dial termina (backup)
+                statusCallback=dial_status_url,  # 🔥 Se ejecuta en eventos en tiempo real (camelCase!)
+                statusCallbackEvent=['initiated', 'answered', 'completed'],  # 🔥 Eventos que queremos capturar (camelCase!)
+                statusCallbackMethod='GET',  # 🔥 Especificar método explícitamente
                 timeout=30,  # Tiempo de espera para que el agente conteste
                 record='record-from-answer',  # Grabar desde que se contesta
-                recording_status_callback=request.build_absolute_uri('/api/webhooks/twilio/recording/')
+                recordingStatusCallback=request.build_absolute_uri('/api/webhooks/twilio/recording/'),
+                recordingStatusCallbackMethod='GET'
             )
             dial.client(client_identity)
             response.append(dial)
+
             
             # Si el agente no contesta en 30 segundos
             response.say(
@@ -693,7 +721,18 @@ def twilio_automated_call_handler(request):
             
             twiml_str = str(response)
             logger.info(f"TwiML generado para llamada automática {call_sid}")
-            logger.debug(f"TwiML: {twiml_str}")
+            logger.debug(f"TwiML completo: {twiml_str}")
+            
+            # 🔍 DEBUGGING: Verificar que los parámetros camelCase están en el TwiML
+            if 'statusCallback' in twiml_str:
+                logger.info(f"[TwiML] ✅ 'statusCallback' presente en TwiML")
+            else:
+                logger.warning(f"[TwiML] ⚠️ 'statusCallback' NO encontrado en TwiML")
+            
+            if 'statusCallbackEvent' in twiml_str:
+                logger.info(f"[TwiML] ✅ 'statusCallbackEvent' presente en TwiML")
+            else:
+                logger.warning(f"[TwiML] ⚠️ 'statusCallbackEvent' NO encontrado en TwiML")
             
             return HttpResponse(twiml_str, content_type='text/xml')
             
@@ -778,7 +817,7 @@ def twilio_join_conference(request):
 
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])  # 🔧 Permitir GET y POST
 def twilio_recording_webhook(request):
     """
     Webhook para recibir notificaciones de grabaciones.
@@ -786,26 +825,36 @@ def twilio_recording_webhook(request):
     IMPORTANTE: Este endpoint NO debe devolver TwiML, solo HTTP 200.
     """
     try:
-        recording_sid = request.POST.get('RecordingSid')
-        recording_url = request.POST.get('RecordingUrl')
-        call_sid = request.POST.get('CallSid')
+        # Twilio puede enviar GET o POST
+        params = request.GET if request.method == 'GET' else request.POST
+        
+        recording_sid = params.get('RecordingSid')
+        recording_url = params.get('RecordingUrl')
+        call_sid = params.get('CallSid')
         
         logger.info(f"Grabación recibida: SID={recording_sid}, CallSID={call_sid}")
+
         
         if not call_sid:
             logger.error("No se proporcionó CallSid en webhook de grabación")
             return HttpResponse(status=200)
         
         try:
-            llamada = Llamada.objects.get(llamada_sid=call_sid)
-            llamada.twilio_recording_sid = recording_sid
-            llamada.twilio_recording_url = recording_url
-            llamada.grabacion_url = recording_url
-            llamada.save()
+            # Buscar por parent o child CallSid
+            from django.db.models import Q
+            llamada = Llamada.objects.filter(
+                Q(twilio_call_sid=call_sid) | Q(twilio_child_call_sid=call_sid)
+            ).first()
             
-            logger.info(f"Grabación guardada para llamada {llamada.id}")
-        except Llamada.DoesNotExist:
-            logger.error(f"Llamada no encontrada para grabación: CallSID={call_sid}")
+            if llamada:
+                llamada.twilio_recording_sid = recording_sid
+                llamada.twilio_recording_url = recording_url
+                llamada.grabacion_url = recording_url
+                llamada.save()
+                logger.info(f"Grabación guardada para llamada {llamada.id}")
+            else:
+                logger.error(f"Llamada no encontrada para grabación: CallSID={call_sid}")
+                
         except Exception as e:
             logger.error(f"Error guardando grabación: {str(e)}", exc_info=True)
         
@@ -815,4 +864,75 @@ def twilio_recording_webhook(request):
     except Exception as e:
         # Capturar CUALQUIER error no manejado y devolver 200
         logger.error(f"Error crítico en webhook de grabación: {str(e)}", exc_info=True)
+        return HttpResponse(status=200)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])  # 🔧 Permitir GET y POST
+def twilio_dial_status_webhook(request):
+    """
+    Webhook para capturar el CallSid del child call generado por <Dial>.
+    
+    Este webhook se llama en TIEMPO REAL cuando:
+    - 'initiated': El Dial comienza (se crea el child call)
+    - 'answered': El agente contesta
+    - 'completed': El Dial termina
+    
+    Twilio envía:
+    - CallSid: Parent call SID (la llamada principal al cliente)
+    - DialCallSid: Child call SID (la conexión del agente vía WebRTC)  
+    - DialCallStatus: Estado del dial (initiated, answered, completed, busy, no-answer, failed)
+    - CallStatus: Estado de la llamada principal
+    
+    Este webhook es CRUCIAL para llamadas automáticas porque necesitamos el
+    DialCallSid ANTES de que el frontend busque la llamada.
+    
+    IMPORTANTE: Este endpoint NO debe devolver TwiML, solo HTTP 200.
+    """
+    try:
+        # Twilio puede enviar GET o POST dependiendo del evento
+        params = request.GET if request.method == 'GET' else request.POST
+        
+        # 🔍 DEBUGGING: Mostrar TODOS los parámetros recibidos
+        all_params = dict(params.items())
+        logger.info(f"[DIAL STATUS] 🔍 TODOS los parámetros recibidos: {all_params}")
+        
+        parent_call_sid = params.get('CallSid')  # Parent (llamada al cliente)
+        child_call_sid = params.get('DialCallSid')  # Child (conexión del agente)
+        dial_status = params.get('DialCallStatus')  # Estado del child call
+        call_status = params.get('CallStatus')  # Estado del parent call
+        status_callback_event = params.get('StatusCallbackEvent')  # Evento que disparó el webhook
+        
+        logger.info(f"[DIAL STATUS] Method={request.method}, Event={status_callback_event}, Parent={parent_call_sid}, Child={child_call_sid}, DialStatus={dial_status}, CallStatus={call_status}")
+
+        
+        if not parent_call_sid:
+            logger.error(f"[DIAL STATUS] ❌ No se proporcionó CallSid")
+            return HttpResponse(status=200)
+        
+        try:
+            # Buscar la llamada por el parent CallSid
+            llamada = Llamada.objects.get(twilio_call_sid=parent_call_sid)
+            
+            # Guardar el child CallSid si está disponible
+            if child_call_sid and not llamada.twilio_child_call_sid:
+                llamada.twilio_child_call_sid = child_call_sid
+                llamada.save(update_fields=['twilio_child_call_sid'])
+                logger.info(f"[DIAL STATUS] ✅ Child CallSid guardado para llamada {llamada.id}: {child_call_sid}")
+            elif child_call_sid:
+                logger.info(f"[DIAL STATUS] ℹ️ Child CallSid ya guardado para llamada {llamada.id}")
+            else:
+                logger.warning(f"[DIAL STATUS] ⚠️ No se recibió DialCallSid en evento {status_callback_event}")
+            
+        except Llamada.DoesNotExist:
+            logger.error(f"[DIAL STATUS] ❌ Llamada no encontrada con parent CallSid: {parent_call_sid}")
+        except Exception as e:
+            logger.error(f"[DIAL STATUS] ❌ Error procesando: {str(e)}", exc_info=True)
+        
+        # SIEMPRE devolver 200
+        return HttpResponse(status=200)
+        
+    except Exception as e:
+        # Capturar CUALQUIER error no manejado y devolver 200
+        logger.error(f"[DIAL STATUS] ❌ Error crítico: {str(e)}", exc_info=True)
         return HttpResponse(status=200)
