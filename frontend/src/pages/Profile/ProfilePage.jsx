@@ -504,25 +504,6 @@ export default function ProfilePage() {
                           </Box>
                         </Grid>
                       </Grid>
-
-                      <Divider sx={{ my: 3 }} />
-
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            color: 'text.secondary',
-                            fontSize: '0.75rem',
-                          }}
-                        >
-                          Última Actualización
-                        </Typography>
-                        <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-                          {formatDate(user?.updated_at)}
-                        </Typography>
-                      </Box>
                     </Box>
                   )}
                 </Box>
