@@ -529,6 +529,186 @@ class LlamadaViewSet(viewsets.ModelViewSet):
             'rol_usuario': user.get_role_value()
         })
     
+    @action(detail=False, methods=['get'], url_path='by-sid/(?P<call_sid>[^/.]+)')
+    def by_sid(self, request, call_sid=None):
+        """
+        Obtiene la información completa de una llamada usando el Twilio CallSid.
+        
+        URL: /api/calls/llamadas/by-sid/{callSid}/
+        
+        Este endpoint es útil durante una llamada activa cuando el frontend
+        tiene el CallSid del evento de Twilio pero necesita la información
+        completa del modelo Llamada.
+        
+        Response:
+        {
+            "id": 123,
+            "agente": 1,
+            "agente_nombre": "Juan Pérez",
+            "cliente": 45,
+            "cliente_nombre": "María García",
+            "cliente_telefono": "+573001234567",
+            "telefono_origen": "+573009876543",
+            "telefono_destino": "+573001234567",
+            "fecha_hora_inicio": "2025-11-04T10:30:00Z",
+            "fecha_hora_fin": null,
+            "duracion": 120,
+            "twilio_call_sid": "CA1234567890abcdef",
+            "twilio_status": "in-progress",
+            "fue_contestada": true,
+            "estado_llamada": 2,
+            "estado_llamada_valor": "EN_CURSO",
+            "estado_venta": 1,
+            "estado_venta_valor": "NO_VENTA",
+            ...
+        }
+        """
+        if not call_sid:
+            return Response(
+                {'error': 'CallSid es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[by_sid] Buscando llamada con CallSid: {call_sid}")
+        
+        # Debug adicional: Buscar si existe una llamada con 'pending'
+        pending_calls = Llamada.objects.filter(twilio_call_sid='pending').count()
+        if pending_calls > 0:
+            logger.warning(f"[by_sid] ⚠️ Hay {pending_calls} llamada(s) con twilio_call_sid='pending' (llamadas automáticas en proceso)")
+        
+        try:
+            # Buscar la llamada por twilio_call_sid
+            llamada = Llamada.objects.select_related(
+                'agente',
+                'cliente',
+                'venta',
+                'estado_llamada',
+                'estado_venta',
+                'estado_reportada',
+                'estado_auditoria'
+            ).get(twilio_call_sid=call_sid)
+            
+            logger.info(f"[by_sid] ✓ Llamada encontrada: ID={llamada.id}, agente={llamada.agente.get_full_name() if llamada.agente else 'None'}")
+            
+            # Verificar permisos: el agente solo puede ver sus propias llamadas
+            user = request.user
+            if not (user.is_admin() or user.is_backoffice() or llamada.agente == user):
+                # Si es coordinador, verificar que la llamada sea de su equipo
+                if user.is_coordinador():
+                    from apps.campaigns.models import Equipo
+                    equipos = Equipo.objects.filter(coordinador=user, is_active=True)
+                    if equipos.exists():
+                        agentes_equipo = User.objects.filter(equipos__in=equipos).distinct()
+                        if llamada.agente not in agentes_equipo:
+                            return Response(
+                                {'error': 'No tiene permisos para ver esta llamada'},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        return Response(
+                            {'error': 'No tiene permisos para ver esta llamada'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                else:
+                    return Response(
+                        {'error': 'No tiene permisos para ver esta llamada'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            
+            # Serializar con el serializer de historial que incluye más información
+            serializer = HistorialLlamadaSerializer(llamada)
+            return Response(serializer.data)
+            
+        except Llamada.DoesNotExist:
+            logger.warning(f"[by_sid] ✗ Llamada NO encontrada con CallSid: {call_sid}")
+            
+            # Debug: Listar todas las llamadas recientes para comparar
+            recientes = Llamada.objects.all().order_by('-fecha_hora_inicio')[:5]
+            logger.warning(f"[by_sid] Llamadas recientes en BD:")
+            for ll in recientes:
+                logger.warning(f"  - ID: {ll.id}, CallSid: '{ll.twilio_call_sid}', Agente: {ll.agente.get_full_name() if ll.agente else 'None'}")
+            
+            return Response(
+                {'error': 'Llamada no encontrada con ese CallSid'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['get'], url_path='client-by-call-sid/(?P<call_sid>[^/.]+)')
+    def client_by_call_sid(self, request, call_sid=None):
+        """
+        Obtiene la información del cliente asociado a una llamada usando el Twilio CallSid.
+        
+        URL: /api/calls/llamadas/client-by-call-sid/{callSid}/
+        
+        Este endpoint complementa by_sid proporcionando específicamente
+        los datos del cliente en formato más completo.
+        
+        Response:
+        {
+            "cliente_id": 45,
+            "nombre": "María García",
+            "documento": "1234567890",
+            "telefono": "+573001234567",
+            "correo": "maria@example.com",
+            "direccion": "Calle 123 #45-67",
+            "ciudad": "Bogotá",
+            "otros_datos": {...}
+        }
+        """
+        if not call_sid:
+            return Response(
+                {'error': 'CallSid es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Buscar la llamada por twilio_call_sid
+            llamada = Llamada.objects.select_related('cliente', 'agente').get(
+                twilio_call_sid=call_sid
+            )
+            
+            # Verificar permisos
+            user = request.user
+            if not (user.is_admin() or user.is_backoffice() or llamada.agente == user):
+                if user.is_coordinador():
+                    from apps.campaigns.models import Equipo
+                    equipos = Equipo.objects.filter(coordinador=user, is_active=True)
+                    if equipos.exists():
+                        agentes_equipo = User.objects.filter(equipos__in=equipos).distinct()
+                        if llamada.agente not in agentes_equipo:
+                            return Response(
+                                {'error': 'No tiene permisos para ver esta llamada'},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        return Response(
+                            {'error': 'No tiene permisos para ver esta llamada'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                else:
+                    return Response(
+                        {'error': 'No tiene permisos para ver esta llamada'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            
+            if not llamada.cliente:
+                return Response(
+                    {'error': 'Esta llamada no tiene cliente asociado'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Serializar el cliente
+            serializer = ClienteSerializer(llamada.cliente)
+            return Response(serializer.data)
+            
+        except Llamada.DoesNotExist:
+            return Response(
+                {'error': 'Llamada no encontrada con ese CallSid'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
     def _get_base_queryset_by_role(self, user):
         """
         Retorna el queryset base según el rol del usuario.
@@ -877,7 +1057,7 @@ class VentaViewSet(viewsets.ModelViewSet):
         Campos requeridos:
         - llamada_id: ID de la llamada asociada
         - cliente_nombre: Nombre completo del cliente
-        - cliente_documento: Número de documento/identificación
+        - cliente_id: Número de documento/identificación
         - producto_id: ID del producto o servicio adquirido
         
         Campos opcionales:

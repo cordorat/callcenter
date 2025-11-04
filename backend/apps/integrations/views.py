@@ -133,7 +133,8 @@ def twilio_voice_request(request):
         
         # Obtener agente y campaña
         try:
-            agent = User.objects.get(documento_id=agent_id)
+            # Buscar agente por ID (pk), no por documento_id
+            agent = User.objects.get(pk=agent_id)
             if not agent.is_agent():
                 logger.error(f"Usuario {agent_id} no es un agente")
                 return HttpResponse('<Response><Say language="es-MX">Error: Usuario no es agente</Say></Response>', content_type='text/xml')
@@ -196,6 +197,9 @@ def twilio_voice_request(request):
                 estado_reportada=estado_no_reportada,
                 fecha_hora_inicio=timezone.now()
             )
+            
+            logger.info(f"✓ Llamada {llamada.id} creada exitosamente con CallSid={call_sid}")
+            logger.info(f"✓ Llamada guardada - ID: {llamada.id}, twilio_call_sid: {llamada.twilio_call_sid}, agente: {llamada.agente.get_full_name()}, cliente: {llamada.cliente.nombre}")
             
             # Cambiar estado del agente a EN_LLAMADA
             estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')

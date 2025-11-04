@@ -249,7 +249,8 @@ def procesar_llamada_automatica(self, cliente_id: int, agente_id: str, base_dato
             llamada.twilio_status = call_result['status']
             llamada.save()
             
-            logger.info(f"Llamada Twilio iniciada: {call_result['sid']}")
+            logger.info(f"✓ Llamada Twilio iniciada: {call_result['sid']}")
+            logger.info(f"✓ Llamada {llamada.id} actualizada con CallSid real: {llamada.twilio_call_sid}")
             
             # El webhook de Twilio actualizará el estado del agente cuando la llamada termine
             # NO cambiar a AFTERCALL aquí, el agente sigue EN_LLAMADA

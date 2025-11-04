@@ -92,13 +92,11 @@ class RegistrarVentaSerializer(serializers.Serializer):
             'blank': 'El nombre del cliente no puede estar vacío.'
         }
     )
-    cliente_documento = serializers.CharField(
+    cliente_id = serializers.IntegerField(
         required=True,
-        max_length=50,
-        help_text='Número de documento o identificación del cliente',
+        help_text='ID del cliente',
         error_messages={
-            'required': 'El número de documento es obligatorio.',
-            'blank': 'El número de documento no puede estar vacío.'
+            'required': 'El ID del cliente es obligatorio.',
         }
     )
     producto_id = serializers.IntegerField(
@@ -164,22 +162,13 @@ class RegistrarVentaSerializer(serializers.Serializer):
         
         return value
     
-    def validate_cliente_documento(self, value):
-        """Valida que el documento tenga un formato válido."""
-        # Eliminar espacios
-        value = value.strip()
-        
-        # Validar que no esté vacío después de eliminar espacios
-        if not value:
+    def validate_cliente_id(self, value):
+        """Valida que el cliente exista."""
+        try:
+            cliente = Cliente.objects.get(pk=value)
+        except Cliente.DoesNotExist:
             raise serializers.ValidationError(
-                'El número de documento no puede estar vacío.'
-            )
-        
-        # Validar que tenga caracteres válidos (alfanuméricos y guiones)
-        import re
-        if not re.match(r'^[A-Za-z0-9\-]+$', value):
-            raise serializers.ValidationError(
-                'El documento solo puede contener letras, números y guiones.'
+                f'No existe un cliente con ID {value}.'
             )
         
         return value
@@ -227,7 +216,7 @@ class RegistrarVentaSerializer(serializers.Serializer):
             fecha_completado=timezone.now(),
             campos_json={
                 'cliente_nombre': validated_data['cliente_nombre'],
-                'cliente_documento': validated_data['cliente_documento'],
+                'cliente_id': validated_data['cliente_id'],
                 'producto_id': producto_id,
                 'producto_nombre': producto.nombre,
                 'observaciones': validated_data.get('observaciones', ''),
@@ -276,7 +265,7 @@ class RegistrarVentaSerializer(serializers.Serializer):
             'venta': {
                 'id': instance.venta_id,
                 'cliente_nombre': formulario_data.get('cliente_nombre', ''),
-                'cliente_documento': formulario_data.get('cliente_documento', ''),
+                'cliente_id': formulario_data.get('cliente_id'),
                 'producto': {
                     'id': formulario_data.get('producto_id'),
                     'nombre': formulario_data.get('producto_nombre', ''),
@@ -485,7 +474,7 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
         formulario = obj.formularios.filter(completado=True).first()
         if formulario and formulario.campos_json:
             venta_data['cliente_nombre'] = formulario.campos_json.get('cliente_nombre')
-            venta_data['cliente_documento'] = formulario.campos_json.get('cliente_documento')
+            venta_data['cliente_id'] = formulario.campos_json.get('cliente_id')
             venta_data['producto_id'] = formulario.campos_json.get('producto_id')
             venta_data['producto_nombre'] = formulario.campos_json.get('producto_nombre')
             venta_data['observaciones'] = formulario.campos_json.get('observaciones')

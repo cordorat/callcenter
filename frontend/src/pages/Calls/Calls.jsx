@@ -7,6 +7,8 @@ import {
     Call as CallIcon, CallEnd as CallEndIcon, Backspace as BackspaceIcon, MicOff as MicOffIcon, KeyboardVoice as KeyboardVoiceIcon, BackHand as BackHandIcon, CloseFullscreen as CloseFullscreenIcon, OpenInFull as OpenInFullIcon, PhoneInTalk as PhoneInTalkIcon
 } from '@mui/icons-material';
 import useTwilioCall from '@/hooks/useTwilioCall';
+import twilioClient from '@/services/twilioClient';
+import apiClient from '@/core/api/apiClient';
 import { motion, AnimatePresence } from "framer-motion";
 import ClientInfoSection from '@/components/sales/ClientInfoSection';
 import SaleInfoSection from '@/components/sales/SaleInfoSection';
@@ -18,6 +20,8 @@ const Calls = () => {
     const [phoneNumber, setPhoneNumber] = React.useState('');
     const [isExpanded, setIsExpanded] = React.useState(false); 
     const [showIncomingAlert, setShowIncomingAlert] = React.useState(false);
+    const [currentCallSid, setCurrentCallSid] = React.useState(null); // CallSid de Twilio para la llamada activa
+    const [fullCallInfo, setFullCallInfo] = React.useState(null); // Información completa de la llamada desde el backend
 
     // Estados para cliente y venta
     const [cliente, setCliente] = React.useState({
@@ -58,6 +62,15 @@ const Calls = () => {
         formatDuration,
         currentCallInfo,
     } = useTwilioCall();
+    
+    // Debug: Log para ver qué está devolviendo el hook
+    React.useEffect(() => {
+        console.log('[Calls.jsx][DEBUG] Hook useTwilioCall cambió:');
+        console.log('[Calls.jsx][DEBUG] - isInCall:', isInCall);
+        console.log('[Calls.jsx][DEBUG] - currentCallInfo:', currentCallInfo);
+        console.log('[Calls.jsx][DEBUG] - callStatus:', callStatus);
+    }, [isInCall, currentCallInfo, callStatus]);
+    
     // Sincronizar datos de llamada automática y limpiar al salir de EN_LLAMADA/AFTERCALL
     React.useEffect(() => {
         const isEnLlamadaOAfterCall = frontendState === 'CALL' || frontendState === 'AFTERCALL' || frontendState === 'EN_LLAMADA';
@@ -95,6 +108,103 @@ const Calls = () => {
             console.log('[Calls.jsx][SYNC] Manteniendo datos actuales - en CALL/AFTERCALL sin nueva info');
         }
     }, [currentCallInfo, frontendState]);
+
+    // Obtener información completa de la llamada usando el CallSid cuando hay una llamada activa
+    React.useEffect(() => {
+        const fetchFullCallInfo = async () => {
+            console.log('[Calls.jsx][FETCH] isInCall:', isInCall, '| currentCallInfo:', currentCallInfo);
+            
+            // Si estamos en llamada
+            if (isInCall) {
+                // Intentar obtener el CallSid desde múltiples fuentes
+                let callSid = null;
+                
+                // Opción 1: Desde currentCallInfo (viene del hook useTwilioCall)
+                if (currentCallInfo?.twilio_call_sid) {
+                    callSid = currentCallInfo.twilio_call_sid;
+                    console.log('[Calls.jsx][FETCH] CallSid desde currentCallInfo:', callSid);
+                }
+                
+                // Opción 2: Desde twilioClient.activeCall directamente
+                if (!callSid && twilioClient.activeCall) {
+                    callSid = twilioClient.activeCall.parameters?.CallSid;
+                    console.log('[Calls.jsx][FETCH] CallSid desde twilioClient.activeCall:', callSid);
+                }
+                
+                // Opción 3: Desde twilioClient.getCallInfo()
+                if (!callSid) {
+                    const callInfo = twilioClient.getCallInfo();
+                    if (callInfo?.parameters?.CallSid) {
+                        callSid = callInfo.parameters.CallSid;
+                        console.log('[Calls.jsx][FETCH] CallSid desde twilioClient.getCallInfo():', callSid);
+                    }
+                }
+                
+                console.log('[Calls.jsx][FETCH] CallSid final:', callSid, '| currentCallSid:', currentCallSid);
+                
+                if (callSid && callSid !== currentCallSid) {
+                    console.log('[Calls.jsx][FETCH] ✓ Obteniendo información completa de llamada con CallSid:', callSid);
+                    setCurrentCallSid(callSid);
+                    
+                    // Función auxiliar para intentar obtener la llamada con retries
+                    const fetchWithRetry = async (attempt = 1, maxAttempts = 5) => {
+                        try {
+                            // Añadir delay antes del primer intento para dar tiempo al webhook
+                            if (attempt === 1) {
+                                console.log('[Calls.jsx][FETCH] ⏳ Esperando 2s para que el webhook cree la llamada...');
+                                await new Promise(resolve => setTimeout(resolve, 2000));
+                            }
+                            
+                            const response = await apiClient.get(`/api/calls/llamadas/by-sid/${callSid}/`);
+                            console.log(`[Calls.jsx][FETCH] ✓ Información completa obtenida (intento ${attempt}):`, response.data);
+                            setFullCallInfo(response.data);
+                            
+                            // Actualizar los datos del cliente si están disponibles
+                            if (response.data.cliente_nombre) {
+                                setCliente(prev => ({
+                                    ...prev,
+                                    nombre: response.data.cliente_nombre || prev.nombre,
+                                    telefono: response.data.cliente_telefono || prev.telefono,
+                                    // Otros campos del cliente pueden venir en cliente_otros_datos
+                                    ...(response.data.cliente_otros_datos || {})
+                                }));
+                            }
+                        } catch (err) {
+                            if (err.response?.status === 404 && attempt < maxAttempts) {
+                                // Race condition: el webhook aún no creó la llamada, reintentar
+                                const delayMs = attempt * 1500; // 1.5s, 3s, 4.5s, 6s
+                                console.warn(`[Calls.jsx][FETCH] ⏳ Llamada no encontrada (intento ${attempt}/${maxAttempts}). Reintentando en ${delayMs}ms...`);
+                                await new Promise(resolve => setTimeout(resolve, delayMs));
+                                return fetchWithRetry(attempt + 1, maxAttempts);
+                            } else {
+                                console.error(`[Calls.jsx][FETCH] ✗ Error después de ${attempt} intentos:`, err);
+                                console.error('[Calls.jsx][FETCH] Error details:', err.response?.data);
+                                // No establecer error crítico, usar la info básica que ya tenemos
+                            }
+                        }
+                    };
+                    
+                    // Iniciar el proceso de obtención con retries
+                    await fetchWithRetry();
+                    
+                } else if (!callSid) {
+                    console.warn('[Calls.jsx][FETCH] ⚠️ No se pudo obtener CallSid de ninguna fuente');
+                    console.warn('[Calls.jsx][FETCH] currentCallInfo:', currentCallInfo);
+                    console.warn('[Calls.jsx][FETCH] twilioClient.activeCall:', twilioClient.activeCall);
+                    console.warn('[Calls.jsx][FETCH] twilioClient.getCallInfo():', twilioClient.getCallInfo());
+                }
+            } else if (!isInCall) {
+                // Limpiar cuando no hay llamada
+                if (currentCallSid || fullCallInfo) {
+                    console.log('[Calls.jsx][FETCH] Limpiando CallSid y fullCallInfo');
+                    setCurrentCallSid(null);
+                    setFullCallInfo(null);
+                }
+            }
+        };
+        
+        fetchFullCallInfo();
+    }, [isInCall, currentCallInfo, currentCallSid]);
 
     // Mostrar alerta cuando hay llamada entrante
     React.useEffect(() => {
@@ -174,6 +284,8 @@ const Calls = () => {
         console.log("Iniciando venta con datos:", cliente, venta);
         // Aquí puedes agregar la lógica para iniciar la venta
     };
+
+    console.log('SID LLAMADA ACTUAL', fullCallInfo)
 
     return (
         <MainLayout title="Llamadas">
