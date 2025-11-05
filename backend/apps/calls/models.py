@@ -108,7 +108,14 @@ class Llamada(models.Model):
         'Twilio Call SID',
         max_length=100,
         blank=True,
-        help_text='ID único de la llamada en Twilio'
+        help_text='ID único de la llamada en Twilio (parent call)'
+    )
+    twilio_child_call_sid = models.CharField(
+        'Twilio Child Call SID',
+        max_length=100,
+        blank=True,
+        null=True,  # 🔧 Permitir nulos - se guarda después cuando Twilio envía el webhook
+        help_text='ID del child call (cuando se usa Dial, como en llamadas automáticas)'
     )
     twilio_status = models.CharField(
         'Estado Twilio',

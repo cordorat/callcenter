@@ -117,6 +117,7 @@ class TwilioClient:
                 'answered_by': call.answered_by,
                 'start_time': call.start_time,
                 'end_time': call.end_time,
+                'parent_call_sid': call.parent_call_sid,  # 🔥 CRÍTICO: Para detectar child calls
             }
         except Exception as e:
             logger.error(f"Error al obtener detalles de llamada {call_sid}: {str(e)}")

@@ -83,13 +83,13 @@ const useTwilioCall = () => {
             const callSid = call.parameters.CallSid;
             if (callSid) {
               console.log('[useTwilioCall] Obteniendo información de llamada con CallSid:', callSid);
-              const response = await apiClient.get(`/api/calls/by-sid/${callSid}/`);
+              const response = await apiClient.get(`/api/calls/llamadas/by-sid/${callSid}/`);
               setCurrentCallInfo(response.data);
               console.log('[useTwilioCall] Información de llamada obtenida:', response.data);
 
               // Obtener información del cliente
               try {
-                const clientResp = await apiClient.get(`/api/calls/client-by-call-sid/${callSid}/`);
+                const clientResp = await apiClient.get(`/api/calls/llamadas/client-by-call-sid/${callSid}/`);
                 setCurrentClientInfo(clientResp.data);
                 console.log('[useTwilioCall] Información de cliente obtenida:', clientResp.data);
               } catch (clientErr) {
