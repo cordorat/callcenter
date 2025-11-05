@@ -9,7 +9,7 @@ export const createSale = async (data) => {
     const response = await apiClient.post('/api/calls/ventas/registrar_venta/', data);
     return response.data;
   } catch (error) {
-    console.error('Error creando el producto:', error);
+    console.error('Error creando la venta:', error);
     throw error;
   }
 };
