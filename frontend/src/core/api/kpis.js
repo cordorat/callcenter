@@ -33,3 +33,9 @@ export async function getAgenteKpiDetail(documentoId, { fecha_desde, fecha_hasta
   );
   return data;
 }
+
+// KPIs para Coordinador - Overview del equipo
+export async function getEquipoKpiOverview({ from, to }) {
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_EQUIPO_OVERVIEW, { params: { from, to } });
+  return data;
+}

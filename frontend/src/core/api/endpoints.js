@@ -36,6 +36,7 @@ export const ENDPOINTS = {
   // KPIs Coordinador
   KPIS_AGENTES: `${BASE_URL}/kpis/agentes/`,       // GET lista de agentes
   KPIS_AGENTE_DETALLE: (documentoId) => `${BASE_URL}/kpis/agentes/${documentoId}/detalle/`, // GET detalle de agente
+  KPIS_EQUIPO_OVERVIEW: `${BASE_URL}/kpis/equipo/overview/`, // GET KPIs agregados del equipo
   
   // --- CAMPAIGNS / BASES DE DATOS ---
   CAMPAIGNS_UPLOAD: `${BASE_URL}/campaigns/cargar-base-datos/`,    // POST multipart file + campana_id
