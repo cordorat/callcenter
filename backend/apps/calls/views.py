@@ -509,19 +509,19 @@ class LlamadaViewSet(viewsets.ModelViewSet):
                     telefono=telefono_destino,
                     campana_id=campana_id
                 ).first()
-            
+            print("PRELLAMADA")
             # Crear llamada
             llamada = Llamada.objects.create(
-                agente_id=agente_id,
+                agente=agente_id,
                 cliente=cliente,
                 telefono_origen='',
                 telefono_destino=telefono_destino,
-                estado_llamada_id=estado_pendiente,
-                estado_venta_id=estado_no_venta,
-                estado_reportada_id=estado_no_reportada,
+                estado_llamada=estado_pendiente,
+                estado_venta=estado_no_venta,
+                estado_reportada=estado_no_reportada,
                 fue_contestada=False
             )
-            
+            print("POSTLLAMADA")
             return Response({
                 'id': llamada.id,
                 'telefono_destino': llamada.telefono_destino,
