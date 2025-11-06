@@ -22,7 +22,7 @@ export const menuItems = [
     label: 'Dashboard',
     path: '/dashboard',
     icon: DashboardIcon, // Opcional, nombre del ícono de MUI
-    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO', 'JEFE_CAMPAÑA', 'COORDINADOR'] // Roles permitidos
+    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO', 'JEFE_CAMPANA', 'COORDINADOR'] // Roles permitidos
   },
   {
     label: 'Equipos',
@@ -46,13 +46,13 @@ export const menuItems = [
     label: 'Campaña',
     path: '/campana',
     icon: CampaignIcon,
-    roles: ['ADMIN', 'JEFE_CAMPAÑA', 'JEFE_CENTRO']
+    roles: ['ADMIN', 'JEFE_CAMPANA', 'JEFE_CENTRO']
   },
   {
     label: 'Llamadas',
     path: '/llamadas',
     icon: PhoneIcon,
-    roles: ['AGENTE', 'JEFE_CAMPAÑA', 'COORDINADOR', 'JEFE_CENTRO']
+    roles: ['AGENTE', 'JEFE_CAMPANA', 'COORDINADOR', 'JEFE_CENTRO']
   },
   {
     label: 'KPIs',
@@ -64,7 +64,7 @@ export const menuItems = [
     label: 'Historial',
     path: '/historial',
     icon: HistoryIcon,
-    roles: ['AGENTE']
+    roles: ['AGENTE', 'JEFE_CAMPANA']
   },
   {
     label: 'Comisiones',
@@ -76,7 +76,7 @@ export const menuItems = [
     label: 'Configuración',
     path: '/configuracion',
     icon: SettingsIcon,
-    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO', 'JEFE_CAMPAÑA', 'COORDINADOR']
+    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO', 'JEFE_CAMPANA', 'COORDINADOR']
   }
 ];
 

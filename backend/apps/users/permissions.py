@@ -48,3 +48,18 @@ class IsAdminOrOwner(BasePermission):
             return True
         # Los usuarios solo pueden acceder a su propio objeto
         return obj.id == request.user.id
+    
+class IsJefeCampana(BasePermission):
+    """
+    Permiso personalizado para permitir solo a Jefes de Campaña.
+    """
+    
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        
+        jefe_campana_role = get_estado('ROL_USUARIO', 'JEFE_CAMPANA')
+        admin_role = get_estado('ROL_USUARIO', 'ADMIN')
+        
+        # Admin también tiene acceso
+        return request.user.rol in [jefe_campana_role, admin_role]

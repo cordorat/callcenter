@@ -26,6 +26,11 @@ export const ENDPOINTS = {
   CALLS_ONCALL: `${BASE_URL}/calls/oncall/`,
   CALLS_HANGOUT: `${BASE_URL}/calls/hangout/`,
   CALLS_HISTORY: `${BASE_URL}/calls/llamadas/historial/`,
+  
+  // Historial Jefe de Campaña
+  CALLS_HISTORY_JEFE: `${BASE_URL}/calls/historial-jefe/`,
+  CALLS_HISTORY_JEFE_DETAIL: (id) => `${BASE_URL}/calls/historial-jefe/${id}/`,
+  CALLS_HISTORY_JEFE_CAMPANAS: `${BASE_URL}/calls/historial-jefe/mis-campanas/`,
 
   // --- KPIs ---  
   KPIS_OVERVIEW: `${BASE_URL}/kpis/overview/`,     // GET ?from=YYYY-MM-DD&to=YYYY-MM-DD
