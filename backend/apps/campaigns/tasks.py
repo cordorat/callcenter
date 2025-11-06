@@ -310,6 +310,7 @@ def procesar_llamadas_pendientes_continuo(self):
         logger.info(f"Encontradas {bases_activas.count()} bases activas")
         
         total_asignaciones = 0
+        agentes_ya_asignados = set()  # 🔒 Mantener track de agentes ya asignados en ESTA ejecución
         
         # Para cada base activa, intentar asignar llamadas
         for base in bases_activas:
@@ -323,7 +324,17 @@ def procesar_llamadas_pendientes_continuo(self):
                     logger.info(f"No hay agentes disponibles para base {base.id}")
                     continue
                 
-                logger.info(f"Encontrados {len(agentes_disponibles)} agentes disponibles")
+                # 🔒 Filtrar agentes que ya fueron asignados en esta ejecución
+                agentes_disponibles = [
+                    agente for agente in agentes_disponibles 
+                    if agente.documento_id not in agentes_ya_asignados
+                ]
+                
+                if not agentes_disponibles:
+                    logger.info(f"Todos los agentes disponibles ya tienen asignaciones en proceso")
+                    continue
+                
+                logger.info(f"Encontrados {len(agentes_disponibles)} agentes disponibles (sin asignaciones previas)")
                 
                 # Obtener clientes pendientes
                 clientes_pendientes = IteracionService.obtener_clientes_pendientes(base.id, MAX_INTENTOS)
@@ -343,6 +354,9 @@ def procesar_llamadas_pendientes_continuo(self):
                         break
                     
                     cliente, iteracion = clientes_pendientes[i]
+                    
+                    # 🔒 Marcar agente como asignado ANTES de lanzar la tarea
+                    agentes_ya_asignados.add(agente.documento_id)
                     
                     # Lanzar tarea de llamada
                     procesar_llamada_automatica.delay(
