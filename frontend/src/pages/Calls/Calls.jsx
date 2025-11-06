@@ -90,7 +90,6 @@ const Calls = () => {
         
         // Solo actualizar si hay currentCallInfo disponible Y estamos en llamada
         if (currentCallInfo && isEnLlamadaOAfterCall) {
-            console.log('[Calls.jsx][SYNC] ✓ Actualizando datos con currentCallInfo');
             setPhoneNumber(currentCallInfo.telefono || '');
             setCliente(prev => ({
                 ...prev, // Mantener datos anteriores por si acaso
@@ -103,26 +102,18 @@ const Calls = () => {
                 ciudad: currentCallInfo.ciudad || prev.ciudad,
             }));
         }
-        // ⚠️ NO limpiar aquí - solo actualizar cuando hay datos
-        // La limpieza se hace en el otro useEffect cuando se sale de AFTERCALL
     }, [currentCallInfo, frontendState]);
 
 
-    // ⭐ Gestionar AfterfullCallInfo y limpieza de datos al salir de AFTERCALL
     React.useEffect(() => {
-        console.log('[Calls.jsx][AFTER] Estado:', frontendState, '| fullCallInfo:', fullCallInfo?.id || 'null', '| AfterfullCallInfo:', AfterfullCallInfo?.id || 'null');
 
-        // Guardar fullCallInfo cuando tenga datos (durante la llamada o justo después)
         if (fullCallInfo && fullCallInfo.id !== AfterfullCallInfo?.id) {
-            console.log('[Calls.jsx][AFTER] ✓ Guardando fullCallInfo (id:', fullCallInfo.id, ')');
             setAfterfullCallInfo(fullCallInfo);
         }
         
-        // ⭐ LIMPIEZA: Solo cuando salimos completamente de flujo de llamada (CALL/AFTERCALL)
         const isEnFlujoLlamada = frontendState === 'AFTERCALL' || frontendState === 'CALL' || frontendState === 'EN_LLAMADA';
         
         if (!isEnFlujoLlamada && (AfterfullCallInfo || cliente.id)) {
-            console.log('[Calls.jsx][AFTER] 🧹 Limpiando todo - salió de flujo de llamada a:', frontendState);
             setAfterfullCallInfo(null);
             setCliente({
                 id: null,
@@ -138,8 +129,6 @@ const Calls = () => {
     }, [frontendState, fullCallInfo, AfterfullCallInfo, cliente.id]);
 
     
-
-
     // Obtener información completa de la llamada usando el CallSid cuando hay una llamada activa
     React.useEffect(() => {
         const fetchFullCallInfo = async () => {
@@ -153,13 +142,11 @@ const Calls = () => {
                 // Opción 1: Desde currentCallInfo (viene del hook useTwilioCall)
                 if (currentCallInfo?.twilio_call_sid) {
                     callSid = currentCallInfo.twilio_call_sid;
-                    console.log('[Calls.jsx][FETCH] CallSid desde currentCallInfo:', callSid);
                 }
                 
                 // Opción 2: Desde twilioClient.activeCall directamente
                 if (!callSid && twilioClient.activeCall) {
                     callSid = twilioClient.activeCall.parameters?.CallSid;
-                    console.log('[Calls.jsx][FETCH] CallSid desde twilioClient.activeCall:', callSid);
                 }
                 
                 // Opción 3: Desde twilioClient.getCallInfo()
@@ -167,14 +154,11 @@ const Calls = () => {
                     const callInfo = twilioClient.getCallInfo();
                     if (callInfo?.parameters?.CallSid) {
                         callSid = callInfo.parameters.CallSid;
-                        console.log('[Calls.jsx][FETCH] CallSid desde twilioClient.getCallInfo():', callSid);
                     }
                 }
                 
-                console.log('[Calls.jsx][FETCH] CallSid final:', callSid, '| currentCallSid:', currentCallSid);
                 
                 if (callSid && callSid !== currentCallSid) {
-                    console.log('[Calls.jsx][FETCH] ✓ Obteniendo información completa de llamada con CallSid:', callSid);
                     setCurrentCallSid(callSid);
                     
                     // Función auxiliar para intentar obtener la llamada con retries
@@ -190,7 +174,6 @@ const Calls = () => {
                             console.log(`[Calls.jsx][FETCH] ✓ Información completa obtenida (intento ${attempt}):`, response.data);
                             setFullCallInfo(response.data);
                             
-                            // ⭐ Actualizar cliente con información completa de la llamada
                             if (response.data.cliente_nombre) {
                                 console.log('[Calls.jsx][FETCH] 📝 Actualizando cliente con fullCallInfo');
                                 
@@ -200,9 +183,7 @@ const Calls = () => {
                                     if (typeof response.data.cliente_otros_datos === 'string') {
                                         try {
                                             otrosDatos = JSON.parse(response.data.cliente_otros_datos);
-                                            console.log('[Calls.jsx][FETCH] cliente_otros_datos parseado:', otrosDatos);
                                         } catch (err) {
-                                            console.error('[Calls.jsx][FETCH] Error parseando cliente_otros_datos:', err);
                                             otrosDatos = {};
                                         }
                                     } else if (typeof response.data.cliente_otros_datos === 'object') {
@@ -224,15 +205,12 @@ const Calls = () => {
                             
                             // Actualizar los datos del cliente si están disponibles
                             if (response.data.cliente_nombre) {
-                                // ⭐ Manejar cliente_otros_datos que puede ser string JSON o objeto
                                 let otrosDatos = {};
                                 if (response.data.cliente_otros_datos) {
                                     if (typeof response.data.cliente_otros_datos === 'string') {
                                         try {
                                             otrosDatos = JSON.parse(response.data.cliente_otros_datos);
-                                            console.log('[Calls.jsx][FETCH] cliente_otros_datos parseado:', otrosDatos);
                                         } catch (err) {
-                                            console.error('[Calls.jsx][FETCH] Error parseando cliente_otros_datos:', err);
                                             otrosDatos = {};
                                         }
                                     } else if (typeof response.data.cliente_otros_datos === 'object') {
@@ -242,10 +220,9 @@ const Calls = () => {
                                 
                                 setCliente(prev => ({
                                     ...prev,
-                                    id: response.data.cliente || prev.id, // ⭐ ID del cliente desde el campo 'cliente'
+                                    id: response.data.cliente || prev.id, 
                                     nombre: response.data.cliente_nombre || prev.nombre,
                                     telefono: response.data.cliente_telefono || prev.telefono,
-                                    // ⭐ Solo tomar campos específicos de cliente_otros_datos
                                     documento: otrosDatos.documento_id || otrosDatos.documento || prev.documento,
                                     direccion: otrosDatos.direccion || prev.direccion,
                                     correo: otrosDatos.email || otrosDatos.correo || prev.correo,
@@ -262,7 +239,6 @@ const Calls = () => {
                             } else {
                                 console.error(`[Calls.jsx][FETCH] ✗ Error después de ${attempt} intentos:`, err);
                                 console.error('[Calls.jsx][FETCH] Error details:', err.response?.data);
-                                // No establecer error crítico, usar la info básica que ya tenemos
                             }
                         }
                     };
@@ -356,9 +332,6 @@ const Calls = () => {
         setShowIncomingAlert(false);
     }
 
-    console.log('fullCallinfo', fullCallInfo)
-    console.log('CurrentCallinfo', currentCallInfo)
-    console.log('Afterfullcallinfo', AfterfullCallInfo)
     return (
         <MainLayout title="Llamadas">
             {/* Alerta de llamada entrante */}

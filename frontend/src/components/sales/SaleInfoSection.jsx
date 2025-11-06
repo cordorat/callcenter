@@ -25,18 +25,14 @@ export default function SaleInfoSection({ cliente, llamada_id, campana_id, onVen
     observaciones: "",
   });
 
-  // 🔄 Mantener sincronizado el ID de la llamada
   React.useEffect(() => {
     if (llamada_id !== localLlamadaId) {
-      console.log("[SaleInfoSection] 🔄 Actualizando localLlamadaId:", llamada_id);
       setLocalLlamadaId(llamada_id);
     }
   }, [llamada_id]);
 
-  // 🔄 Cargar productos según la campaña
   React.useEffect(() => {
     if (!campana_id) {
-      console.log("[SaleInfoSection] No hay campana_id, limpiando productos");
       setProductos([]);
       return;
     }
@@ -45,10 +41,8 @@ export default function SaleInfoSection({ cliente, llamada_id, campana_id, onVen
       setLoadingProductos(true);
       try {
         const res = await getProducts({ campaña: campana_id });
-        // ✅ Asegurar que productos sea siempre un array
         setProductos(res.productos || []);
       } catch (error) {
-        console.error("[SaleInfoSection] Error al obtener productos:", error);
         setProductos([]);
       } finally {
         setLoadingProductos(false);
@@ -66,16 +60,8 @@ export default function SaleInfoSection({ cliente, llamada_id, campana_id, onVen
     onVentaChange?.(nuevaVenta);
   };
 
-  console.log("🧍 Cliente:", cliente);
 
-  // ✅ Crear venta con los datos actuales
   const handleCreateVenta = async (datosVenta) => {
-    console.log("[SaleInfo] 📋 Datos para venta:", {
-      llamada_id: localLlamadaId,
-      cliente_nombre: cliente?.nombre,
-      cliente_id: cliente?.id,
-      ...datosVenta,
-    });
 
     // Validaciones básicas
     if (!localLlamadaId) {
@@ -105,22 +91,16 @@ export default function SaleInfoSection({ cliente, llamada_id, campana_id, onVen
         observaciones: datosVenta.observaciones || "",
       };
 
-      console.log("[SaleInfo] 📤 Enviando venta:", payload);
 
-      // ✅ createSale devuelve directamente response.data si es exitoso
-      // o lanza error si falla (se captura en catch)
       const result = await createSale(payload);
       
       alert("✅ Venta registrada exitosamente");
-      console.log("[SaleInfo] ✅ Venta registrada:", result);
 
-      // Limpiar formulario
       const nuevaVenta = { producto: "", monto: "", observaciones: "" };
       setVenta(nuevaVenta);
       onVentaChange?.(nuevaVenta);
       
     } catch (error) {
-      console.error("[SaleInfo] ❌ Error al registrar venta:", error);
       
       // Mostrar mensaje de error específico del backend si existe
       const errorMessage = error.response?.data?.detail 
