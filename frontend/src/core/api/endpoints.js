@@ -28,9 +28,9 @@ export const ENDPOINTS = {
   CALLS_HISTORY: `${BASE_URL}/calls/llamadas/historial/`,
   
   // Historial Jefe de Campaña
-  CALLS_HISTORY_JEFE: `${BASE_URL}/calls/historial-jefe/`,
-  CALLS_HISTORY_JEFE_DETAIL: (id) => `${BASE_URL}/calls/historial-jefe/${id}/`,
-  CALLS_HISTORY_JEFE_CAMPANAS: `${BASE_URL}/calls/historial-jefe/mis-campanas/`,
+  CALLS_HISTORY_JEFE: `${BASE_URL}/calls/historial-jefecampana/`,
+  CALLS_HISTORY_JEFE_DETAIL: (id) => `${BASE_URL}/calls/historial-jefecampana/${id}/`,
+  CALLS_HISTORY_JEFE_CAMPANAS: `${BASE_URL}/calls/historial-jefecampana/mis-campanas/`,
 
   // --- KPIs ---  
   KPIS_OVERVIEW: `${BASE_URL}/kpis/overview/`,     // GET ?from=YYYY-MM-DD&to=YYYY-MM-DD
@@ -42,6 +42,9 @@ export const ENDPOINTS = {
   KPIS_AGENTES: `${BASE_URL}/kpis/agentes/`,       // GET lista de agentes
   KPIS_AGENTE_DETALLE: (documentoId) => `${BASE_URL}/kpis/agentes/${documentoId}/detalle/`, // GET detalle de agente
   KPIS_EQUIPO_OVERVIEW: `${BASE_URL}/kpis/equipo/overview/`, // GET KPIs agregados del equipo
+  
+  // KPIs Jefe de Campaña
+  KPIS_CAMPANA_OVERVIEW: `${BASE_URL}/kpis/campana/overview/`, // GET KPIs de campaña
   
   // --- CAMPAIGNS / BASES DE DATOS ---
   CAMPAIGNS_UPLOAD: `${BASE_URL}/campaigns/cargar-base-datos/`,    // POST multipart file + campana_id

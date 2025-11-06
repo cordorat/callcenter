@@ -52,19 +52,19 @@ export const menuItems = [
     label: 'Llamadas',
     path: '/llamadas',
     icon: PhoneIcon,
-    roles: ['AGENTE', 'JEFE_CAMPANA', 'COORDINADOR', 'JEFE_CENTRO']
+    roles: ['AGENTE', 'COORDINADOR', 'JEFE_CENTRO']
   },
   {
     label: 'KPIs',
     path: '/kpis',
     icon: EqualizerIcon,
-    roles: ['AGENTE']
+    roles: ['AGENTE', 'JEFE_CAMPANA']
   },
   {
     label: 'Historial',
     path: '/historial',
     icon: HistoryIcon,
-    roles: ['AGENTE', 'JEFE_CAMPANA']
+    roles: ['AGENTE', 'JEFE_CAMPANA', 'JEFE_CENTRO', 'COORDINADOR']
   },
   {
     label: 'Comisiones',

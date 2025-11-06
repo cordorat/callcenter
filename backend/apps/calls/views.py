@@ -570,10 +570,10 @@ class HistorialJefeCampanaViewSet(viewsets.ReadOnlyModelViewSet):
     Solo lectura - permite ver llamadas de sus campañas asignadas.
     
     Endpoints:
-    - GET /api/calls/historial-jefe/ - Lista de llamadas con filtros
-    - GET /api/calls/historial-jefe/{id}/ - Detalle de una llamada específica
-    - GET /api/calls/historial-jefe/mis_campanas/ - Lista de campañas del jefe
-    
+    - GET /api/calls/historial-jefecampana/ - Lista de llamadas con filtros
+    - GET /api/calls/historial-jefecampana/{id}/ - Detalle de una llamada específica
+    - GET /api/calls/historial-jefecampana/mis_campanas/ - Lista de campañas del jefe
+
     Filtros disponibles (query params):
     - campana_id: ID de la campaña (obligatorio si tiene más de una)
     - agente_nombre: Nombre del agente (búsqueda parcial)

@@ -12,9 +12,10 @@ from django.db.models.functions import Extract
 
 from apps.calls.models import Llamada
 from apps.users.models import User
-from apps.users.permissions import IsAdminOrCoordinador, IsAdmin
+from apps.users.permissions import IsAdminOrCoordinador, IsAdmin, IsJefeCampana
 from apps.kpis.serializers import AgenteListSerializer, KPIAgenteDetailSerializer
 from common.estados_helper import get_estado_id, get_estado
+from apps.campaigns.models import Campana, Equipo
 
 
 class KPIViewSet(viewsets.ViewSet):
@@ -642,4 +643,231 @@ class KPIViewSet(viewsets.ViewSet):
             "tiempo_promedio_llamada": round(duracion_promedio, 2),
             "llamadas_realizadas": llamadas_realizadas,
             "tasa_conversion": round(tasa_conversion, 2)
+        })
+        
+
+    @action(detail=False, methods=['get'], url_path='campana/overview', permission_classes=[IsJefeCampana])
+    def campana_overview(self, request):
+        """
+        Endpoint para Jefe de Campaña: Devuelve KPIs agregados de una campaña.
+        Solo accesible para Jefes de Campaña y Admins.
+        
+        GET /api/kpis/campana/overview/?campana_id=1
+        GET /api/kpis/campana/overview/?campana_id=1&fecha_desde=2025-10-01&fecha_hasta=2025-11-05
+        
+        Query params:
+            campana_id: ID de la campaña (opcional si solo tiene una)
+            fecha_desde: Fecha inicio del período (YYYY-MM-DD, opcional, por defecto: hoy)
+            fecha_hasta: Fecha fin del período (YYYY-MM-DD, opcional, por defecto: hoy)
+        
+        Response:
+            {
+                "campana_id": 1,
+                "campana_nombre": "Campaña Navidad 2025",
+                "llamadas_activas": 3,
+                "agentes_disponibles": 5,
+                "tiempo_promedio_llamada": 180.5,
+                "llamadas_del_dia": 150,
+                "ventas_realizadas": 45,
+                "tasa_conversion": 30.0,
+                "fecha_consulta": "2025-11-05T15:30:00Z",
+                "total_agentes": 15,
+                "fecha_desde": "2025-11-01",
+                "fecha_hasta": "2025-11-05"
+            }
+        """
+        # ===========================
+        # 1. OBTENER CAMPAÑA
+        # ===========================
+        campana_id = request.query_params.get('campana_id')
+        
+        # Si no envía campana_id, buscar su campaña automáticamente
+        if not campana_id:
+            if request.user.is_admin():
+                return Response(
+                    {"detail": "Los administradores deben especificar campana_id"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Buscar la campaña más reciente del jefe
+            campana = Campana.objects.filter(
+                jefe_campana=request.user,
+                estado=get_estado('ESTADO_CAMPANA', 'ACTIVA')
+            ).order_by('-fecha_inicio').first()
+            
+            if not campana:
+                return Response(
+                    {"detail": "No hay una campaña asignada en el momento"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            # Validar que el jefe tenga acceso a esta campaña
+            campana = get_object_or_404(Campana, pk=campana_id)
+            
+            if not request.user.is_admin():
+                if campana.jefe_campana != request.user:
+                    return Response(
+                        {"detail": "No tienes permiso para ver KPIs de esta campaña"},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        # ===========================
+        # 2. OBTENER AGENTES DE LA CAMPAÑA
+        # ===========================
+        # Los agentes están en equipos asignados a esta campaña
+        equipos_campana = Equipo.objects.filter(
+            campana=campana,
+            is_active=True
+        )
+        
+        # Obtener IDs de agentes de todos los equipos de esta campaña
+        agentes_ids = []
+        for equipo in equipos_campana:
+            ids_equipo = equipo.agentes_detalle.values_list('agente_id', flat=True)
+            agentes_ids.extend(ids_equipo)
+        
+        # Eliminar duplicados
+        agentes_ids = list(set(agentes_ids))
+        
+        if not agentes_ids:
+            # Si no hay agentes, retornar KPIs en 0
+            return Response({
+                "campana_id": campana.pk,
+                "campana_nombre": campana.nombre,
+                "llamadas_activas": 0,
+                "agentes_disponibles": 0,
+                "tiempo_promedio_llamada": 0,
+                "llamadas_del_dia": 0,
+                "ventas_realizadas": 0,
+                "tasa_conversion": 0,
+                "fecha_consulta": timezone.now(),
+                "total_agentes": 0
+            })
+        
+        # Obtener objetos de agentes
+        agentes = User.objects.filter(
+            documento_id__in=agentes_ids,
+            is_active=True
+        )
+        
+        total_agentes = agentes.count()
+        
+        # ===========================
+        # 3. KPI 1: LLAMADAS ACTIVAS
+        # ===========================
+        # Llamadas en curso (estado EN_CURSO) de esta campaña
+        estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
+        llamadas_activas = Llamada.objects.filter(
+            agente_id__in=agentes_ids,
+            cliente__campana=campana,
+            estado_llamada=estado_en_curso
+        ).count()
+        
+        # ===========================
+        # 4. KPI 2: AGENTES DISPONIBLES
+        # ===========================
+        # Agentes con estado actual DISPONIBLE
+        estado_disponible = get_estado('ESTADO_AGENTE', 'DISPONIBLE')
+        agentes_disponibles = 0
+        
+        for agente in agentes:
+            try:
+                if hasattr(agente, 'estado_actual') and agente.estado_actual:
+                    if agente.estado_actual.estado_id == estado_disponible:
+                        agentes_disponibles += 1
+            except:
+                pass
+        
+        # ===========================
+        # 5. RANGO DE FECHAS PARA KPIs
+        # ===========================
+        # Permitir filtrar por rango de fechas (opcional)
+        # Si no se envía, usa el día actual por defecto
+        from django.utils.dateparse import parse_date
+        
+        fecha_desde_str = request.query_params.get('fecha_desde')
+        fecha_hasta_str = request.query_params.get('fecha_hasta')
+        
+        if fecha_desde_str and fecha_hasta_str:
+            fecha_desde = parse_date(fecha_desde_str)
+            fecha_hasta = parse_date(fecha_hasta_str)
+            
+            if not fecha_desde or not fecha_hasta:
+                return Response(
+                    {"detail": "Fechas inválidas. Usa formato YYYY-MM-DD"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if fecha_desde > fecha_hasta:
+                return Response(
+                    {"detail": "fecha_desde no puede ser posterior a fecha_hasta"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            # Por defecto: hoy
+            hoy = date.today()
+            fecha_desde = fecha_hasta = hoy
+        
+        # Convertir a datetime con timezone
+        tz = timezone.get_current_timezone()
+        inicio_periodo = timezone.datetime.combine(fecha_desde, timezone.datetime.min.time()).replace(tzinfo=tz)
+        fin_periodo = timezone.datetime.combine(fecha_hasta, timezone.datetime.max.time()).replace(tzinfo=tz)
+        
+        # ===========================
+        # 6. KPI 3: LLAMADAS DEL PERÍODO
+        # ===========================
+        llamadas_periodo = Llamada.objects.filter(
+            agente_id__in=agentes_ids,
+            cliente__campana=campana,
+            fecha_hora_inicio__range=(inicio_periodo, fin_periodo)
+        )
+        
+        llamadas_del_periodo = llamadas_periodo.count()
+        
+        # ===========================
+        # 7. KPI 4: TIEMPO PROMEDIO DE LLAMADA
+        # ===========================
+        # Duración promedio de llamadas contestadas del período
+        from django.db.models import Avg
+        
+        duracion_promedio = llamadas_periodo.filter(
+            fue_contestada=True,
+            duracion__isnull=False
+        ).aggregate(promedio=Avg('duracion'))['promedio'] or 0
+        
+        # ===========================
+        # 8. KPI 5 y 6: VENTAS Y TASA DE CONVERSIÓN
+        # ===========================
+        # Ventas realizadas en el período (excluir NO_VENTA)
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        
+        if estado_no_venta_id:
+            ventas_periodo = llamadas_periodo.filter(
+                fue_contestada=True
+            ).exclude(estado_venta_id=estado_no_venta_id).count()
+        else:
+            ventas_periodo = 0
+        
+        # Llamadas contestadas del período (para calcular tasa de conversión)
+        llamadas_contestadas_periodo = llamadas_periodo.filter(fue_contestada=True).count()
+        
+        # Tasa de conversión = (ventas / llamadas contestadas) * 100
+        tasa_conversion = (ventas_periodo / llamadas_contestadas_periodo * 100) if llamadas_contestadas_periodo > 0 else 0
+        
+        # ===========================
+        # 9. CONSTRUIR RESPUESTA
+        # ===========================
+        return Response({
+            "campana_id": campana.pk,
+            "campana_nombre": campana.nombre,
+            "llamadas_activas": llamadas_activas,
+            "agentes_disponibles": agentes_disponibles,
+            "tiempo_promedio_llamada": round(duracion_promedio, 2),
+            "llamadas_del_dia": llamadas_del_periodo,
+            "ventas_realizadas": ventas_periodo,
+            "tasa_conversion": round(tasa_conversion, 2),
+            "fecha_consulta": timezone.now(),
+            "total_agentes": total_agentes,
+            "fecha_desde": fecha_desde.isoformat(),
+            "fecha_hasta": fecha_hasta.isoformat()
         })

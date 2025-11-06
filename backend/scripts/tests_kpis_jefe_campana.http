@@ -1,0 +1,40 @@
+### ============================================================================
+### PRUEBAS DE KPIs - JEFE DE CAMPAÑA (HU-JEFCAM-007)
+### ============================================================================
+
+@baseUrl = http://localhost:8000/api
+@jefeCampanaToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNDI5MzAzLCJpYXQiOjE3NjI0MDA1MDMsImp0aSI6ImNhN2I2M2U4NzY5ODQ5OTA5YjUzNmViNGI3NmJiNGY4IiwiZG9jdW1lbnRvX2lkIjoiMTIzNDU2Nzg5MCJ9.64ClnuNKQqsBSwzuEyRTmAq6xppsnKsbgwGyUrEoByw
+@adminToken = TU_TOKEN_ADMIN_AQUI
+
+### 1. Login como Jefe de Campaña
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "email": "jefe_campana1@callcenter.com",
+    "password": "jefe_campana123!"
+}
+
+### 2. Obtener KPIs de campaña (sin especificar ID - usa campaña activa)
+GET {{baseUrl}}/kpis/campana/overview/
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 3. Obtener KPIs de campaña específica (por defecto: hoy)
+GET {{baseUrl}}/kpis/campana/overview/?campana_id=1
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 3.1. Obtener KPIs con rango de fechas personalizado (últimos 7 días)
+GET {{baseUrl}}/kpis/campana/overview/?campana_id=1&fecha_desde=2025-10-01&fecha_hasta=2025-11-06
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 3.2. Obtener KPIs del último mes
+GET {{baseUrl}}/kpis/campana/overview/?campana_id=1&fecha_desde=2025-10-01&fecha_hasta=2025-11-06
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 3.3. Obtener KPIs de un día específico
+GET {{baseUrl}}/kpis/campana/overview/?campana_id=1&fecha_desde=2025-11-01&fecha_hasta=2025-11-01
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 4. Acceder como Admin (debe funcionar)
+GET {{baseUrl}}/kpis/campana/overview/?campana_id=1
+Authorization: Bearer {{adminToken}}

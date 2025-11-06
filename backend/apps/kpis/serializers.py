@@ -97,3 +97,44 @@ class KPIListSerializer(serializers.Serializer):
             )
         
         return data
+
+class KPICampanaSerializer(serializers.Serializer):
+    """
+    Serializer para KPIs de campaña (Jefe de Campaña).
+    Retorna métricas agregadas de una campaña específica.
+    """
+    # Identificación de la campaña
+    campana_id = serializers.IntegerField(
+        help_text='ID de la campaña'
+    )
+    campana_nombre = serializers.CharField(
+        help_text='Nombre de la campaña'
+    )
+    
+    # KPIs principales
+    llamadas_activas = serializers.IntegerField(
+        help_text='Número de llamadas en curso en este momento'
+    )
+    agentes_disponibles = serializers.IntegerField(
+        help_text='Número de agentes disponibles ahora'
+    )
+    tiempo_promedio_llamada = serializers.FloatField(
+        help_text='Duración promedio de llamadas en segundos'
+    )
+    llamadas_del_dia = serializers.IntegerField(
+        help_text='Total de llamadas realizadas hoy'
+    )
+    ventas_realizadas = serializers.IntegerField(
+        help_text='Total de ventas realizadas en el período'
+    )
+    tasa_conversion = serializers.FloatField(
+        help_text='Tasa de conversión (%) = (ventas / llamadas contestadas) * 100'
+    )
+    
+    # Metadatos
+    fecha_consulta = serializers.DateTimeField(
+        help_text='Timestamp de cuándo se generaron estos KPIs'
+    )
+    total_agentes = serializers.IntegerField(
+        help_text='Total de agentes asignados a la campaña'
+    )

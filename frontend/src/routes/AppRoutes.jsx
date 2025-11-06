@@ -4,7 +4,8 @@ import { useAuth } from '@/core/context/AuthContext';
 import Login from '../pages/Login/Login';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import Calls from '../pages/Calls/Calls';
-import Kpis from '../pages/Kpis/Kpis';          
+import Kpis from '../pages/Kpis/Kpis';
+import KpisJefeCampana from '../pages/Kpis/KpisJefeCampana';
 import Campaing from '../pages/Campaing/Campaing';
 import Teams from '../pages/Teams/Teams';
 import PrivateRoute from './PrivateRoute';
@@ -16,6 +17,19 @@ import AgentesPage from '../pages/Kpis/AgentesPage';
 import AgentDetailPage from '../pages/Kpis/AgentDetailPage';
 import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
 import ProfilePage from '@/pages/Profile/ProfilePage';
+
+// Componente que decide qué página de KPIs mostrar según el rol
+const KpisRouter = () => {
+  const { user } = useAuth();
+  
+  // Si es Jefe de Campaña, mostrar KPIs de campaña
+  if (user?.role === 'JEFE_CAMPANA') {
+    return <KpisJefeCampana />;
+  }
+  
+  // Por defecto (AGENTE), mostrar KPIs de agente
+  return <Kpis />;
+};
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -67,12 +81,12 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Ruta KPIs */}
+        {/* Ruta KPIs - Renderiza según rol */}
         <Route
           path="/kpis"
           element={
             <PrivateRoute>
-              <Kpis />
+              <KpisRouter />
             </PrivateRoute>
           }
         />

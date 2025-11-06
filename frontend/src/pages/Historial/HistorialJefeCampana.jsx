@@ -12,7 +12,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
 import { useAuth } from "@/core/context/AuthContext";
-import { historialJefeService } from "@/core/api/historialJefe";
+import { historialJefeService } from "@/core/api/historialJefeCampana";
 
 import {
     Box,
