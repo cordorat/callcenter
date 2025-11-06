@@ -23,7 +23,7 @@ def crear_base_datos_con_clientes():
     
     try:
         # Buscar la campaña (ID 2)
-        campana = Campana.objects.get(id=2)
+        campana = Campana.objects.get(id=1)
         print(f"✅ Campaña encontrada: {campana.nombre}")
     except Campana.DoesNotExist:
         print("❌ Error: No se encontró la campaña con ID 2")

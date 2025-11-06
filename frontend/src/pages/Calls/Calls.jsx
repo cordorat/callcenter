@@ -14,20 +14,16 @@ import ClientInfoSection from '@/components/sales/ClientInfoSection';
 import SaleInfoSection from '@/components/sales/SaleInfoSection';
 
 const Calls = () => {
-    // Estado del agente (para saber si está en llamada o aftercall Y obtener campana_actual_id)
     const { frontendState, currentState } = useAgentState({ autoLoad: true, refreshInterval: 5000 });
     const { user } = useAuth();
     const [phoneNumber, setPhoneNumber] = React.useState('');
     const [isExpanded, setIsExpanded] = React.useState(false); 
     const [showIncomingAlert, setShowIncomingAlert] = React.useState(false);
-    const [currentCallSid, setCurrentCallSid] = React.useState(null); // CallSid de Twilio para la llamada activa
-    const [fullCallInfo, setFullCallInfo] = React.useState(null); // Información completa de la llamada desde el backend
-
-    // Obtener campana_id desde el estado del agente
+    const [currentCallSid, setCurrentCallSid] = React.useState(null);
+    const [fullCallInfo, setFullCallInfo] = React.useState(null);
+    const [AfterfullCallInfo, setAfterfullCallInfo] = React.useState(null);
     const campana_id = currentState?.campana_actual_id || null;
     
-
-    // Estados para cliente y venta
     const [cliente, setCliente] = React.useState({
         id: null,
         nombre: "",
@@ -48,11 +44,9 @@ const Calls = () => {
         setCliente({
             id: nuevoCliente.id || null,
             nombre: nuevoCliente.nombre || "",
-            // ⭐ CORREGIDO: Aceptar documento_id o documento
             documento: nuevoCliente.documento_id || nuevoCliente.documento || "",
             telefono: nuevoCliente.telefono || "",
             direccion: nuevoCliente.direccion || "",
-            // ⭐ CORREGIDO: Aceptar email o correo
             correo: nuevoCliente.email || nuevoCliente.correo || "",
             ciudad: nuevoCliente.ciudad || "",
         });
@@ -80,12 +74,6 @@ const Calls = () => {
         sendDigit,
         formatDuration,
         currentCallInfo,
-        currentClientInfo,
-        // ⭐ NUEVO: Datos persistentes para AFTERCALL
-        persistedCallData,
-        llamadaId,
-        clearCallData,
-        recuperarLlamadaId,
     } = useTwilioCall();
     
     // Debug: Log para ver qué está devolviendo el hook
@@ -96,33 +84,48 @@ const Calls = () => {
         console.log('[Calls.jsx][DEBUG] - callStatus:', callStatus);
     }, [isInCall, currentCallInfo, callStatus]);
     
-    // Sincronizar datos de llamada automática y limpiar al salir de EN_LLAMADA/AFTERCALL
     React.useEffect(() => {
         const isEnLlamadaOAfterCall = frontendState === 'CALL' || frontendState === 'AFTERCALL' || frontendState === 'EN_LLAMADA';
         
-        console.log('[Calls.jsx][SYNC] Estado:', frontendState, '| persistedCallData:', persistedCallData);
         
-        // Si hay información de llamada persistente Y estamos en CALL/AFTERCALL, actualizar datos
-        // ⭐ MODIFICADO: Ahora usamos persistedCallData en lugar de currentCallInfo
-        if (persistedCallData && isEnLlamadaOAfterCall) {
-            console.log('[Calls.jsx][SYNC] Actualizando datos del formulario con persistedCallData:', persistedCallData);
-            setPhoneNumber(persistedCallData.telefono || '');
+        // Solo actualizar si hay currentCallInfo disponible Y estamos en llamada
+        if (currentCallInfo && isEnLlamadaOAfterCall) {
+            console.log('[Calls.jsx][SYNC] ✓ Actualizando datos con currentCallInfo');
+            setPhoneNumber(currentCallInfo.telefono || '');
+            setCliente(prev => ({
+                ...prev, // Mantener datos anteriores por si acaso
+                id: currentCallInfo.cliente_id || prev.id, 
+                nombre: currentCallInfo.nombre || prev.nombre,
+                documento: currentCallInfo.documento || prev.documento,
+                telefono: currentCallInfo.telefono || prev.telefono,
+                direccion: currentCallInfo.direccion || prev.direccion,
+                correo: currentCallInfo.correo || prev.correo,
+                ciudad: currentCallInfo.ciudad || prev.ciudad,
+            }));
+        }
+        // ⚠️ NO limpiar aquí - solo actualizar cuando hay datos
+        // La limpieza se hace en el otro useEffect cuando se sale de AFTERCALL
+    }, [currentCallInfo, frontendState]);
+
+
+    // ⭐ Gestionar AfterfullCallInfo y limpieza de datos al salir de AFTERCALL
+    React.useEffect(() => {
+        console.log('[Calls.jsx][AFTER] Estado:', frontendState, '| fullCallInfo:', fullCallInfo?.id || 'null', '| AfterfullCallInfo:', AfterfullCallInfo?.id || 'null');
+
+        // Guardar fullCallInfo cuando tenga datos (durante la llamada o justo después)
+        if (fullCallInfo && fullCallInfo.id !== AfterfullCallInfo?.id) {
+            console.log('[Calls.jsx][AFTER] ✓ Guardando fullCallInfo (id:', fullCallInfo.id, ')');
+            setAfterfullCallInfo(fullCallInfo);
+        }
+        
+        // ⭐ LIMPIEZA: Solo cuando salimos completamente de flujo de llamada (CALL/AFTERCALL)
+        const isEnFlujoLlamada = frontendState === 'AFTERCALL' || frontendState === 'CALL' || frontendState === 'EN_LLAMADA';
+        
+        if (!isEnFlujoLlamada && (AfterfullCallInfo || cliente.id)) {
+            console.log('[Calls.jsx][AFTER] 🧹 Limpiando todo - salió de flujo de llamada a:', frontendState);
+            setAfterfullCallInfo(null);
             setCliente({
-                id: persistedCallData.cliente_id || null, // ⭐ AGREGADO: ID del cliente
-                nombre: persistedCallData.nombre || '',
-                documento: persistedCallData.documento || '',
-                telefono: persistedCallData.telefono || '',
-                direccion: persistedCallData.direccion || '',
-                correo: persistedCallData.correo || '',
-                ciudad: persistedCallData.ciudad || '',
-            });
-        } 
-        // Si NO estamos en CALL ni AFTERCALL, limpiar los datos
-        else if (!isEnLlamadaOAfterCall) {
-            console.log('[Calls.jsx][SYNC] Limpiando datos del formulario - fuera de CALL/AFTERCALL');
-            setPhoneNumber('');
-            setCliente({
-                id: null, // ⭐ AGREGADO: Limpiar ID también
+                id: null,
                 nombre: '',
                 documento: '',
                 telefono: '',
@@ -130,43 +133,12 @@ const Calls = () => {
                 correo: '',
                 ciudad: '',
             });
+            setPhoneNumber('');
         }
-        // Si estamos en CALL/AFTERCALL pero no hay persistedCallData, mantener los datos actuales
-        else {
-            console.log('[Calls.jsx][SYNC] Manteniendo datos actuales - en CALL/AFTERCALL sin nueva info');
-        }
-    }, [persistedCallData, frontendState]);
+    }, [frontendState, fullCallInfo, AfterfullCallInfo, cliente.id]);
 
-    // ⭐ NUEVO: Limpiar datos cuando el agente vuelve a DISPONIBLE
-    React.useEffect(() => {
-        if (frontendState === 'DISPONIBLE') {
-            console.log('[Calls.jsx] Agente volvió a DISPONIBLE, limpiando datos de llamada...');
-            clearCallData();
-        }
-    }, [frontendState, clearCallData]);
-
-    // ⭐ NUEVO: Recuperar llamada_id SOLO si se pierde el estado (fallback)
-    // NO recuperar si estamos cambiando de EN_LLAMADA a AFTERCALL (transición normal)
-    const prevFrontendStateRef = React.useRef(frontendState);
     
-    React.useEffect(() => {
-        const isAfterCall = frontendState === 'AFTERCALL';
-        const noTieneLlamadaId = !llamadaId && !persistedCallData?.llamada_id;
-        const prevState = prevFrontendStateRef.current;
-        
-        // Solo recuperar si:
-        // 1. Estamos en AFTERCALL sin llamada_id
-        // 2. Y NO venimos de EN_LLAMADA/CALL (es decir, es un refresh o pérdida real de estado)
-        const esTransicionNormal = prevState === 'EN_LLAMADA' || prevState === 'CALL';
-        
-        if (isAfterCall && noTieneLlamadaId && !esTransicionNormal) {
-            console.log('[Calls.jsx] En AFTERCALL sin llamada_id (NO por transición normal), intentando recuperar del backend...');
-            recuperarLlamadaId();
-        }
-        
-        // Actualizar el estado anterior
-        prevFrontendStateRef.current = frontendState;
-    }, [frontendState, llamadaId, persistedCallData, recuperarLlamadaId]);
+
 
     // Obtener información completa de la llamada usando el CallSid cuando hay una llamada activa
     React.useEffect(() => {
@@ -218,14 +190,66 @@ const Calls = () => {
                             console.log(`[Calls.jsx][FETCH] ✓ Información completa obtenida (intento ${attempt}):`, response.data);
                             setFullCallInfo(response.data);
                             
-                            // Actualizar los datos del cliente si están disponibles
+                            // ⭐ Actualizar cliente con información completa de la llamada
                             if (response.data.cliente_nombre) {
+                                console.log('[Calls.jsx][FETCH] 📝 Actualizando cliente con fullCallInfo');
+                                
+                                // Manejar cliente_otros_datos que puede ser string JSON o objeto
+                                let otrosDatos = {};
+                                if (response.data.cliente_otros_datos) {
+                                    if (typeof response.data.cliente_otros_datos === 'string') {
+                                        try {
+                                            otrosDatos = JSON.parse(response.data.cliente_otros_datos);
+                                            console.log('[Calls.jsx][FETCH] cliente_otros_datos parseado:', otrosDatos);
+                                        } catch (err) {
+                                            console.error('[Calls.jsx][FETCH] Error parseando cliente_otros_datos:', err);
+                                            otrosDatos = {};
+                                        }
+                                    } else if (typeof response.data.cliente_otros_datos === 'object') {
+                                        otrosDatos = response.data.cliente_otros_datos;
+                                    }
+                                }
+                                
                                 setCliente(prev => ({
                                     ...prev,
+                                    id: response.data.cliente || prev.id,
                                     nombre: response.data.cliente_nombre || prev.nombre,
                                     telefono: response.data.cliente_telefono || prev.telefono,
-                                    // Otros campos del cliente pueden venir en cliente_otros_datos
-                                    ...(response.data.cliente_otros_datos || {})
+                                    documento: otrosDatos.documento_id || otrosDatos.documento || prev.documento,
+                                    direccion: otrosDatos.direccion || prev.direccion,
+                                    correo: otrosDatos.email || otrosDatos.correo || prev.correo,
+                                    ciudad: otrosDatos.ciudad || prev.ciudad,
+                                }));
+                            }
+                            
+                            // Actualizar los datos del cliente si están disponibles
+                            if (response.data.cliente_nombre) {
+                                // ⭐ Manejar cliente_otros_datos que puede ser string JSON o objeto
+                                let otrosDatos = {};
+                                if (response.data.cliente_otros_datos) {
+                                    if (typeof response.data.cliente_otros_datos === 'string') {
+                                        try {
+                                            otrosDatos = JSON.parse(response.data.cliente_otros_datos);
+                                            console.log('[Calls.jsx][FETCH] cliente_otros_datos parseado:', otrosDatos);
+                                        } catch (err) {
+                                            console.error('[Calls.jsx][FETCH] Error parseando cliente_otros_datos:', err);
+                                            otrosDatos = {};
+                                        }
+                                    } else if (typeof response.data.cliente_otros_datos === 'object') {
+                                        otrosDatos = response.data.cliente_otros_datos;
+                                    }
+                                }
+                                
+                                setCliente(prev => ({
+                                    ...prev,
+                                    id: response.data.cliente || prev.id, // ⭐ ID del cliente desde el campo 'cliente'
+                                    nombre: response.data.cliente_nombre || prev.nombre,
+                                    telefono: response.data.cliente_telefono || prev.telefono,
+                                    // ⭐ Solo tomar campos específicos de cliente_otros_datos
+                                    documento: otrosDatos.documento_id || otrosDatos.documento || prev.documento,
+                                    direccion: otrosDatos.direccion || prev.direccion,
+                                    correo: otrosDatos.email || otrosDatos.correo || prev.correo,
+                                    ciudad: otrosDatos.ciudad || prev.ciudad,
                                 }));
                             }
                         } catch (err) {
@@ -332,21 +356,9 @@ const Calls = () => {
         setShowIncomingAlert(false);
     }
 
-    // Handlers para cliente
-    const handleChange = (e) => {
-        setCliente({
-            ...cliente,
-            [e.target.name]: e.target.value,
-        });
-    };
-
-    const handleStartSale = () => {
-        console.log("Iniciando venta con datos:", cliente, venta);
-        // Aquí puedes agregar la lógica para iniciar la venta
-    };
-
-    console.log('SID LLAMADA ACTUAL', fullCallInfo)
-
+    console.log('fullCallinfo', fullCallInfo)
+    console.log('CurrentCallinfo', currentCallInfo)
+    console.log('Afterfullcallinfo', AfterfullCallInfo)
     return (
         <MainLayout title="Llamadas">
             {/* Alerta de llamada entrante */}
@@ -975,7 +987,7 @@ const Calls = () => {
                         >
                             <SaleInfoSection 
                                 cliente={cliente} 
-                                llamada_id={llamadaId || currentCallInfo?.id || null}
+                                llamada_id={fullCallInfo?.id || AfterfullCallInfo?.id || null}
                                 campana_id={campana_id}
                                 onVentaChange={setVenta}
                             />
@@ -1003,7 +1015,7 @@ const Calls = () => {
                             <ClientInfoSection cliente={cliente} handleChange={handleClienteChange} />
                             <SaleInfoSection 
                                 cliente={cliente} 
-                                llamada_id={llamadaId || currentCallInfo?.id || null}
+                                llamada_id={fullCallInfo?.id || AfterfullCallInfo?.id || null}
                                 campana_id={campana_id}
                                 onVentaChange={setVenta}
                             />
