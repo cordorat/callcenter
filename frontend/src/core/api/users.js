@@ -90,5 +90,32 @@ export const usersService = {
     } catch (error) {
       throw error;
     }
+  },
+  /**
+ * Actualiza la información del perfil del usuario autenticado
+ * @param {Object} profileData - Datos del perfil (first_name, last_name, phone, foto_perfil)
+ * @returns {Promise} - Promesa con la respuesta del servidor
+ */
+  updateProfile: async (profileData) => {
+    try {
+      const response = await apiClient.patch(ENDPOINTS.USER_PROFILE, profileData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Cambia la contraseña del usuario autenticado
+   * @param {Object} passwordData - Datos de contraseña (old_password, new_password, new_password_confirm)
+   * @returns {Promise} - Promesa con la respuesta del servidor
+   */
+  changePassword: async (passwordData) => {
+    try {
+      const response = await apiClient.patch(ENDPOINTS.USER_PROFILE, passwordData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };

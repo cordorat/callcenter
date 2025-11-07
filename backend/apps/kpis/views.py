@@ -505,3 +505,141 @@ class KPIViewSet(viewsets.ViewSet):
         }
         
         return Response(data)
+
+    @action(detail=False, methods=['get'], url_path='equipo/overview')
+    def equipo_overview(self, request):
+        """
+        Endpoint para coordinadores: Devuelve KPIs agregados del equipo.
+        Solo accesible para Coordinadores y Admins.
+        
+        GET /api/kpis/equipo/overview/?from=2025-10-01&to=2025-10-21
+        
+        Query params:
+            from: Fecha inicio (YYYY-MM-DD), obligatorio
+            to: Fecha fin (YYYY-MM-DD), obligatorio
+        
+        Response:
+            {
+                "llamadas_en_curso": 5,
+                "agentes_disponibles": 3,
+                "tiempo_promedio_llamada": 180.5,
+                "llamadas_realizadas": 150,
+                "tasa_conversion": 25.5
+            }
+        """
+        # Validar permisos: Solo Admin y Coordinadores
+        if not (request.user.is_admin() or request.user.rol == get_estado('ROL_USUARIO', 'COORDINADOR')):
+            return Response(
+                {"detail": "No tienes permiso para acceder a este recurso"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Parsear fechas
+        fecha_desde_str = request.query_params.get('from')
+        fecha_hasta_str = request.query_params.get('to')
+        
+        if not fecha_desde_str or not fecha_hasta_str:
+            return Response(
+                {"detail": "Los parámetros 'from' y 'to' son requeridos (formato YYYY-MM-DD)"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        fecha_desde = parse_date(fecha_desde_str)
+        fecha_hasta = parse_date(fecha_hasta_str)
+        
+        if not fecha_desde or not fecha_hasta:
+            return Response(
+                {"detail": "Fechas inválidas. Usa formato YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validar rango de fechas
+        if fecha_desde > fecha_hasta:
+            return Response(
+                {"detail": "La fecha 'from' no puede ser posterior a 'to'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Obtener agentes del equipo
+        if request.user.is_admin():
+            # Admin ve todos los agentes
+            agentes = User.objects.filter(
+                rol=get_estado('ROL_USUARIO', 'AGENTE'),
+                is_active=True
+            )
+        else:
+            # Coordinador ve solo sus equipos
+            from apps.campaigns.models import Equipo
+            
+            equipos_coordinados = Equipo.objects.filter(
+                coordinador=request.user,
+                is_active=True
+            )
+            
+            agentes_ids = []
+            for equipo in equipos_coordinados:
+                ids_equipo = equipo.agentes_detalle.values_list('agente_id', flat=True)
+                agentes_ids.extend(ids_equipo)
+            
+            agentes_ids = list(set(agentes_ids))
+            agentes = User.objects.filter(
+                documento_id__in=agentes_ids,
+                is_active=True
+            )
+        
+        # Convertir fechas a datetime con timezone
+        tz = timezone.get_current_timezone()
+        inicio_dia = datetime.combine(fecha_desde, time.min).replace(tzinfo=tz)
+        fin_dia = datetime.combine(fecha_hasta, time.max).replace(tzinfo=tz)
+        
+        # Obtener IDs de agentes
+        agentes_ids_final = list(agentes.values_list('documento_id', flat=True))
+        
+        # KPI 1: Llamadas en curso (llamadas activas sin finalizar)
+        estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
+        llamadas_en_curso = Llamada.objects.filter(
+            agente_id__in=agentes_ids_final,
+            estado_llamada=estado_en_curso
+        ).count()
+        
+        # KPI 2: Agentes disponibles (estado actual DISPONIBLE)
+        estado_disponible = get_estado('ESTADO_AGENTE', 'DISPONIBLE')
+        agentes_disponibles = 0
+        for agente in agentes:
+            try:
+                if agente.estado_actual and agente.estado_actual.estado_id == estado_disponible:
+                    agentes_disponibles += 1
+            except:
+                pass
+        
+        # KPI 3, 4, 5: Llamadas en el rango de fechas
+        llamadas = Llamada.objects.filter(
+            agente_id__in=agentes_ids_final,
+            fecha_hora_inicio__range=(inicio_dia, fin_dia)
+        )
+        
+        # Total de llamadas realizadas
+        llamadas_realizadas = llamadas.count()
+        
+        # Duración promedio de llamadas
+        duracion_promedio = llamadas.filter(
+            duracion__isnull=False
+        ).aggregate(promedio=Avg('duracion'))['promedio'] or 0
+        
+        # Tasa de conversión (ventas / total llamadas)
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        if estado_no_venta_id:
+            ventas = llamadas.exclude(estado_venta_id=estado_no_venta_id).count()
+        else:
+            ventas = 0
+        
+        tasa_conversion = (ventas / llamadas_realizadas * 100) if llamadas_realizadas > 0 else 0
+        
+        # Respuesta
+        return Response({
+            "llamadas_en_curso": llamadas_en_curso,
+            "agentes_disponibles": agentes_disponibles,
+            "tiempo_promedio_llamada": round(duracion_promedio, 2),
+            "llamadas_realizadas": llamadas_realizadas,
+            "tasa_conversion": round(tasa_conversion, 2)
+        })

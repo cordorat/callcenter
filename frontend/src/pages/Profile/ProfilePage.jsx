@@ -26,6 +26,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import { InputAdornment } from '@mui/material';
 
 export default function ProfilePage() {
   const theme = useTheme();
@@ -51,6 +54,10 @@ export default function ProfilePage() {
     new_password: '',
     confirm_password: '',
   });
+  // Estados para mostrar/ocultar contraseñas
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -116,7 +123,7 @@ export default function ProfilePage() {
       setError('');
       setSuccess('');
 
-      await usersService.updateUser(user?.documento_id, {
+      await usersService.updateProfile({
         first_name: formData.first_name,
         last_name: formData.last_name,
         phone: formData.phone,
@@ -130,31 +137,45 @@ export default function ProfilePage() {
         setSuccess('');
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al actualizar el perfil');
+      const errorData = err.response?.data;
+
+      if (errorData) {
+        if (typeof errorData === 'object' && !errorData.message) {
+          // Formatear errores de campo específicos
+          const errorMessages = Object.entries(errorData)
+            .map(([field, messages]) => {
+              const fieldName = {
+                first_name: 'Nombre',
+                last_name: 'Apellido',
+                phone: 'Teléfono',
+                email: 'Email'
+              }[field] || field;
+              return `${fieldName}: ${Array.isArray(messages) ? messages.join(', ') : messages}`;
+            })
+            .join('\n');
+          setError(errorMessages);
+        } else {
+          setError(errorData.message || 'Error al actualizar el perfil');
+        }
+      } else {
+        setError('Error al actualizar el perfil');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleChangePassword = async () => {
-    if (passwordData.new_password !== passwordData.confirm_password) {
-      setError('Las contraseñas no coinciden');
-      return;
-    }
-
-    if (passwordData.new_password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
 
     try {
       setLoading(true);
       setError('');
       setSuccess('');
 
-      await usersService.updateUser(user?.documento_id, {
+      await usersService.changePassword({
         old_password: passwordData.current_password,
         new_password: passwordData.new_password,
+        new_password_confirm: passwordData.confirm_password,
       });
 
       setSuccess('Contraseña actualizada exitosamente');
@@ -168,7 +189,30 @@ export default function ProfilePage() {
         setSuccess('');
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al cambiar la contraseña');
+      // El backend devuelve errores específicos por campo
+      const errorData = err.response?.data;
+
+      // Si hay errores de validación, mostrarlos
+      if (errorData) {
+        if (typeof errorData === 'object' && !errorData.message) {
+          // Formatear errores de campo específicos
+          const errorMessages = Object.entries(errorData)
+            .map(([field, messages]) => {
+              const fieldName = {
+                old_password: 'Contraseña actual',
+                new_password: 'Nueva contraseña',
+                new_password_confirm: 'Confirmar contraseña'
+              }[field] || field;
+              return `${fieldName}: ${Array.isArray(messages) ? messages.join(', ') : messages}`;
+            })
+            .join('\n');
+          setError(errorMessages);
+        } else {
+          setError(errorData.message || 'Error al cambiar la contraseña');
+        }
+      } else {
+        setError('Error al cambiar la contraseña');
+      }
     } finally {
       setLoading(false);
     }
@@ -270,19 +314,19 @@ export default function ProfilePage() {
 
               {!editMode && tabValue === 0 && (
                 <Button
-                    variant="contained"
-                    size="small"
-                    onClick={handleEditClick}
-                    sx={{
-                        ml: 'auto',
-                        minWidth: 0,           
-                        padding: '6px',        
-                        borderRadius: '50%',
-                        width: '36px',
-                        height: '36px',
-                    }}
-                    >
-                    <EditIcon />
+                  variant="contained"
+                  size="small"
+                  onClick={handleEditClick}
+                  sx={{
+                    ml: 'auto',
+                    minWidth: 0,
+                    padding: '6px',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                  }}
+                >
+                  <EditIcon />
                 </Button>
               )}
             </Box>
@@ -370,12 +414,12 @@ export default function ProfilePage() {
                           {loading ? <CircularProgress size={20} /> : 'Guardar'}
                         </Button>
                         <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={handleCancel}
-                            disabled={loading}
-                            fullWidth
-                            size="large"
+                          variant="contained"
+                          color="secondary"
+                          onClick={handleCancel}
+                          disabled={loading}
+                          fullWidth
+                          size="large"
                         >
                           Cancelar
                         </Button>
@@ -460,25 +504,6 @@ export default function ProfilePage() {
                           </Box>
                         </Grid>
                       </Grid>
-
-                      <Divider sx={{ my: 3 }} />
-
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            color: 'text.secondary',
-                            fontSize: '0.75rem',
-                          }}
-                        >
-                          Última Actualización
-                        </Typography>
-                        <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-                          {formatDate(user?.updated_at)}
-                        </Typography>
-                      </Box>
                     </Box>
                   )}
                 </Box>
@@ -494,35 +519,83 @@ export default function ProfilePage() {
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
-                        type="password"
+                        type={showCurrentPassword ? "text" : "password"}
                         label="Contraseña Actual"
                         name="current_password"
                         value={passwordData.current_password}
                         onChange={handlePasswordChange}
                         disabled={loading}
+                        slotProps={{
+                          input: {
+                            endAdornment: (
+                              <InputAdornment position="end">
+                                <IconButton
+                                  aria-label="toggle password visibility"
+                                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                  edge="end"
+                                  size="small"
+                                >
+                                  {showCurrentPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                </IconButton>
+                              </InputAdornment>
+                            ),
+                          }
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
-                        type="password"
+                        type={showNewPassword ? "text" : "password"}
                         label="Nueva Contraseña"
                         name="new_password"
                         value={passwordData.new_password}
                         onChange={handlePasswordChange}
                         disabled={loading}
                         helperText="Mínimo 6 caracteres"
+                        slotProps={{
+                          input: {
+                            endAdornment: (
+                              <InputAdornment position="end">
+                                <IconButton
+                                  aria-label="toggle password visibility"
+                                  onClick={() => setShowNewPassword(!showNewPassword)}
+                                  edge="end"
+                                  size="small"
+                                >
+                                  {showNewPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                </IconButton>
+                              </InputAdornment>
+                            ),
+                          }
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
-                        type="password"
+                        type={showConfirmPassword ? "text" : "password"}
                         label="Confirmar Nueva Contraseña"
                         name="confirm_password"
                         value={passwordData.confirm_password}
                         onChange={handlePasswordChange}
                         disabled={loading}
+                        slotProps={{
+                          input: {
+                            endAdornment: (
+                              <InputAdornment position="end">
+                                <IconButton
+                                  aria-label="toggle password visibility"
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  edge="end"
+                                  size="small"
+                                >
+                                  {showConfirmPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                </IconButton>
+                              </InputAdornment>
+                            ),
+                          }
+                        }}
                       />
                     </Grid>
                   </Grid>

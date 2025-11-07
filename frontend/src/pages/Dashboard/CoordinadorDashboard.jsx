@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
+import { getEquipoKpiOverview } from "@/core/api/kpis";
 import {
   Box,
   Typography,

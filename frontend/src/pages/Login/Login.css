@@ -21,12 +21,7 @@ body, input, button { font-family: "Poppins", sans-serif; }
   background: #fff;
   gap: 14px;
   z-index: 2;
-  transition: transform 0.8s ease-in-out;
   transform: translateX(30px);      
-}
-
-.login-form.shift-right {
-  transform: translateX(100%);
 }
 
 .login-form h2 {
@@ -209,11 +204,6 @@ body, input, button { font-family: "Poppins", sans-serif; }
   color: #fff;
   overflow: hidden;
   z-index: 1;
-  transition: transform 0.8s ease-in-out;
-}
-
-.welcome-section.shift-left {
-  transform: translateX(-100%);
 }
 
 .welcome-section::before {

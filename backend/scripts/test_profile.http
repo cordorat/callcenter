@@ -1,0 +1,255 @@
+### ==============================================
+### TESTS DE EDICIÓN DE PERFIL
+### Backend Call Center - Noviembre 2025
+### ==============================================
+
+@baseUrl = http://localhost:8000/api
+@adminToken = TU_TOKEN_AQUI
+@agentToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyMDU4OTc5LCJpYXQiOjE3NjIwMzAxNzksImp0aSI6IjVlYTRiMDVkZmFjYjQwYWQ4MzI0NTcwNDkyYTQ1NmFlIiwiZG9jdW1lbnRvX2lkIjoiMTExNDU2Nzg5MCJ9.stvOJDQ6p5DiVDcDkcDshwlqGHVL-XCaCp8ml37Kmls
+
+### ==============================================
+### 1. LOGIN COMO AGENTE (Copiar token después)
+### ==============================================
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+  "email": "agente123@callcenter.com",
+  "password": "agente123!"
+}
+
+### ==============================================
+### 2. CONSULTAR PERFIL (Criterio 1.3)
+### GET /api/users/profile/
+### ==============================================
+GET {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+
+### ==============================================
+### 3. ACTUALIZAR SOLO INFORMACIÓN PERSONAL (Criterio 3.3)
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "first_name": "Carlos",
+  "last_name": "Martínez",
+  "email": "carlos.martinez@callcenter.com",
+  "phone": "3001234567"
+}
+
+### ==============================================
+### 4. VALIDACIÓN: Email sin @ (Criterio 2.5.1)
+### Debe devolver error
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "email": "emailinvalido.com"
+}
+
+### ==============================================
+### 5. VALIDACIÓN: Email sin .com/.co (Criterio 2.5.1)
+### Debe devolver error
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "email": "usuario@ejemplo.net"
+}
+
+### ==============================================
+### 6. VALIDACIÓN: Teléfono con letras (Criterio 2.5.2)
+### Debe devolver error
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "phone": "300abc4567"
+}
+
+### ==============================================
+### 7. VALIDACIÓN: Teléfono con más de 10 caracteres (Criterio 2.5.2)
+### Debe devolver error
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "phone": "30012345678901"
+}
+
+### ==============================================
+### 8. CAMBIAR SOLO CONTRASEÑA (Criterio 3.2)
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "old_password": "agente123!",
+  "new_password": "NuevaPass1234!",
+  "new_password_confirm": "NuevaPass1234!"
+}
+
+### ==============================================
+### 9. VALIDACIÓN: Contraseña actual incorrecta (Criterio 3.1)
+### Debe devolver error "Contraseña incorrecta"
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "old_password": "passwordIncorrecto",
+  "new_password": "NuevaPass123!",
+  "new_password_confirm": "NuevaPass123!"
+}
+
+### ==============================================
+### 10. VALIDACIÓN: Nueva contraseña = actual (Criterio 2.3)
+### Debe devolver error "La contraseña nueva no puede ser igual a la anterior"
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "old_password": "agente123!",
+  "new_password": "agente123!",
+  "new_password_confirm": "agente123!"
+}
+
+### ==============================================
+### 11. VALIDACIÓN: Contraseñas no coinciden (Criterio 2.4)
+### Debe devolver error "Las contraseñas no coinciden"
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "old_password": "agente123!",
+  "new_password": "NuevaPass123!",
+  "new_password_confirm": "OtraPass456#"
+}
+
+### ==============================================
+### 12. VALIDACIÓN: Contraseña sin número (Criterio 2.2)
+### Debe devolver error
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "old_password": "agente123!",
+  "new_password": "SoloLetras!",
+  "new_password_confirm": "SoloLetras!"
+}
+
+### ==============================================
+### 13. VALIDACIÓN: Contraseña sin letra (Criterio 2.2)
+### Debe devolver error
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "old_password": "agente123!",
+  "new_password": "12345678!",
+  "new_password_confirm": "12345678!"
+}
+
+### ==============================================
+### 14. VALIDACIÓN: Contraseña sin carácter especial (Criterio 2.2)
+### Debe devolver error
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "old_password": "agente123!",
+  "new_password": "SoloLetras123",
+  "new_password_confirm": "SoloLetras123"
+}
+
+### ==============================================
+### 15. VALIDACIÓN: Contraseña muy corta (Criterio 2.2)
+### Debe devolver error (menos de 8 caracteres)
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "old_password": "agente123!",
+  "new_password": "Ab1!",
+  "new_password_confirm": "Ab1!"
+}
+
+### ==============================================
+### 16. VALIDACIÓN: Contraseña muy larga (Criterio 2.2)
+### Debe devolver error (más de 16 caracteres)
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "old_password": "agente123!",
+  "new_password": "ContraseñaMuyLarga123!@#",
+  "new_password_confirm": "ContraseñaMuyLarga123!@#"
+}
+
+### ==============================================
+### 17. VALIDACIÓN: Campos de contraseña incompletos (Criterio 2.1)
+### Debe devolver error pidiendo todos los campos
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "old_password": "agente123",
+  "new_password": "NuevaPass123!"
+}
+
+### ==============================================
+### 18. ACTUALIZAR PERFIL Y CONTRASEÑA JUNTOS
+### Debe actualizar ambos y devolver ambos mensajes
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "first_name": "Juan",
+  "last_name": "Actualizado",
+  "email": "juan.actualizado@callcenter.com",
+  "phone": "3109876543",
+  "old_password": "NuevaPass123!",
+  "new_password": "OtraPass456#",
+  "new_password_confirm": "OtraPass456#"
+}
+
+### ==============================================
+### 19. ACTUALIZAR FOTO DE PERFIL
+### ==============================================
+PATCH {{baseUrl}}/users/profile/
+Authorization: Bearer {{agentToken}}
+Content-Type: application/json
+
+{
+  "foto_perfil": "https://ejemplo.com/mi-foto.jpg"
+}

@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '@/core/components/layout/MainLayout';
 import { getAgentes } from '@/core/api/kpis';
+import AgentStateSelect from '@/components/AgentStateSelect';
 import {
   CircularProgress,
   Alert,
@@ -94,6 +95,18 @@ export default function AgentesPage() {
     navigate(`/kpis/agentes/${agente.id}`, {
       state: { agente },
     });
+  };
+
+  // Handler para cuando cambia el estado de un agente
+  const handleStateChanged = (agenteId, nuevoEstado) => {
+    // Actualizar el estado local del agente
+    setAgentes(prevAgentes => 
+      prevAgentes.map(agente => 
+        agente.id === agenteId 
+          ? { ...agente, estado_actual: nuevoEstado }
+          : agente
+      )
+    );
   };
 
   // Mapear estado a color
@@ -269,11 +282,11 @@ export default function AgentesPage() {
                         {agente.phone || '-'}
                       </TableCell>
                       <TableCell align="center" sx={{ borderBottom: theme.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)' }}>
-                        <Chip
-                          label={agente.estado_actual}
-                          color={getEstadoColor(agente.estado_actual)}
-                          size="small"
-                          sx={{ fontWeight: 600, fontSize: '11px', letterSpacing: '0.5px' }}
+                        <AgentStateSelect
+                          agentId={agente.id}
+                          currentState={agente.estado_actual}
+                          onStateChanged={(nuevoEstado) => handleStateChanged(agente.id, nuevoEstado)}
+                          disabled={loading}
                         />
                       </TableCell>
                       <TableCell align="center" sx={{ borderBottom: theme.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)' }}>
