@@ -16,7 +16,7 @@ import{
   Groups as GroupsIcon,
   AssignmentInd as AssignmentIndIcon
 } from '@mui/icons-material';
-
+import FactCheckIcon from "@mui/icons-material/FactCheck";
 export const menuItems = [
   {
     label: 'Dashboard',
@@ -67,6 +67,18 @@ export const menuItems = [
     roles: ['AGENTE', 'JEFE_CAMPANA', 'JEFE_CENTRO', 'COORDINADOR']
   },
   {
+    label: 'Historial',
+    path: '/historial/coordinador',
+    icon: HistoryIcon,
+    roles: ['COORDINADOR']
+  },
+  {
+    label: 'Auditoría de\nllamadas',
+    path: '/auditoria-llamadas',
+    icon: FactCheckIcon,
+    roles: ['BACKOFFICE']
+  },
+  {
     label: 'Comisiones',
     path: '/comisiones',
     icon: AttachMoneyIcon,
@@ -76,7 +88,7 @@ export const menuItems = [
     label: 'Configuración',
     path: '/configuracion',
     icon: SettingsIcon,
-    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO', 'JEFE_CAMPANA', 'COORDINADOR']
+    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO', 'JEFE_CAMPANA', 'COORDINADOR', 'BACKOFFICE']
   }
 ];
 

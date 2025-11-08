@@ -58,14 +58,7 @@ export const STATES_REQUIRING_COMMENTS = ['CAPACITACION', 'REUNION', 'AUSENTE'];
  */
 export const getCurrentState = async () => {
     try {
-        console.log('[agentStates] Obteniendo estado actual...');
-        const startTime = performance.now();
-        
         const response = await apiClient.get('/users/estados/current/');
-        
-        const endTime = performance.now();
-        console.log(`[agentStates] Estado actual recibido en ${(endTime - startTime).toFixed(0)}ms:`, response.data);
-        
         return response.data;
     } catch (error) {
         console.error('[agentStates] Error al obtener estado actual:', error);
@@ -108,17 +101,15 @@ export const changeState = async (nuevoEstado, comentarios = '', ipAddress = nul
         if (ipAddress) payload.ip_address = ipAddress;
         if (userAgent) payload.user_agent = userAgent;
 
-        console.log('[agentStates] Enviando cambio de estado:', payload);
-        const startTime = performance.now();
+        console.log('[agentStates] Cambiando estado a:', nuevoEstado);
         
         const response = await apiClient.post('/users/estados/change_state/', payload);
         
-        const endTime = performance.now();
-        console.log(`[agentStates] Respuesta recibida en ${(endTime - startTime).toFixed(0)}ms:`, response.data);
+        console.log('[agentStates] ✅ Estado cambiado exitosamente');
         
         return response.data;
     } catch (error) {
-        console.error('[agentStates] Error al cambiar estado:', error);
+        console.error('[agentStates] ❌ Error al cambiar estado:', error);
         throw error;
     }
 };

@@ -4,7 +4,7 @@ Modelos para gestión de llamadas del call center.
 from django.db import models
 from django.utils import timezone
 from apps.users.models import User, TiposParametros
-from apps.campaigns.models import Cliente, Campana
+from apps.campaigns.models import Cliente, Campana, Producto
 
 class Venta(models.Model):
     """
@@ -23,6 +23,7 @@ class Venta(models.Model):
         db_table = 'venta'
         verbose_name = 'Venta'
         verbose_name_plural = 'Ventas'
+        ordering = ['-venta_id']
     
     def __str__(self):
         return f"Venta {self.venta_id}"
@@ -107,7 +108,14 @@ class Llamada(models.Model):
         'Twilio Call SID',
         max_length=100,
         blank=True,
-        help_text='ID único de la llamada en Twilio'
+        help_text='ID único de la llamada en Twilio (parent call)'
+    )
+    twilio_child_call_sid = models.CharField(
+        'Twilio Child Call SID',
+        max_length=100,
+        blank=True,
+        null=True,  # 🔧 Permitir nulos - se guarda después cuando Twilio envía el webhook
+        help_text='ID del child call (cuando se usa Dial, como en llamadas automáticas)'
     )
     twilio_status = models.CharField(
         'Estado Twilio',
@@ -145,6 +153,36 @@ class Llamada(models.Model):
         max_length=20
     )
     
+    # Campos de auditoría para BackOffice
+    estado_auditoria = models.ForeignKey(
+        TiposParametros,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='llamadas_estado_auditoria',
+        help_text='Estado: auditada, no auditada',
+        default=None  # Se establecerá en save()
+    )
+    fecha_auditoria = models.DateTimeField(
+        'Fecha de Auditoría',
+        null=True,
+        blank=True,
+        help_text='Fecha y hora en que se auditó la llamada'
+    )
+    auditado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='llamadas_auditadas',
+        help_text='Usuario que auditó la llamada'
+    )
+    notas_auditoria = models.TextField(
+        'Notas de Auditoría',
+        blank=True,
+        help_text='Observaciones del auditor'
+    )
+    
     created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
     updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
     
@@ -165,10 +203,19 @@ class Llamada(models.Model):
         return f"Llamada {self.id} - {agente_nombre}"
     
     def save(self, *args, **kwargs):
-        """Calcula duración automáticamente."""
+        """Calcula duración automáticamente y establece estado de auditoría por defecto."""
+        # Establecer estado_auditoria por defecto si es None
+        if self.estado_auditoria_id is None:
+            from common.estados_helper import get_estado_id
+            estado_no_auditada_id = get_estado_id('ESTADO_AUDITORIA', 'NO_AUDITADA')
+            if estado_no_auditada_id:
+                self.estado_auditoria_id = estado_no_auditada_id
+        
+        # Calcular duración si está disponible
         if self.fecha_hora_fin and self.fecha_hora_inicio:
             delta = self.fecha_hora_fin - self.fecha_hora_inicio
             self.duracion = int(delta.total_seconds())
+        
         super().save(*args, **kwargs)
     
     @property

@@ -8,7 +8,7 @@ import { getRandomCliente, updateCliente, validateClienteField } from "../../cor
 export default function ClientInfoSection({ cliente: clienteProp, onClienteChange }) {
     // Estado del cliente
     const [cliente, setCliente] = React.useState(clienteProp || {
-        cliente_id: null,
+        id: null,
         nombre: "",
         documento_id: "",
         telefono: "",
@@ -33,21 +33,19 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
         severity: "success"
     });
 
-    const hasCliente = Boolean(cliente.cliente_id);
+    const hasCliente = Boolean(cliente.id);
 
-    // Sincronizar con prop externa si cambia
+    // Sincronizar con prop externa solo cuando cambia el ID del cliente (nueva llamada)
     React.useEffect(() => {
-        if (clienteProp) {
+        if (clienteProp && clienteProp.id && clienteProp.id !== cliente.id) {
+            console.log('[ClientInfoSection] 🔄 Sincronizando con nuevo cliente desde prop:', clienteProp);
             setCliente(clienteProp);
         }
-    }, [clienteProp]);
+    }, [clienteProp?.id]); // Solo sincronizar cuando cambia el ID del cliente
 
-    // Notificar cambios al padre
-    React.useEffect(() => {
-        if (onClienteChange && cliente.cliente_id) {
-            onClienteChange(cliente);
-        }
-    }, [cliente, onClienteChange]);
+    // Notificar cambios al padre solo cuando el usuario interactúa (no en sincronización automática)
+    // Este useEffect NO debe ejecutarse en cada cambio de cliente para evitar loops
+    // Los cambios se notifican manualmente en handleGetRandomCliente y handleSaveEdit
 
     // Obtener cliente aleatorio
     const handleGetRandomCliente = async () => {
@@ -59,7 +57,7 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
             
             if (response.success && response.cliente) {
                 const clienteData = {
-                    cliente_id: response.cliente.cliente_id,
+                    id: response.cliente.cliente_id || response.cliente.id, // ⭐ CORREGIDO: Backend usa 'cliente_id'
                     nombre: response.cliente.nombre || "",
                     documento_id: response.cliente.documento_id || "",
                     telefono: response.cliente.telefono || "",
@@ -69,6 +67,13 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
                 };
                 
                 setCliente(clienteData);
+                if (onClienteChange) {
+                    // Usar setTimeout para asegurar que el estado se actualizó
+                    setTimeout(() => {
+                        onClienteChange(clienteData);
+                        console.log('[ClientInfoSection]Cliente notificado inmediatamente:', clienteData);
+                    }, 0);
+                }
                 setNotification({
                     open: true,
                     message: response.message || "Cliente cargado exitosamente",
@@ -129,9 +134,8 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
         }
     };
 
-    // Guardar edición
     const handleSaveEdit = async () => {
-        // Validar todos los campos antes de guardar
+        // ... validaciones existentes ...
         const validationErrors = {};
         
         ['nombre', 'telefono', 'email'].forEach(field => {
@@ -150,7 +154,6 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
             });
             return;
         }
-
         setIsSaving(true);
         
         try {
@@ -162,19 +165,29 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
                 observaciones: cliente.observaciones || "",
             };
 
-            const response = await updateCliente(cliente.cliente_id, dataToUpdate);
+            const response = await updateCliente(cliente.id, dataToUpdate);
             
             if (response.success) {
                 if (response.cliente) {
-                    setCliente({
-                        cliente_id: response.cliente.cliente_id,
+                    const updatedCliente = {
+                        id: response.cliente.cliente_id || response.cliente.id, // ⭐ CORREGIDO: Backend usa 'cliente_id'
                         nombre: response.cliente.nombre || "",
                         documento_id: response.cliente.documento_id || "",
                         telefono: response.cliente.telefono || "",
                         direccion: response.cliente.direccion || "",
                         email: response.cliente.email || "",
                         observaciones: response.cliente.observaciones || "",
-                    });
+                    };
+                    
+                    setCliente(updatedCliente);
+                    
+                    // ⭐ Notificar después de actualizar
+                    if (onClienteChange) {
+                        setTimeout(() => {
+                            onClienteChange(updatedCliente);
+                            console.log('[ClientInfoSection] 📤 Cliente actualizado notificado:', updatedCliente);
+                        }, 0);
+                    }
                 }
                 
                 setNotification({
@@ -188,6 +201,7 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
                 setClienteBackup(null);
             }
         } catch (error) {
+            // ... manejo de errores existente ...
             console.error("Error guardando cliente:", error);
             
             if (error.response?.data?.errors) {
@@ -207,7 +221,7 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
         } finally {
             setIsSaving(false);
         }
-    };
+    }
 
     // Cerrar notificación
     const handleCloseNotification = () => {
@@ -387,7 +401,7 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
             <Grid container spacing={2.5}>
                 {[
                     { label: "Nombre Completo", name: "nombre", required: true },
-                    { label: "Documento de Identidad", name: "documento_id", readOnly: true },
+                    { label: "Documento de Identidad", name: "documento_id", required: true },
                     { label: "Teléfono", name: "telefono", required: true },
                     { label: "Dirección", name: "direccion" },
                     { label: "Correo Electrónico", name: "email" },

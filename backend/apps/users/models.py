@@ -134,6 +134,24 @@ class User(AbstractUser):
             return False
         return self.rol.valor == 'AGENTE'
     
+    def is_coordinador(self):
+        """Verifica si el usuario tiene rol de COORDINADOR."""
+        if not self.rol:
+            return False
+        return self.rol.valor == 'COORDINADOR'
+    
+    def is_backoffice(self):
+        """Verifica si el usuario tiene rol de BACKOFFICE."""
+        if not self.rol:
+            return False
+        return self.rol.valor == 'BACKOFFICE'
+    
+    def is_jefe_centro(self):
+        """Verifica si el usuario tiene rol de JEFE_CENTRO."""
+        if not self.rol:
+            return False
+        return self.rol.valor == 'JEFE_CENTRO'
+    
     def get_role_display(self):
         """Devuelve el valor del rol para mostrar."""
         if self.rol:

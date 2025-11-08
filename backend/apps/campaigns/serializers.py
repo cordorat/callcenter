@@ -25,19 +25,29 @@ class ClienteSerializer(serializers.ModelSerializer):
     def get_documento_id(self, obj):
         """Extrae documento_id de otros_datos."""
         if obj.otros_datos and isinstance(obj.otros_datos, dict):
-            return obj.otros_datos.get('documento_id') or obj.otros_datos.get('documento') or obj.otros_datos.get('cedula')
+            return (obj.otros_datos.get('documento_id') or 
+                    obj.otros_datos.get('documento') or 
+                    obj.otros_datos.get('cedula') or
+                    obj.otros_datos.get('identificacion') or
+                    obj.otros_datos.get('identificación'))
         return None
     
     def get_email(self, obj):
         """Extrae email de otros_datos."""
         if obj.otros_datos and isinstance(obj.otros_datos, dict):
-            return obj.otros_datos.get('email') or obj.otros_datos.get('correo') or obj.otros_datos.get('correo_electronico')
+            return (obj.otros_datos.get('email') or 
+                    obj.otros_datos.get('correo') or 
+                    obj.otros_datos.get('correo_electronico') or
+                    obj.otros_datos.get('correo electrónico') or
+                    obj.otros_datos.get('correo_electrónico'))
         return None
     
     def get_direccion(self, obj):
         """Extrae dirección de otros_datos."""
         if obj.otros_datos and isinstance(obj.otros_datos, dict):
-            return obj.otros_datos.get('direccion') or obj.otros_datos.get('address')
+            return (obj.otros_datos.get('direccion') or 
+                    obj.otros_datos.get('dirección') or
+                    obj.otros_datos.get('address'))
         return None
     
     def get_observaciones(self, obj):
@@ -563,5 +573,5 @@ class EquipoUpdateSerializer(serializers.ModelSerializer):
 class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Producto
-        fields = ['nombre', 'descripcion', 'precio', 'activo']
+        fields = ['nombre', 'descripcion', 'precio', 'activo', 'id']
         read_only_fields = []
