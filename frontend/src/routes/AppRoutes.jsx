@@ -15,6 +15,9 @@ import CrearUsuario from '../pages/Usuario/CrearUsuario';
 import AgentesPage from '../pages/Kpis/AgentesPage';
 import AgentDetailPage from '../pages/Kpis/AgentDetailPage';
 import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
+import ProfilePage from '@/pages/Profile/ProfilePage';
+import CoordinadorCallHistoryAgents from '@/pages/Historial/CoordinadorCallHistoryAgents';
+import BackofficeCallsList from '@/pages/Backoffice/BackofficeCallsList';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -27,8 +30,16 @@ const AppRoutes = () => {
           path="/" 
           element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
         />
+
+        {/* Ruta pública: Reset Password */}
+        <Route 
+          path="/reset-password" 
+          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
+        />
         
         {/* Rutas protegidas */}
+
+        {/* Ruta Dashboard */}
         <Route 
           path="/dashboard" 
           element={
@@ -38,6 +49,7 @@ const AppRoutes = () => {
           } 
         />
 
+        {/* Ruta Llamadas */}
         <Route 
           path="/llamadas" 
           element={
@@ -47,6 +59,7 @@ const AppRoutes = () => {
           } 
         />
         
+        {/* Ruta Historial de Llamadas */}
          <Route
           path="/historial"
           element={
@@ -55,7 +68,22 @@ const AppRoutes = () => {
             </PrivateRoute>
           }
         />
-
+         <Route
+          path="/historial/coordinador"
+          element={
+            <PrivateRoute>
+              <CoordinadorCallHistoryAgents />
+            </PrivateRoute>
+          }
+        />
+         <Route
+          path="/auditoria-llamadas"
+          element={
+            <PrivateRoute>
+              <BackofficeCallsList />
+            </PrivateRoute>
+          }
+        />
         <Route
           path="/kpis"
           element={
@@ -84,33 +112,38 @@ const AppRoutes = () => {
           }
         />
 
+        {/* Rutas de Campaña */}
         <Route path="/campana" element={
           <PrivateRoute>
             <Campaing />
           </PrivateRoute>
         } />
 
+        {/* Rutas de Usuarios */}
         <Route path="/usuarios" element={
           <PrivateRoute>
             <Usuarios />
           </PrivateRoute>
-        } />
+        } />  
 
-        <Route path="/crear-usuario" element={
-          <PrivateRoute>
-            <CrearUsuario />
-          </PrivateRoute>
-        } />        
-
+        {/* Ruta para equipos */}
         <Route path="/equipos" element={
           <PrivateRoute>
             <Teams />
           </PrivateRoute>
         } />
 
+        {/* Ruta para configuracion */}
         <Route path="/configuracion" element={
           <PrivateRoute>
             <Settings />
+          </PrivateRoute>
+        } />
+
+        {/* Ruta para perfil */}
+        <Route path="/perfil" element={
+          <PrivateRoute>
+            <ProfilePage />
           </PrivateRoute>
         } />
 

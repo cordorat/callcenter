@@ -218,6 +218,7 @@ export default function ModuleShell({ title, items, children }) {
                               fontSize: '0.95rem',
                               letterSpacing: '0.3px',
                               transition: 'all 0.3s ease',
+                              whiteSpace: 'pre-line',
                             },
                           }}
                         />

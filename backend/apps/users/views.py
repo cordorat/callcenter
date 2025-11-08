@@ -13,7 +13,8 @@ from .serializers import (
     UserCreateSerializer,
     UserUpdateSerializer,
     ChangePasswordSerializer,
-    CambiarEstadoSerializer
+    CambiarEstadoSerializer,
+    ProfileUpdateSerializer
 )
 from .permissions import IsAdmin, IsAdminOrOwner
 from common.estados_helper import get_estado
@@ -148,6 +149,113 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['get', 'patch'], permission_classes=[IsAuthenticated])
+    def profile(self, request):
+        """
+        Gestiona el perfil del usuario autenticado.
+        
+        GET /api/users/profile/ 
+        - Devuelve la información del perfil (Criterio 1.3)
+        
+        PATCH /api/users/profile/
+        - Actualiza información personal y/o contraseña
+        - Body para info personal: {
+            "first_name": "Juan",
+            "last_name": "Pérez",
+            "email": "juan@ejemplo.com",
+            "phone": "3001234567",
+            "foto_perfil": "https://ejemplo.com/foto.jpg"
+        }
+        - Body para contraseña: {
+            "old_password": "actual123",
+            "new_password": "Nueva123!",
+            "new_password_confirm": "Nueva123!"
+        }
+        - Body para ambos: incluir todos los campos
+        
+        Respuestas:
+        - 200: Actualización exitosa (Criterios 3.2, 3.3)
+        - 400: Errores de validación (Criterios 2.1-2.5, 3.1)
+        """
+        
+        if request.method == 'GET':
+            # Criterio 1.3: Mostrar información del perfil
+            serializer = ProfileUpdateSerializer(request.user)
+            return Response({
+                'user': serializer.data,
+                'role': request.user.get_role_display()
+            })
+        
+        elif request.method == 'PATCH':
+            # Determinar si se está cambiando contraseña
+            cambiar_password = any(
+                key in request.data 
+                for key in ['old_password', 'new_password', 'new_password_confirm']
+            )
+            
+            # Inicializar diccionario de respuesta
+            response_data = {}
+            errors = {}
+            
+            # 1. ACTUALIZAR INFORMACIÓN PERSONAL (si hay campos de perfil)
+            campos_perfil = ['first_name', 'last_name', 'email', 'phone', 'foto_perfil']
+            tiene_campos_perfil = any(campo in request.data for campo in campos_perfil)
+            
+            if tiene_campos_perfil:
+                profile_serializer = ProfileUpdateSerializer(
+                    request.user,
+                    data=request.data,
+                    partial=True,  # Permite actualización parcial
+                    context={'request': request}
+                )
+                
+                if profile_serializer.is_valid():
+                    profile_serializer.save()
+                    response_data['profile_updated'] = True
+                    response_data['user'] = profile_serializer.data
+                else:
+                    errors.update(profile_serializer.errors)
+            
+            # 2. CAMBIAR CONTRASEÑA (si hay campos de contraseña)
+            if cambiar_password:
+                # Criterio 2.1: Todos los campos de contraseña son obligatorios
+                campos_password_requeridos = ['old_password', 'new_password', 'new_password_confirm']
+                campos_faltantes = [
+                    campo for campo in campos_password_requeridos 
+                    if campo not in request.data or not request.data[campo]
+                ]
+                
+                if campos_faltantes:
+                    # Agregar error por cada campo faltante
+                    for campo in campos_faltantes:
+                        errors[campo] = ["Este campo es obligatorio para cambiar la contraseña"]
+                else:
+                    password_serializer = ChangePasswordSerializer(
+                        data=request.data,
+                        context={'request': request}
+                    )
+                    
+                    if password_serializer.is_valid():
+                        password_serializer.save()
+                        response_data['password_updated'] = True
+                    else:
+                        errors.update(password_serializer.errors)
+            
+            # 3. VERIFICAR SI HUBO ERRORES
+            if errors:
+                return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 4. CONSTRUIR MENSAJE DE ÉXITO (Criterios 3.2 y 3.3)
+            mensajes = []
+            if response_data.get('profile_updated'):
+                mensajes.append("Se ha actualizado correctamente su información")
+            if response_data.get('password_updated'):
+                mensajes.append("Su contraseña ha sido actualizada correctamente")
+            
+            response_data['message'] = '. '.join(mensajes) + '.'
+            
+            return Response(response_data, status=status.HTTP_200_OK)
 
 
 # ===================================

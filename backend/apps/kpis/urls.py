@@ -14,4 +14,6 @@ urlpatterns = [
     path('agentes/', KPIViewSet.as_view({'get': 'agentes_list'}), name='agentes-list'),
     # Endpoint adicional: GET /api/kpis/agentes/<documento_id>/detalle/
     path('agentes/<str:documento_id>/detalle/', KPIViewSet.as_view({'get': 'agente_detalle'}), name='agente-detalle'),
+    # Endpoint adicional: GET /api/kpis/equipo/overview/
+    path('equipo/overview/', KPIViewSet.as_view({'get': 'equipo_overview'}), name='equipo-overview'),
 ]

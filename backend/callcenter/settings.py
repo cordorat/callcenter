@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from decouple import config, Csv
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -216,6 +217,11 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=True, cast=bool)
 CORS_ALLOW_CREDENTIALS = config('CORS_ALLOW_CREDENTIALS', default=True, cast=bool)
 
+# Headers personalizados permitidos (necesario para ngrok)
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'ngrok-skip-browser-warning',
+]
+
 # Twilio Configuration
 TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
 TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
@@ -227,9 +233,26 @@ TWILIO_TWIML_APP_SID = config('TWILIO_TWIML_APP_SID', default='')
 # Site URL (para webhooks de Twilio)
 SITE_URL = config('SITE_URL', default='http://localhost:8000')
 
+# Frontend URL (para enlaces de recuperación de contraseña)
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+
 # Configuración de Iteración Automática
 MAX_INTENTOS = config('MAX_INTENTOS', default=3, cast=int)
 TIEMPO_ESPERA_REASIGNACION = config('TIEMPO_ESPERA_REASIGNACION', default=30, cast=int)
+
+# =============================================================================
+# EMAIL CONFIGURATION
+# =============================================================================
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@callcenter.com')
+
+# En desarrollo, usar ConsoleEmailBackend (imprime en consola)
+# En producción, configurar EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # Validar configuración de Twilio en producción
 if not DEBUG:

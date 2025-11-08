@@ -148,7 +148,7 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
         # Determinar qué agente consultar
         if agente_id and es_admin:
             rol_agente_id = get_estado_id('ROL_USUARIO', 'AGENTE')
-            agente = get_object_or_404(User, id=agente_id, rol_id=rol_agente_id)
+            agente = get_object_or_404(User, documento_id=agente_id, rol_id=rol_agente_id)
         else:
             agente = request.user
         
@@ -228,22 +228,25 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
     def change_state(self, request):
         """
         Cambia el estado del agente autenticado.
-        Admin puede cambiar estado de cualquier agente.
+        Admin y Coordinador pueden cambiar estado de cualquier agente.
         
         Body:
             - nuevo_estado: Estado al que cambiar
             - comentarios: Motivo del cambio (opcional)
-            - agente_id: ID del agente (solo admin, opcional)
+            - agente_id: ID del agente (solo admin/coordinador, opcional)
         """
-        # Verificar si es admin
+        # Verificar si es admin o coordinador
         rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        rol_coordinador_id = get_estado_id('ROL_USUARIO', 'COORDINADOR')
         es_admin = hasattr(request.user, 'rol_id') and request.user.rol_id == rol_admin_id
+        es_coordinador = hasattr(request.user, 'rol_id') and request.user.rol_id == rol_coordinador_id
+        puede_cambiar_otros = es_admin or es_coordinador
         
         # Determinar qué agente modificar
         agente_id = request.data.get('agente_id')
-        if agente_id and es_admin:
+        if agente_id and puede_cambiar_otros:
             rol_agente_id = get_estado_id('ROL_USUARIO', 'AGENTE')
-            agente = get_object_or_404(User, id=agente_id, rol_id=rol_agente_id)
+            agente = get_object_or_404(User, documento_id=agente_id, rol_id=rol_agente_id)
         else:
             agente = request.user
         

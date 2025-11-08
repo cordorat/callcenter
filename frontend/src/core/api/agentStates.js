@@ -2,8 +2,6 @@
 
 import apiClient from './apiClient';
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-
 /**
  * Mapeo de estados del backend a estados del frontend
  */
@@ -60,14 +58,7 @@ export const STATES_REQUIRING_COMMENTS = ['CAPACITACION', 'REUNION', 'AUSENTE'];
  */
 export const getCurrentState = async () => {
     try {
-        console.log('[agentStates] Obteniendo estado actual...');
-        const startTime = performance.now();
-        
-        const response = await apiClient.get(`${BASE_URL}/users/estados/current/`);
-        
-        const endTime = performance.now();
-        console.log(`[agentStates] Estado actual recibido en ${(endTime - startTime).toFixed(0)}ms:`, response.data);
-        
+        const response = await apiClient.get('/users/estados/current/');
         return response.data;
     } catch (error) {
         console.error('[agentStates] Error al obtener estado actual:', error);
@@ -82,7 +73,7 @@ export const getCurrentState = async () => {
  */
 export const getAgentState = async (agenteId) => {
     try {
-        const response = await apiClient.get(`${BASE_URL}/users/estados/current/`, {
+        const response = await apiClient.get('/users/estados/current/', {
             params: { agente_id: agenteId }
         });
         return response.data;
@@ -110,17 +101,15 @@ export const changeState = async (nuevoEstado, comentarios = '', ipAddress = nul
         if (ipAddress) payload.ip_address = ipAddress;
         if (userAgent) payload.user_agent = userAgent;
 
-        console.log('[agentStates] Enviando cambio de estado:', payload);
-        const startTime = performance.now();
+        console.log('[agentStates] Cambiando estado a:', nuevoEstado);
         
-        const response = await apiClient.post(`${BASE_URL}/users/estados/change_state/`, payload);
+        const response = await apiClient.post('/users/estados/change_state/', payload);
         
-        const endTime = performance.now();
-        console.log(`[agentStates] Respuesta recibida en ${(endTime - startTime).toFixed(0)}ms:`, response.data);
+        console.log('[agentStates] ✅ Estado cambiado exitosamente');
         
         return response.data;
     } catch (error) {
-        console.error('[agentStates] Error al cambiar estado:', error);
+        console.error('[agentStates] ❌ Error al cambiar estado:', error);
         throw error;
     }
 };
@@ -140,7 +129,7 @@ export const changeAgentState = async (agenteId, nuevoEstado, comentarios = '') 
             comentarios: comentarios || '',
         };
 
-        const response = await apiClient.post(`${BASE_URL}/users/estados/change_state/`, payload);
+        const response = await apiClient.post('/users/estados/change_state/', payload);
         return response.data;
     } catch (error) {
         console.error('Error al cambiar estado del agente:', error);
@@ -159,7 +148,7 @@ export const changeAgentState = async (agenteId, nuevoEstado, comentarios = '') 
  */
 export const getStateHistory = async (filters = {}) => {
     try {
-        const response = await apiClient.get(`${BASE_URL}/users/estados/historial/`, {
+        const response = await apiClient.get('/users/estados/historial/', {
             params: filters
         });
         return response.data;
@@ -175,7 +164,7 @@ export const getStateHistory = async (filters = {}) => {
  */
 export const getAvailableAgents = async () => {
     try {
-        const response = await apiClient.get(`${BASE_URL}/users/estados/disponibles/`);
+        const response = await apiClient.get('/users/estados/disponibles/');
         return response.data;
     } catch (error) {
         console.error('Error al obtener agentes disponibles:', error);
@@ -189,7 +178,7 @@ export const getAvailableAgents = async () => {
  */
 export const getAllAgentStates = async () => {
     try {
-        const response = await apiClient.get(`${BASE_URL}/users/estados/todos/`);
+        const response = await apiClient.get('/users/estados/todos/');
         return response.data;
     } catch (error) {
         console.error('Error al obtener estados de agentes:', error);

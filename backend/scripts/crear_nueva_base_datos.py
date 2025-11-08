@@ -43,7 +43,7 @@ def crear_base_datos_con_clientes():
     print(f"   Estado: INACTIVA (no se activará automáticamente)")
     
     # Número de teléfono de prueba
-    telefono = "+573006228400"
+    telefono = "+573204150881"
     
     # Nombres de ejemplo
     nombres = [

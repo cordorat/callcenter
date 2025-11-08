@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import api_view, action
 from rest_framework.permissions import IsAuthenticated
-from .models import Cliente, BaseDatosCargada, Equipo, EquipoAgenteDetalle, Campana, Producto
+from .models import Cliente, BaseDatosCargada, Equipo, EquipoAgenteDetalle, Campana, Producto, ProductoCampanaDetalle
 from .serializers import (
     BaseDatosCargadaSerializer, ClienteSerializer, ClienteUpdateSerializer,
     EquipoSerializer, EquipoCreateSerializer, EquipoUpdateSerializer,
@@ -41,7 +41,6 @@ class CargarBaseDatosView(APIView):
         raw_data = file.read()
         result = chardet.detect(raw_data)
         encoding = result["encoding"] or "utf-8"
-        print(f"📄 Codificación detectada: {encoding}")
 
         # Decodificar con la codificación detectada
         try:
@@ -51,9 +50,60 @@ class CargarBaseDatosView(APIView):
 
         # Leer CSV de forma segura usando StringIO
         csv_file = io.StringIO(decoded_file)
-        reader = csv.DictReader(csv_file)
+        
+        # Detectar el delimitador automáticamente
+        sample = csv_file.read(1024)
+        csv_file.seek(0)
+        
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=',;\t|')
+            delimiter = dialect.delimiter
+        except csv.Error:
+            # Si falla la detección, usar coma por defecto
+            delimiter = ','
+        
+        reader = csv.DictReader(csv_file, delimiter=delimiter)
+        
+        # Leer primera fila para ver los nombres de columnas
+        first_row = None
+        try:
+            first_row = next(reader)
+        except StopIteration:
+            return Response(
+                {"error": "El archivo CSV está vacío o no tiene datos"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         clientes_creados = 0
+        
+        # Procesar la primera fila que ya leímos
+        if first_row:
+            # Normalizar claves (sin espacios ni mayúsculas)
+            row_normalized = {
+                (k.strip().lower() if k else ""): (v.strip() if isinstance(v, str) else v)
+                for k, v in first_row.items()
+            }
+
+            # Detectar nombre y teléfono con tolerancia
+            nombre_field = next((k for k in row_normalized.keys() if "nombre" in k), None)
+            telefono_field = next((k for k in row_normalized.keys() if "tel" in k), None)
+
+            nombre = row_normalized.get(nombre_field, "") or ""
+            telefono = row_normalized.get(telefono_field, "") or ""
+
+            # Guardar el resto como JSON limpio
+            otros = {k: v for k, v in row_normalized.items() if k not in [nombre_field, telefono_field]}
+
+            Cliente.objects.create(
+                base_datos_id=base_datos_id,
+                campana_id=campana_id,
+                nombre=nombre,
+                telefono=telefono,
+                otros_datos=otros
+            )
+            clientes_creados += 1
+        
+        # Procesar el resto de las filas
         for row in reader:
             # Normalizar claves (sin espacios ni mayúsculas)
             row_normalized = {
@@ -775,6 +825,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 class ProductoViewSet(viewsets.ModelViewSet):
+    serializer_class = ProductoSerializer
     def create(self, request, *args, **kwargs):
         # Obtener los IDs de los roles permitidos
         rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
@@ -813,6 +864,13 @@ class ProductoViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
 
         queryset = Producto.objects.all()
+
+        if self.request.query_params.get('campaña'):
+            campana_id = self.request.query_params.get('campaña')
+            productos = ProductoCampanaDetalle.objects.filter(campana=campana_id)
+            queryset = queryset.filter(
+                campanas_detalle__campana_id=campana_id
+            ).distinct()
         
         serializer = self.get_serializer(queryset, many=True)
         

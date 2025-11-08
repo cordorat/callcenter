@@ -49,6 +49,34 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Refrescar datos del usuario actual
+  const refreshUser = async () => {
+    try {
+      // Consultar el endpoint /api/users/me/ para obtener datos actualizados
+      const response = await apiClient.get(ENDPOINTS.USER_ME);
+      const updatedUserData = response.data;
+
+      // Obtener los tokens actuales del estado (no vienen en la respuesta)
+      const currentUser = user;
+
+      // Combinar datos actualizados con tokens existentes
+      const fullUserData = {
+        ...updatedUserData,
+        access: currentUser?.access,
+        refresh: currentUser?.refresh
+      };
+
+      // Actualizar estado y localStorage
+      setUser(fullUserData);
+      localStorage.setItem("user", JSON.stringify(fullUserData));
+
+      return fullUserData;
+    } catch (err) {
+      console.error("Error al refrescar datos del usuario:", err);
+      throw err;
+    }
+  };
+
   // Cargar sesión guardada
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -59,7 +87,7 @@ export function AuthProvider({ children }) {
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated, loading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

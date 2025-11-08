@@ -17,27 +17,27 @@ def create_agents():
     
     agentes = [
         {
-            'email': 'agente123456@callcenter.com',
-            'password': 'agente123456!',
-            'first_name': 'Miguel',
-            'last_name': 'Castañeda',
-            'phone': '+573002367677',
-            'documento_id': '12312312'
-        }
+            'email': 'backoffice@callcenter.com',
+            'password': 'backoffice123@',
+            'first_name': 'x',
+            'last_name': 'x',
+            'phone': '+573001234567',
+            'documento_id': '1'
+        },
     ]
     
     print("=" * 70)
     print("CREANDO USUARIOS AGENTES")
     print("=" * 70)
     
-    rol_agente = get_estado('ROL_USUARIO', 'AGENTE')
+    rol_agente = get_estado('ROL_USUARIO', 'BACKOFFICE')
     
     for data in agentes:
         email = data['email']
         
-        if User.objects.filter(email=email).exists():
+        """if User.objects.filter(email=email).exists():
             print(f'⚠️  El usuario {email} ya existe.')
-            continue
+            continue"""
         
         # Crear el usuario agente
         user = User.objects.create_user(

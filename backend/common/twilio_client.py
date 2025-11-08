@@ -76,7 +76,7 @@ class TwilioClient:
                 **kwargs
             )
             
-            logger.info(f"Llamada creada: {call.sid} de {from_} a {to}")
+            logger.info(f"✅ Llamada creada: {call.sid}")
             
             return {
                 'sid': call.sid,
@@ -117,6 +117,7 @@ class TwilioClient:
                 'answered_by': call.answered_by,
                 'start_time': call.start_time,
                 'end_time': call.end_time,
+                'parent_call_sid': call.parent_call_sid,  # 🔥 CRÍTICO: Para detectar child calls
             }
         except Exception as e:
             logger.error(f"Error al obtener detalles de llamada {call_sid}: {str(e)}")
@@ -142,8 +143,6 @@ class TwilioClient:
                 status=status,
                 **kwargs
             )
-            
-            logger.info(f"Llamada {call_sid} actualizada a estado: {status}")
             
             return {
                 'sid': call.sid,
