@@ -225,6 +225,21 @@ def poblar_tipos_parametros():
         },
         
         # ============================================================
+        # ESTADO_AUDITORIA - Estados de auditoría de llamadas
+        # ============================================================
+        {
+            'nombre': 'ESTADO_AUDITORIA',
+            'valor': 'NO_AUDITADA',
+            'descripcion': 'Llamada no ha sido auditada'
+        },
+        {
+            'nombre': 'ESTADO_AUDITORIA',
+            'valor': 'AUDITADA',
+            'descripcion': 'Llamada ya fue auditada'
+        },
+        
+        
+        # ============================================================
         # MOTIVO_RECHAZO - Motivos por los que se rechaza una llamada
         # ============================================================
         {

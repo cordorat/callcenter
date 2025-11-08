@@ -131,6 +131,9 @@ class EstadoAgenteActualSerializer(serializers.ModelSerializer):
     # Alias para compatibilidad con frontend
     tiempo_en_estado = serializers.ReadOnlyField(source='duracion_actual_segundos')
     
+    # Campaña actual del agente (desde equipo_agente_detalle → equipo → campana)
+    campana_actual_id = serializers.SerializerMethodField()
+    
     # Campos relacionados con capacidad de recibir llamadas
     # Por ahora retornamos valores basados en el estado
     acepta_llamadas = serializers.SerializerMethodField()
@@ -145,11 +148,51 @@ class EstadoAgenteActualSerializer(serializers.ModelSerializer):
             'estado_id', 'estado_valor', 'estado', 'estado_display',
             'tiempo', 'ultima_actualizacion', 
             'duracion_actual', 'tiempo_en_estado',
+            'campana_actual_id',
             'acepta_llamadas', 'conexion_activa', 'tiene_audio', 'puede_recibir_llamadas'
         ]
         read_only_fields = [
-            'tiempo', 'ultima_actualizacion', 'duracion_actual', 'tiempo_en_estado'
+            'tiempo', 'ultima_actualizacion', 'duracion_actual', 'tiempo_en_estado',
+            'campana_actual_id'
         ]
+    
+    def get_campana_actual_id(self, obj):
+        """
+        Obtiene la campaña actual del agente desde:
+        equipo_agente_detalle → equipo → campana_id
+        
+        Retorna el campana_id del primer equipo activo al que pertenece el agente.
+        Si el agente está en múltiples equipos, retorna el del primer equipo activo.
+        """
+        try:
+            # Buscar el equipo activo del agente (verificar is_active en el equipo, no en la relación)
+            equipo_agente = EquipoAgenteDetalle.objects.filter(
+                agente_id=obj.agente_id,
+                equipo_id__is_active=True  # Verificar que el equipo esté activo
+            ).select_related('equipo_id__campana').first()
+            
+            if equipo_agente and equipo_agente.equipo_id and equipo_agente.equipo_id.campana:
+                # El modelo Campana no define un atributo 'campana_id' en el objeto Django
+                # (su PK es el atributo por defecto 'id' o 'pk'). Usamos getattr para
+                # soportar ambas posibilidades y mantener robustez.
+                campana_obj = equipo_agente.equipo_id.campana
+                campana_id = getattr(campana_obj, 'id', None) or getattr(campana_obj, 'pk', None) or getattr(campana_obj, 'campana_id', None)
+                agente_ident = getattr(obj.agente_id, 'documento_id', None) or getattr(obj.agente_id, 'email', 'unknown')
+                print(f"[get_campana_actual_id] Agente {agente_ident} → Equipo {equipo_agente.equipo_id.nombre} → Campaña ID: {campana_id}")
+                return campana_id
+            else:
+                agente_ident = getattr(obj.agente_id, 'documento_id', None) or getattr(obj.agente_id, 'email', 'unknown')
+                print(f"[get_campana_actual_id] Agente {agente_ident} no tiene equipo activo o el equipo no tiene campaña")
+            
+            return None
+        except Exception as e:
+            # Log del error pero no fallar la serialización
+            import logging
+            logger = logging.getLogger(__name__)
+            agente_ident = getattr(obj.agente_id, 'documento_id', None) or getattr(obj.agente_id, 'email', str(obj.agente_id))
+            logger.error(f"Error obteniendo campana_actual_id para agente {agente_ident}: {e}")
+            print(f"[get_campana_actual_id] ERROR para agente {agente_ident}: {e}")
+            return None
     
     def get_acepta_llamadas(self, obj):
         """Un agente acepta llamadas si está DISPONIBLE."""

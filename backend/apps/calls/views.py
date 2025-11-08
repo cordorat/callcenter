@@ -8,8 +8,9 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import models as django_models
 
-from apps.calls.models import Llamada, FormularioVenta
+from apps.calls.models import Llamada, FormularioVenta, Venta
 from apps.campaigns.models import Cliente, Campana
+from apps.users.models import User
 from apps.users.permissions import IsAdmin, IsAdminOrOwner
 from apps.calls.serializers import (
     CampanaSerializer,
@@ -20,7 +21,9 @@ from apps.calls.serializers import (
     IniciarLlamadaSerializer,
     CompletarLlamadaSerializer,
     RechazarLlamadaSerializer,
-    TransferirLlamadaSerializer
+    TransferirLlamadaSerializer,
+    RegistrarVentaSerializer,
+    VentaSerializer
 )
 from common.estados_helper import get_estado_id
 from apps.campaigns.serializers import ClienteSerializer
@@ -406,94 +409,243 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         serializer = LlamadaSerializer(llamadas, many=True)
         return Response(serializer.data)
     
+    @action(detail=False, methods=['get'], url_path='by-sid/(?P<call_sid>[^/.]+)')
+    def by_sid(self, request, call_sid=None):
+        """
+        Obtiene una llamada por su Twilio Call SID con información completa del cliente.
+        
+        URL: GET /api/calls/llamadas/by-sid/<call_sid>/
+        
+        Retorna:
+            - Información completa de la llamada
+            - Información del cliente expandida (con otros_datos parseados)
+        """
+        try:
+            llamada = Llamada.objects.select_related('cliente', 'agente', 'venta').get(
+                twilio_call_sid=call_sid
+            )
+            
+            # Validar permisos: solo el agente asignado o admin
+            if llamada.agente != request.user and not request.user.is_admin():
+                return Response(
+                    {'detail': 'No tiene permisos para ver esta llamada.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Serializar llamada
+            data = LlamadaSerializer(llamada).data
+            
+            # Expandir datos del cliente si existe
+            if llamada.cliente:
+                cliente = llamada.cliente
+                data['cliente_expandido'] = {
+                    'id': cliente.cliente_id,
+                    'nombre': cliente.nombre,
+                    'telefono': cliente.telefono,
+                    'documento': cliente.otros_datos.get('documento') if cliente.otros_datos else None,
+                    'direccion': cliente.otros_datos.get('direccion') if cliente.otros_datos else None,
+                    'correo': cliente.otros_datos.get('correo') if cliente.otros_datos else None,
+                    'ciudad': cliente.otros_datos.get('ciudad') if cliente.otros_datos else None,
+                }
+            else:
+                data['cliente_expandido'] = None
+            
+            return Response(data)
+        
+        except Llamada.DoesNotExist:
+            return Response(
+                {'detail': 'Llamada no encontrada con el SID proporcionado.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['post'], url_path='create')
+    def create_call(self, request):
+        """
+        Crea un registro de llamada manual antes de iniciar la llamada con Twilio.
+        
+        URL: POST /api/calls/llamadas/create/
+        
+        Body:
+        {
+            "telefono_destino": "+573001234567",
+            "campana_id": 1,
+            "agente_id": 123,
+            "tipo": "saliente"
+        }
+        """
+        telefono_destino = request.data.get('telefono_destino')
+        campana_id = request.data.get('campana_id')
+        agente_id = request.data.get('agente_id')
+        
+        if not telefono_destino:
+            return Response(
+                {'error': 'telefono_destino es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validar que el agente sea el usuario autenticado o admin
+        if agente_id != request.user.pk and not request.user.is_admin():
+            return Response(
+                {'error': 'No tiene permisos para crear llamadas para otro agente'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            # Obtener estados iniciales
+            estado_pendiente = get_estado_id('ESTADO_LLAMADA', 'PENDIENTE')
+            estado_no_venta = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+            estado_no_reportada = get_estado_id('ESTADO_REPORTE', 'NO_REPORTADA')
+            
+            if not all([estado_pendiente, estado_no_venta, estado_no_reportada]):
+                return Response(
+                    {'error': 'Estados del sistema no configurados correctamente. Verifica TiposParametros.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Buscar cliente por teléfono si existe y hay campaña
+            cliente = None
+            if campana_id:
+                cliente = Cliente.objects.filter(
+                    telefono=telefono_destino,
+                    campana_id=campana_id
+                ).first()
+            print("PRELLAMADA")
+            # Crear llamada
+            llamada = Llamada.objects.create(
+                agente=agente_id,
+                cliente=cliente,
+                telefono_origen='',
+                telefono_destino=telefono_destino,
+                estado_llamada=estado_pendiente,
+                estado_venta=estado_no_venta,
+                estado_reportada=estado_no_reportada,
+                fue_contestada=False
+            )
+            print("POSTLLAMADA")
+            return Response({
+                'id': llamada.id,
+                'telefono_destino': llamada.telefono_destino,
+                'cliente_id': llamada.cliente.cliente_id if llamada.cliente else None,
+                'fecha_hora_inicio': llamada.fecha_hora_inicio,
+            }, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            return Response(
+                {'error': f'Error creando llamada: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['get'], url_path='disponible-venta')
+    def disponible_venta(self, request):
+        """
+        Obtiene la última llamada del agente que está disponible para registrar venta.
+        
+        URL: GET /api/calls/llamadas/disponible-venta/
+        """
+        # Buscar la llamada más reciente del agente
+        llamada = Llamada.objects.filter(
+            agente=request.user
+        ).select_related('cliente', 'venta').order_by('-fecha_hora_inicio').first()
+        
+        if not llamada:
+            return Response(
+                {'detail': 'No hay llamadas disponibles para registrar venta.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Preparar respuesta
+        data = {
+            'llamada': {
+                'id': llamada.id,
+                'telefono_destino': llamada.telefono_destino,
+                'telefono_origen': llamada.telefono_origen,
+                'campana_id': llamada.venta.campana_id.id if llamada.venta else None,
+                'sid': llamada.twilio_call_sid,
+                'fecha_inicio': llamada.fecha_hora_inicio,
+            }
+        }
+        
+        # Agregar cliente si existe
+        if llamada.cliente:
+            cliente = llamada.cliente
+            data['cliente'] = {
+                'id': cliente.cliente_id,
+                'nombre': cliente.nombre,
+                'telefono': cliente.telefono,
+                'documento': cliente.otros_datos.get('documento') if cliente.otros_datos else None,
+                'direccion': cliente.otros_datos.get('direccion') if cliente.otros_datos else None,
+                'correo': cliente.otros_datos.get('correo') if cliente.otros_datos else None,
+                'ciudad': cliente.otros_datos.get('ciudad') if cliente.otros_datos else None,
+            }
+        else:
+            data['cliente'] = None
+        
+        return Response(data)
+    
     @action(detail=False, methods=['get'], url_path='historial')
     def historial_llamadas(self, request):
         """
-        Obtiene el historial de llamadas del agente autenticado con filtros opcionales.
+        Obtiene el historial de llamadas según el rol del usuario autenticado.
         
         URL: /api/calls/llamadas/historial/
         
-        Query Parameters:
-        - fecha_desde: Fecha inicial (formato: YYYY-MM-DD)
-        - fecha_hasta: Fecha final (formato: YYYY-MM-DD)
-        - estado: Estado de la llamada (COMPLETADA, NO_CONTESTADA, RECHAZADA, FALLIDA)
-        - fue_contestada: Filtrar por llamadas contestadas (true/false)
+        Comportamiento según rol:
+        - AGENTE: Solo sus propias llamadas
+        - COORDINADOR: Llamadas de su equipo
+        - BACKOFFICE: Todas las llamadas (priorizadas para auditoría)
+        - ADMIN: Todas las llamadas
+        
+        Query Parameters (Agente):
+        - fecha_desde: Fecha inicial del rango (formato: YYYY-MM-DD)
+        - fecha_hasta: Fecha final del rango (formato: YYYY-MM-DD)
+        - estado: Estado de la llamada (COMPLETADA, NO_CONTESTADA, RECHAZADA, etc.)
         - telefono: Buscar por número de teléfono (parcial)
         - cliente: Buscar por nombre de cliente (parcial)
         - page: Número de página (default: 1)
         - page_size: Tamaño de página (1-100, default: 20)
         
+        Query Parameters (Coordinador):
+        - agente_nombre: Buscar por nombre de agente (parcial)
+        - telefono: Buscar por número de teléfono (parcial)
+        - estado: Estado de la llamada (COMPLETADA, NO_CONTESTADA, etc.)
+        
+        Query Parameters (BackOffice):
+        - estado_auditoria: NO_AUDITADA, AUDITADA
+        - fecha_desde: Fecha inicial del rango (formato: YYYY-MM-DD)
+        - fecha_hasta: Fecha final del rango (formato: YYYY-MM-DD)
+        - estado_reportada: NO_REPORTADA, REPORTADA
+        
+        Orden de prioridad (BackOffice):
+        1. Ventas sin auditar (más recientes primero)
+        2. No ventas sin auditar (más recientes primero)
+        3. Ventas auditadas (más recientes primero)
+        4. No ventas auditadas (más recientes primero)
+        
         Ejemplos:
         - /api/calls/llamadas/historial/
         - /api/calls/llamadas/historial/?fecha_desde=2025-10-01&fecha_hasta=2025-10-23
         - /api/calls/llamadas/historial/?estado=COMPLETADA&page=2&page_size=50
-        - /api/calls/llamadas/historial/?fue_contestada=true
+        - /api/calls/llamadas/historial/?estado_auditoria=NO_AUDITADA&estado_venta=VENTA
         - /api/calls/llamadas/historial/?telefono=+57300&cliente=Juan
         """
         user = request.user
+
+        # Validar que los filtros enviados estén permitidos para el rol
+        invalid = self._validate_filters_for_role(user, request.query_params)
+        if invalid:
+            return Response({'error': invalid}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Determinar queryset base según el rol del usuario
+        queryset = self._get_base_queryset_by_role(user)
         
-        # Base queryset - solo llamadas del agente
-        queryset = Llamada.objects.filter(agente=user)
+        # Aplicar filtros comunes
+        queryset = self._apply_common_filters(queryset, request)
         
-        # Obtener parámetros de query
-        fecha_desde = request.query_params.get('fecha_desde')
-        fecha_hasta = request.query_params.get('fecha_hasta')
-        estado = request.query_params.get('estado')
-        fue_contestada = request.query_params.get('fue_contestada')
-        telefono = request.query_params.get('telefono')
-        cliente = request.query_params.get('cliente')
+        # Aplicar filtros específicos de BackOffice/Coordinador
+        queryset = self._apply_specific_filters(queryset, request)
         
-        # Filtro por rango de fechas
-        if fecha_desde:
-            try:
-                queryset = queryset.filter(fecha_hora_inicio__date__gte=fecha_desde)
-            except Exception:
-                return Response(
-                    {'error': 'Formato de fecha_desde inválido. Use YYYY-MM-DD'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        if fecha_hasta:
-            try:
-                queryset = queryset.filter(fecha_hora_inicio__date__lte=fecha_hasta)
-            except Exception:
-                return Response(
-                    {'error': 'Formato de fecha_hasta inválido. Use YYYY-MM-DD'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Filtro por estado de llamada
-        if estado:
-            estado_id = get_estado_id('ESTADO_LLAMADA', estado.upper())
-            if estado_id:
-                queryset = queryset.filter(estado_llamada_id=estado_id)
-            else:
-                return Response(
-                    {'error': f'Estado "{estado}" no válido'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Filtro por fue_contestada (llamadas que realmente fueron contestadas)
-        if fue_contestada is not None:
-            if fue_contestada.lower() in ['true', '1', 'yes']:
-                queryset = queryset.filter(fue_contestada=True)
-            elif fue_contestada.lower() in ['false', '0', 'no']:
-                queryset = queryset.filter(fue_contestada=False)
-        
-        # Búsqueda por número de teléfono (solo en destino)
-        # Limpia el + y espacios para mejor compatibilidad
-        if telefono:
-            telefono_limpio = telefono.replace('+', '').replace(' ', '').replace('-', '')
-            queryset = queryset.filter(
-                django_models.Q(telefono_destino__icontains=telefono) |
-                django_models.Q(telefono_destino__icontains=telefono_limpio)
-            )
-        
-        # Búsqueda por nombre de cliente (solo campo nombre)
-        if cliente:
-            queryset = queryset.filter(
-                cliente__nombre__icontains=cliente
-            )
+        # Aplicar ordenamiento según el rol
+        queryset = self._apply_role_ordering(queryset, user)
         
         # Optimizar consulta con select_related y prefetch_related
         queryset = queryset.select_related(
@@ -502,32 +654,19 @@ class LlamadaViewSet(viewsets.ModelViewSet):
             'venta',
             'estado_llamada',
             'estado_venta',
-            'estado_reportada'
+            'estado_reportada',
+            'estado_auditoria',
+            'auditado_por'
         ).prefetch_related(
             'formularios'
-        ).order_by('-fecha_hora_inicio')
+        )
         
         # Contar total de resultados
         total_count = queryset.count()
         
         # Paginación
-        page_size = request.query_params.get('page_size', 20)
-        try:
-            page_size = int(page_size)
-            if page_size < 1:
-                page_size = 20
-            elif page_size > 100:
-                page_size = 100
-        except ValueError:
-            page_size = 20
-        
-        page = request.query_params.get('page', 1)
-        try:
-            page = int(page)
-            if page < 1:
-                page = 1
-        except ValueError:
-            page = 1
+        page_size = self._get_page_size(request)
+        page = self._get_page_number(request)
         
         # Calcular offset
         start = (page - 1) * page_size
@@ -544,7 +683,7 @@ class LlamadaViewSet(viewsets.ModelViewSet):
                 'current_page': page,
                 'page_size': page_size,
                 'results': [],
-                'message': 'No se encontraron llamadas'
+                'message': 'No se encontraron llamadas que coincidan con los criterios seleccionados'
             })
         
         # Serializar resultados
@@ -559,8 +698,493 @@ class LlamadaViewSet(viewsets.ModelViewSet):
             'total_pages': total_pages,
             'current_page': page,
             'page_size': page_size,
-            'results': serializer.data
+            'results': serializer.data,
+            'rol_usuario': user.get_role_value()
         })
+    
+    @action(detail=False, methods=['get'], url_path='by-sid/(?P<call_sid>[^/.]+)')
+    def by_sid(self, request, call_sid=None):
+        """
+        Obtiene la información completa de una llamada usando el Twilio CallSid.
+        
+        URL: /api/calls/llamadas/by-sid/{callSid}/
+        
+        Este endpoint es útil durante una llamada activa cuando el frontend
+        tiene el CallSid del evento de Twilio pero necesita la información
+        completa del modelo Llamada.
+        
+        Response:
+        {
+            "id": 123,
+            "agente": 1,
+            "agente_nombre": "Juan Pérez",
+            "cliente": 45,
+            "cliente_nombre": "María García",
+            "cliente_telefono": "+573001234567",
+            "telefono_origen": "+573009876543",
+            "telefono_destino": "+573001234567",
+            "fecha_hora_inicio": "2025-11-04T10:30:00Z",
+            "fecha_hora_fin": null,
+            "duracion": 120,
+            "twilio_call_sid": "CA1234567890abcdef",
+            "twilio_status": "in-progress",
+            "fue_contestada": true,
+            "estado_llamada": 2,
+            "estado_llamada_valor": "EN_CURSO",
+            "estado_venta": 1,
+            "estado_venta_valor": "NO_VENTA",
+            ...
+        }
+        """
+        if not call_sid:
+            return Response(
+                {'error': 'CallSid es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[by_sid] 🔍 Buscando llamada con CallSid: {call_sid}")
+        
+        # Debug adicional: Buscar si existe una llamada con 'pending'
+        pending_calls = Llamada.objects.filter(twilio_call_sid='pending').count()
+        if pending_calls > 0:
+            logger.warning(f"[by_sid] ⚠️ Hay {pending_calls} llamada(s) con twilio_call_sid='pending' (llamadas automáticas en proceso)")
+        
+        # Debug: Mostrar últimas llamadas con sus CallSids (parent y child)
+        recent_calls = Llamada.objects.order_by('-id')[:5]
+        logger.info(f"[by_sid] 📋 Últimas 5 llamadas en BD:")
+        for call in recent_calls:
+            logger.info(f"[by_sid]   - ID: {call.id}, Parent: '{call.twilio_call_sid}', Child: '{call.twilio_child_call_sid}'")
+        
+        try:
+            # 🔍 Buscar la llamada por twilio_call_sid (parent) O twilio_child_call_sid (child)
+            # Esto es necesario porque en llamadas automáticas con <Dial>, el frontend
+            # recibe el CallSid del child (la conexión del agente), pero el backend
+            # guarda inicialmente solo el parent CallSid (la llamada al cliente)
+            from django.db.models import Q
+            llamada = Llamada.objects.select_related(
+                'agente',
+                'cliente',
+                'venta',
+                'estado_llamada',
+                'estado_venta',
+                'estado_reportada',
+                'estado_auditoria'
+            ).filter(
+                Q(twilio_call_sid=call_sid) | Q(twilio_child_call_sid=call_sid)
+            ).first()
+            
+            if not llamada:
+                logger.warning(f"[by_sid] ⚠️ NO se encontró llamada con parent='{call_sid}' ni child='{call_sid}' en BD")
+                
+                # 🔥 ESTRATEGIA ALTERNATIVA: Buscar llamadas recientes con parent call y consultar API de Twilio
+                # Esto es para llamadas automáticas donde el frontend busca con Child CallSid pero aún no está guardado
+                logger.info(f"[by_sid] 🔍 Buscando parent call mediante API de Twilio...")
+                
+                from common.twilio_client import twilio_client
+                
+                if twilio_client.is_configured():
+                    try:
+                        # Consultar la API de Twilio para obtener detalles de esta llamada
+                        call_details = twilio_client.get_call_details(call_sid)
+                        parent_call_sid = call_details.get('parent_call_sid')
+                        
+                        logger.info(f"[by_sid] API Twilio dice: CallSid={call_sid}, ParentCallSid={parent_call_sid}")
+                        
+                        # Si tiene parent call, buscar por ese parent
+                        if parent_call_sid:
+                            logger.info(f"[by_sid] 🔍 Es un child call. Buscando llamada con parent CallSid: {parent_call_sid}")
+                            llamada = Llamada.objects.select_related(
+                                'agente',
+                                'cliente',
+                                'venta',
+                                'estado_llamada',
+                                'estado_venta',
+                                'estado_reportada',
+                                'estado_auditoria'
+                            ).filter(twilio_call_sid=parent_call_sid).first()
+                            
+                            if llamada:
+                                # ✅ Encontramos el parent call! Guardar el child CallSid si no está guardado
+                                if not llamada.twilio_child_call_sid:
+                                    llamada.twilio_child_call_sid = call_sid
+                                    llamada.save(update_fields=['twilio_child_call_sid'])
+                                    logger.info(f"[by_sid] ✅ Child CallSid guardado desde API: {call_sid} → Llamada {llamada.id}")
+                                else:
+                                    logger.info(f"[by_sid] ℹ️ Child CallSid ya estaba guardado")
+                    
+                    except Exception as e:
+                        logger.error(f"[by_sid] ❌ Error consultando API de Twilio: {str(e)}")
+                
+                # Si aún no tenemos llamada, lanzar excepción
+                if not llamada:
+                    logger.error(f"[by_sid] ❌ DEFINITIVAMENTE no se encontró llamada para CallSid: {call_sid}")
+                    raise Llamada.DoesNotExist
+            
+            logger.info(f"[by_sid] ✓ Llamada encontrada: ID={llamada.id}, Parent='{llamada.twilio_call_sid}', Child='{llamada.twilio_child_call_sid}', Agente={llamada.agente.get_full_name() if llamada.agente else 'None'}")
+
+            
+            # Verificar permisos: el agente solo puede ver sus propias llamadas
+            user = request.user
+            if not (user.is_admin() or user.is_backoffice() or llamada.agente == user):
+                # Si es coordinador, verificar que la llamada sea de su equipo
+                if user.is_coordinador():
+                    from apps.campaigns.models import Equipo
+                    equipos = Equipo.objects.filter(coordinador=user, is_active=True)
+                    if equipos.exists():
+                        agentes_equipo = User.objects.filter(equipos__in=equipos).distinct()
+                        if llamada.agente not in agentes_equipo:
+                            return Response(
+                                {'error': 'No tiene permisos para ver esta llamada'},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        return Response(
+                            {'error': 'No tiene permisos para ver esta llamada'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                else:
+                    return Response(
+                        {'error': 'No tiene permisos para ver esta llamada'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            
+            # Serializar con el serializer de historial que incluye más información
+            serializer = HistorialLlamadaSerializer(llamada)
+            return Response(serializer.data)
+            
+        except Llamada.DoesNotExist:
+            logger.warning(f"[by_sid] ✗ Llamada NO encontrada con CallSid: {call_sid}")
+            
+            # Debug: Listar todas las llamadas recientes para comparar
+            recientes = Llamada.objects.all().order_by('-fecha_hora_inicio')[:5]
+            logger.warning(f"[by_sid] Llamadas recientes en BD:")
+            for ll in recientes:
+                logger.warning(f"  - ID: {ll.id}, CallSid: '{ll.twilio_call_sid}', Agente: {ll.agente.get_full_name() if ll.agente else 'None'}")
+            
+            return Response(
+                {'error': 'Llamada no encontrada con ese CallSid'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['get'], url_path='client-by-call-sid/(?P<call_sid>[^/.]+)')
+    def client_by_call_sid(self, request, call_sid=None):
+        """
+        Obtiene la información del cliente asociado a una llamada usando el Twilio CallSid.
+        
+        URL: /api/calls/llamadas/client-by-call-sid/{callSid}/
+        
+        Este endpoint complementa by_sid proporcionando específicamente
+        los datos del cliente en formato más completo.
+        
+        Response:
+        {
+            "cliente_id": 45,
+            "nombre": "María García",
+            "documento": "1234567890",
+            "telefono": "+573001234567",
+            "correo": "maria@example.com",
+            "direccion": "Calle 123 #45-67",
+            "ciudad": "Bogotá",
+            "otros_datos": {...}
+        }
+        """
+        if not call_sid:
+            return Response(
+                {'error': 'CallSid es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            # 🔍 Buscar la llamada por twilio_call_sid (parent) O twilio_child_call_sid (child)
+            from django.db.models import Q
+            llamada = Llamada.objects.select_related('cliente', 'agente').filter(
+                Q(twilio_call_sid=call_sid) | Q(twilio_child_call_sid=call_sid)
+            ).first()
+            
+            if not llamada:
+                logger.warning(f"[client_by_call_sid] ⚠️ NO se encontró llamada con CallSid: {call_sid}")
+                
+                # 🔥 Consultar API de Twilio como fallback
+                from common.twilio_client import twilio_client
+                
+                if twilio_client.is_configured():
+                    try:
+                        call_details = twilio_client.get_call_details(call_sid)
+                        parent_call_sid = call_details.get('parent_call_sid')
+                        
+                        if parent_call_sid:
+                            logger.info(f"[client_by_call_sid] 🔍 Es child call. Buscando parent: {parent_call_sid}")
+                            llamada = Llamada.objects.select_related('cliente', 'agente').filter(
+                                twilio_call_sid=parent_call_sid
+                            ).first()
+                            
+                            if llamada and not llamada.twilio_child_call_sid:
+                                llamada.twilio_child_call_sid = call_sid
+                                llamada.save(update_fields=['twilio_child_call_sid'])
+                                logger.info(f"[client_by_call_sid] ✅ Child CallSid guardado")
+                    except Exception as e:
+                        logger.error(f"[client_by_call_sid] ❌ Error API Twilio: {str(e)}")
+                
+                if not llamada:
+                    raise Llamada.DoesNotExist
+            
+            # Verificar permisos
+            user = request.user
+            if not (user.is_admin() or user.is_backoffice() or llamada.agente == user):
+                if user.is_coordinador():
+                    from apps.campaigns.models import Equipo
+                    equipos = Equipo.objects.filter(coordinador=user, is_active=True)
+                    if equipos.exists():
+                        agentes_equipo = User.objects.filter(equipos__in=equipos).distinct()
+                        if llamada.agente not in agentes_equipo:
+                            return Response(
+                                {'error': 'No tiene permisos para ver esta llamada'},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        return Response(
+                            {'error': 'No tiene permisos para ver esta llamada'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                else:
+                    return Response(
+                        {'error': 'No tiene permisos para ver esta llamada'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            
+            if not llamada.cliente:
+                return Response(
+                    {'error': 'Esta llamada no tiene cliente asociado'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Serializar el cliente
+            serializer = ClienteSerializer(llamada.cliente)
+            return Response(serializer.data)
+            
+        except Llamada.DoesNotExist:
+            return Response(
+                {'error': 'Llamada no encontrada con ese CallSid'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    def _get_base_queryset_by_role(self, user):
+        """
+        Retorna el queryset base según el rol del usuario.
+        
+        - AGENTE: Solo sus propias llamadas
+        - COORDINADOR: Llamadas de los agentes de su equipo
+        - BACKOFFICE: Todas las llamadas
+        - ADMIN: Todas las llamadas
+        """
+        if user.is_admin() or user.is_backoffice():
+            # Admin y BackOffice ven todas las llamadas
+            return Llamada.objects.all()
+        
+        elif user.is_coordinador():
+            # Coordinador ve llamadas de su equipo
+            from apps.campaigns.models import Equipo
+            
+            # Buscar equipos donde el usuario es coordinador
+            equipos = Equipo.objects.filter(coordinador=user, is_active=True)
+            
+            if not equipos.exists():
+                # Si no tiene equipos asignados, retornar vacío
+                return Llamada.objects.none()
+            
+            # Obtener agentes de esos equipos usando el método get_agentes()
+            agentes_list = []
+            for equipo in equipos:
+                agentes_equipo = equipo.get_agentes()
+                agentes_list.extend(list(agentes_equipo))
+            
+            if not agentes_list:
+                # Si no hay agentes en los equipos, retornar vacío
+                return Llamada.objects.none()
+            
+            # Filtrar llamadas de esos agentes
+            return Llamada.objects.filter(agente__in=agentes_list)
+        
+        else:
+            # Agente o cualquier otro rol: solo sus propias llamadas
+            return Llamada.objects.filter(agente=user)
+    
+    def _apply_common_filters(self, queryset, request):
+        """Aplica filtros comunes a todos los roles."""
+        
+        # Filtro por rango de fechas (desde - hasta)
+        fecha_desde = request.query_params.get('fecha_desde')
+        if fecha_desde:
+            try:
+                queryset = queryset.filter(fecha_hora_inicio__date__gte=fecha_desde)
+            except Exception:
+                pass
+        
+        fecha_hasta = request.query_params.get('fecha_hasta')
+        if fecha_hasta:
+            try:
+                queryset = queryset.filter(fecha_hora_inicio__date__lte=fecha_hasta)
+            except Exception:
+                pass
+        
+        # Filtro por estado de llamada
+        estado = request.query_params.get('estado')
+        if estado:
+            estado_id = get_estado_id('ESTADO_LLAMADA', estado.upper())
+            if estado_id:
+                queryset = queryset.filter(estado_llamada_id=estado_id)
+        
+        # Búsqueda por número de teléfono
+        telefono = request.query_params.get('telefono')
+        if telefono:
+            telefono_limpio = telefono.replace('+', '').replace(' ', '').replace('-', '')
+            queryset = queryset.filter(
+                django_models.Q(telefono_destino__icontains=telefono) |
+                django_models.Q(telefono_destino__icontains=telefono_limpio)
+            )
+        
+        # Búsqueda por nombre de cliente
+        cliente = request.query_params.get('cliente')
+        if cliente:
+            queryset = queryset.filter(cliente__nombre__icontains=cliente)
+        
+        # Búsqueda por nombre de agente (útil para coordinadores y backoffice)
+        agente_nombre = request.query_params.get('agente_nombre')
+        if agente_nombre:
+            queryset = queryset.filter(
+                django_models.Q(agente__first_name__icontains=agente_nombre) |
+                django_models.Q(agente__last_name__icontains=agente_nombre)
+            )
+        
+        return queryset
+    
+    def _apply_specific_filters(self, queryset, request):
+        """Aplica filtros específicos de BackOffice y Coordinador."""
+        # Filtro por estado de auditoría (solo si presente)
+        estado_auditoria = request.query_params.get('estado_auditoria')
+        if estado_auditoria:
+            estado_id = get_estado_id('ESTADO_AUDITORIA', estado_auditoria.upper())
+            if estado_id:
+                queryset = queryset.filter(estado_auditoria_id=estado_id)
+
+        # Filtro por estado de reporte (solo si presente)
+        estado_reportada = request.query_params.get('estado_reportada')
+        if estado_reportada:
+            estado_id = get_estado_id('ESTADO_REPORTE', estado_reportada.upper())
+            if estado_id:
+                queryset = queryset.filter(estado_reportada_id=estado_id)
+
+        # NOTA: No aplicamos filtro por estado_venta aquí porque el requisito
+        # indica que BackOffice solo filtra por estado de auditoría, fecha y estado de reporte.
+        return queryset
+
+    def _validate_filters_for_role(self, user, params):
+        """Valida que los parámetros de query sean permitidos según el rol.
+
+        Retorna None si todo está bien, o una cadena con el error si hay filtros no permitidos.
+        """
+        # Normalizar keys (omitimos page/page_size siempre permitidos)
+        provided = set([k for k in params.keys() if k not in ['page', 'page_size']])
+
+        # Definir conjuntos permitidos por rol
+        coordinator_allowed = {'agente_nombre', 'telefono', 'estado'}
+        backoffice_allowed = {'estado_auditoria', 'fecha_desde', 'fecha_hasta', 'estado_reportada'}
+        admin_allowed = {'fecha_desde', 'fecha_hasta', 'estado', 'telefono', 'cliente', 'agente_nombre', 'estado_auditoria', 'estado_reportada'}
+        agent_allowed = {'fecha_desde', 'fecha_hasta', 'estado', 'telefono', 'cliente'}
+
+        if user.is_admin():
+            allowed = admin_allowed
+        elif user.is_backoffice():
+            allowed = backoffice_allowed
+        elif user.is_coordinador():
+            allowed = coordinator_allowed
+        else:
+            # Agentes y demás roles
+            allowed = agent_allowed
+
+        # Determine disallowed
+        disallowed = provided - allowed
+        if disallowed:
+            return f"Filtros no permitidos para el rol {user.get_role_value()}: {', '.join(sorted(disallowed))}"
+
+        return None
+    
+    def _apply_role_ordering(self, queryset, user):
+        """
+        Aplica ordenamiento según el rol del usuario.
+        
+        BackOffice: Prioriza según:
+          1. Ventas sin auditar (más recientes primero)
+          2. No ventas sin auditar (más recientes primero)
+          3. Ventas auditadas (más recientes primero)
+          4. No ventas auditadas (más recientes primero)
+        
+        Otros roles: Orden cronológico descendente (más recientes primero).
+        """
+        if user.is_backoffice():
+            # Obtener IDs de estados
+            estado_venta_id = get_estado_id('ESTADO_VENTA', 'VENTA')
+            estado_no_auditada_id = get_estado_id('ESTADO_AUDITORIA', 'NO_AUDITADA')
+            
+            from django.db.models import Case, When, IntegerField
+
+            queryset = queryset.annotate(
+                prioridad=Case(
+                    # Prioridad 1: Ventas sin auditar
+                    When(
+                        estado_venta_id=estado_venta_id,
+                        estado_auditoria_id=estado_no_auditada_id,
+                        then=1
+                    ),
+                    # Prioridad 2: No ventas sin auditar
+                    When(
+                        estado_auditoria_id=estado_no_auditada_id,
+                        then=2
+                    ),
+                    # Prioridad 3: Ventas auditadas
+                    When(
+                        estado_venta_id=estado_venta_id,
+                        then=3
+                    ),
+                    # Prioridad 4: No ventas auditadas (default)
+                    default=4,
+                    output_field=IntegerField()
+                )
+            ).order_by('prioridad', '-fecha_hora_inicio')
+        else:
+            # Orden cronológico descendente para otros roles
+            queryset = queryset.order_by('-fecha_hora_inicio')
+        
+        return queryset
+    
+    def _get_page_size(self, request):
+        """Obtiene y valida el tamaño de página."""
+        page_size = request.query_params.get('page_size', 20)
+        try:
+            page_size = int(page_size)
+            if page_size < 1:
+                page_size = 20
+            elif page_size > 100:
+                page_size = 100
+        except ValueError:
+            page_size = 20
+        return page_size
+    
+    def _get_page_number(self, request):
+        """Obtiene y valida el número de página."""
+        page = request.query_params.get('page', 1)
+        try:
+            page = int(page)
+            if page < 1:
+                page = 1
+        except ValueError:
+            page = 1
+        return page
 
 
 class FormularioVentaViewSet(viewsets.ModelViewSet):
@@ -645,3 +1269,130 @@ class FormularioVentaViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         
         return Response(serializer.data)
+
+
+class VentaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de ventas.
+    
+    list: Listar ventas (agentes solo ven las suyas, admins/coordinadores/backoffice ven todas)
+    retrieve: Obtener una venta específica
+    create: No usar este método, usar la acción 'registrar_venta'
+    registrar_venta: Registrar una nueva venta desde el módulo de llamadas
+    """
+    serializer_class = VentaSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """
+        Filtra las ventas según el rol del usuario.
+        - Agentes: solo sus ventas (a través de llamadas)
+        - Coordinadores: ventas de su equipo (a través de llamadas)
+        - BackOffice/Admin: todas las ventas
+        
+        La relación es: Venta <- Llamada -> Agente
+        """
+        user = self.request.user
+        
+        if user.is_admin() or user.is_backoffice():
+            # Admin y BackOffice ven todas las ventas
+            queryset = Venta.objects.all()
+        elif user.is_coordinador():
+            # Coordinador ve ventas de agentes de su equipo
+            # Accedemos al agente a través de la llamada
+            from apps.campaigns.models import Equipo
+            equipos = Equipo.objects.filter(coordinador=user, is_active=True)
+            agentes_list = []
+            for equipo in equipos:
+                agentes_list.extend(list(equipo.get_agentes()))
+            # Filtrar ventas donde la llamada asociada tenga un agente del equipo
+            queryset = Venta.objects.filter(llamadas__agente__in=agentes_list)
+        else:
+            # Agentes ven solo sus ventas (a través de llamadas)
+            queryset = Venta.objects.filter(llamadas__agente=user)
+        
+        return queryset.select_related('campana').order_by('-venta_id').distinct()
+    
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def registrar_venta(self, request):
+        """
+        Registra una nueva venta desde el módulo de llamadas.
+        
+        Campos requeridos:
+        - llamada_id: ID de la llamada asociada
+        - cliente_nombre: Nombre completo del cliente
+        - cliente_id: Número de documento/identificación
+        - producto_id: ID del producto o servicio adquirido
+        
+        Campos opcionales:
+        - monto: Monto de la venta (si no se proporciona, se usa el precio del producto)
+        - observaciones: Comentarios adicionales
+        
+        Returns:
+            201: Venta registrada exitosamente con ID único
+            400: Datos inválidos o faltantes
+            403: Sin permisos para registrar venta en esta llamada
+            404: Llamada o producto no encontrado
+        """
+        serializer = RegistrarVentaSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        
+        if serializer.is_valid():
+            venta = serializer.save()
+            return Response(
+                serializer.to_representation(venta),
+                status=status.HTTP_201_CREATED
+            )
+        
+        return Response(
+            {
+                'error': 'Datos inválidos',
+                'detalles': serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    @action(detail=False, methods=['get'])
+    def mis_ventas(self, request):
+        """
+        Obtiene todas las ventas del agente autenticado.
+        Incluye información completa de cada venta.
+        Accede al agente a través de la llamada.
+        """
+        ventas = Venta.objects.filter(
+            llamadas__agente=request.user
+        ).select_related('campana').order_by('-venta_id').distinct()
+        
+        serializer = self.get_serializer(ventas, many=True)
+        return Response({
+            'total': ventas.count(),
+            'ventas': serializer.data
+        })
+    
+    @action(detail=False, methods=['get'])
+    def productos_disponibles(self, request):
+        """
+        Lista todos los productos disponibles para venta.
+        Útil para poblar el dropdown del formulario de cierre de venta.
+        """
+        from apps.campaigns.models import Producto
+        
+        productos = Producto.objects.filter(activo=True).order_by('nombre')
+        
+        productos_data = [
+            {
+                'id': p.pk,
+                'nombre': p.nombre,
+                'descripcion': p.descripcion,
+                'precio': str(p.precio)
+            }
+            for p in productos
+        ]
+        
+        return Response({
+            'total': len(productos_data),
+            'productos': productos_data
+        })
+

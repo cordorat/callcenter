@@ -563,5 +563,5 @@ class EquipoUpdateSerializer(serializers.ModelSerializer):
 class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Producto
-        fields = ['nombre', 'descripcion', 'precio', 'activo']
+        fields = ['nombre', 'descripcion', 'precio', 'activo', 'id']
         read_only_fields = []

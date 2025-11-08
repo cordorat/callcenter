@@ -19,6 +19,7 @@ export const getProducts = async (params = {}) => {
   }
 };
 
+
 /**
  * Crea un nuevo producto.
  * @param {Object} data - Datos del producto a crear.
