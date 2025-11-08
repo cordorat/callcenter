@@ -44,18 +44,12 @@ export default function AgentMinutes({ userId, currentStatus }) {
     if (frontendState && !isInitializedRef.current) {
       const savedStatus = sessionStorage.getItem('agentMinutes_status');
       
-      console.log('[AgentMinutes] 🔄 Inicializando - Estado del hook:', frontendState, 'Estado guardado:', savedStatus);
-      
       if (savedStatus === frontendState) {
-        console.log('[AgentMinutes] ✅ Estado recuperado coincide con backend, manteniendo tiempo');
         previousStatusRef.current = frontendState;
         isInitializedRef.current = true;
       } else {
-        console.log('[AgentMinutes] ⚠️ Estado diferente o primera vez - Backend:', frontendState, 'vs Storage:', savedStatus);
-        
         // Si hay tiempo en el backend, usarlo para sincronizar
         if (backendTimeInState !== null && backendTimeInState !== undefined) {
-          console.log('[AgentMinutes] 🔄 Sincronizando con tiempo del backend:', backendTimeInState);
           const now = Date.now();
           setDisplayTime(backendTimeInState);
           startTimeRef.current = now - (backendTimeInState * 1000);
@@ -84,12 +78,9 @@ export default function AgentMinutes({ userId, currentStatus }) {
     
     // Si el prop cambió y es diferente al estado previo, resetear inmediatamente
     if (currentStatus !== previousStatusRef.current) {
-      console.log('[AgentMinutes] 🔄 Cambio INMEDIATO detectado desde prop:', previousStatusRef.current, '->', currentStatus);
-      
       previousStatusRef.current = currentStatus;
       
       // Resetear el tiempo a 0 inmediatamente
-      console.log('[AgentMinutes] ⏱️ Reiniciando tiempo a 0 por cambio inmediato de estado');
       const now = Date.now();
       setDisplayTime(0);
       startTimeRef.current = now;
@@ -114,8 +105,6 @@ export default function AgentMinutes({ userId, currentStatus }) {
         backendTimeInState !== lastSyncTimeRef.current &&
         frontendState === previousStatusRef.current) { // Mismo estado, solo ajustar tiempo
       
-      console.log('[AgentMinutes] 🔄 Ajustando tiempo con backend:', backendTimeInState, 'vs local:', displayTime);
-      
       lastSyncTimeRef.current = backendTimeInState;
       const now = Date.now();
       
@@ -123,7 +112,6 @@ export default function AgentMinutes({ userId, currentStatus }) {
       const timeDiff = Math.abs(backendTimeInState - displayTime);
       
       if (timeDiff > 2) { // Solo ajustar si la diferencia es mayor a 2 segundos
-        console.log('[AgentMinutes] ⚠️ Diferencia significativa detectada:', timeDiff, 'segundos - Sincronizando');
         setDisplayTime(backendTimeInState);
         startTimeRef.current = now - (backendTimeInState * 1000);
         

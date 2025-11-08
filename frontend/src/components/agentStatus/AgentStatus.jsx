@@ -66,7 +66,6 @@ export default function AgentStatus({ onStatusChange, refreshInterval = 30000 })
   // Efecto para notificar al padre cuando cambia el estado
   React.useEffect(() => {
     if (frontendState && onStatusChange) {
-      console.log('[AgentStatus] Estado actualizado a:', frontendState);
       onStatusChange(frontendState);
     }
   }, [frontendState, onStatusChange]);

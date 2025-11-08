@@ -17,7 +17,6 @@ const Calls = () => {
     // Exponer twilioClient globalmente para debugging
     React.useEffect(() => {
         window.twilioClient = twilioClient;
-        console.log('[Calls.jsx] twilioClient expuesto en window.twilioClient para debugging');
         return () => {
             delete window.twilioClient;
         };
@@ -48,8 +47,6 @@ const Calls = () => {
         valor: "",
     });
     const handleClienteChange = React.useCallback((nuevoCliente) => {
-        console.log('[Calls.jsx] 📥 Cliente actualizado recibido:', nuevoCliente);
-        
         setCliente({
             id: nuevoCliente.id || null,
             nombre: nuevoCliente.nombre || "",
@@ -92,28 +89,21 @@ const Calls = () => {
         currentCallInfo,
     } = useTwilioCall();
     
-    // Debug: Log para ver qué está devolviendo el hook
-    React.useEffect(() => {
-        console.log('[Calls.jsx][DEBUG] Hook useTwilioCall cambió:');
-        console.log('[Calls.jsx][DEBUG] - isInCall:', isInCall);
-        console.log('[Calls.jsx][DEBUG] - currentCallInfo:', currentCallInfo);
-        console.log('[Calls.jsx][DEBUG] - callStatus:', callStatus);
-    }, [isInCall, currentCallInfo, callStatus]);
+    // Debug: Log para ver qué está devolviendo el hook (comentado en producción)
+    // React.useEffect(() => {
+    //     console.log('[Calls.jsx][DEBUG] Hook useTwilioCall cambió:');
+    //     console.log('[Calls.jsx][DEBUG] - isInCall:', isInCall);
+    //     console.log('[Calls.jsx][DEBUG] - currentCallInfo:', currentCallInfo);
+    //     console.log('[Calls.jsx][DEBUG] - callStatus:', callStatus);
+    // }, [isInCall, currentCallInfo, callStatus]);
     
     React.useEffect(() => {
         const isEnLlamadaOAfterCall = frontendState === 'CALL' || frontendState === 'AFTERCALL' || frontendState === 'EN_LLAMADA';
-        
-        console.log('[Calls.jsx][PHONE] 📞 Actualizando desde currentCallInfo:');
-        console.log('[Calls.jsx][PHONE] - frontendState:', frontendState);
-        console.log('[Calls.jsx][PHONE] - isEnLlamadaOAfterCall:', isEnLlamadaOAfterCall);
-        console.log('[Calls.jsx][PHONE] - currentCallInfo:', currentCallInfo);
-        console.log('[Calls.jsx][PHONE] - telefono original:', currentCallInfo?.telefono);
         
         // Solo actualizar si hay currentCallInfo disponible Y estamos en llamada
         if (currentCallInfo && isEnLlamadaOAfterCall) {
             // Eliminar prefijo +57 del número para el teclado numérico
             const cleanNumber = removePhonePrefix(currentCallInfo.telefono);
-            console.log('[Calls.jsx][PHONE] ✅ Actualizando phoneNumber a:', cleanNumber);
             setPhoneNumber(cleanNumber);
             setCliente(prev => ({
                 ...prev, // Mantener datos anteriores por si acaso
@@ -156,7 +146,6 @@ const Calls = () => {
     // Obtener información completa de la llamada usando el CallSid cuando hay una llamada activa
     React.useEffect(() => {
         const fetchFullCallInfo = async () => {
-            console.log('[Calls.jsx][FETCH] isInCall:', isInCall, '| currentCallInfo:', currentCallInfo);
             
             // Si estamos en llamada
             if (isInCall) {
@@ -190,17 +179,13 @@ const Calls = () => {
                         try {
                             // Añadir delay antes del primer intento para dar tiempo al webhook
                             if (attempt === 1) {
-                                console.log('[Calls.jsx][FETCH] ⏳ Esperando 2s para que el webhook cree la llamada...');
                                 await new Promise(resolve => setTimeout(resolve, 2000));
                             }
                             
                             const response = await apiClient.get(`/calls/llamadas/by-sid/${callSid}/`);
-                            console.log(`[Calls.jsx][FETCH] ✓ Información completa obtenida (intento ${attempt}):`, response.data);
                             setFullCallInfo(response.data);
                             
                             if (response.data.cliente_nombre) {
-                                console.log('[Calls.jsx][FETCH] 📝 Actualizando cliente con fullCallInfo');
-                                console.log('[Calls.jsx][FETCH] 🔍 cliente_otros_datos recibido:', response.data.cliente_otros_datos);
                                 
                                 // Manejar cliente_otros_datos que puede ser string JSON o objeto
                                 let otrosDatos = {};
@@ -244,29 +229,20 @@ const Calls = () => {
                             if (err.response?.status === 404 && attempt < maxAttempts) {
                                 // Race condition: el webhook aún no creó la llamada, reintentar
                                 const delayMs = attempt * 1500; // 1.5s, 3s, 4.5s, 6s
-                                console.warn(`[Calls.jsx][FETCH] ⏳ Llamada no encontrada (intento ${attempt}/${maxAttempts}). Reintentando en ${delayMs}ms...`);
                                 await new Promise(resolve => setTimeout(resolve, delayMs));
                                 return fetchWithRetry(attempt + 1, maxAttempts);
                             } else {
-                                console.error(`[Calls.jsx][FETCH] ✗ Error después de ${attempt} intentos:`, err);
-                                console.error('[Calls.jsx][FETCH] Error details:', err.response?.data);
+                                console.error(`[Calls.jsx] Error obteniendo llamada después de ${attempt} intentos:`, err.response?.data || err.message);
                             }
                         }
                     };
                     
                     // Iniciar el proceso de obtención con retries
                     await fetchWithRetry();
-                    
-                } else if (!callSid) {
-                    console.warn('[Calls.jsx][FETCH] ⚠️ No se pudo obtener CallSid de ninguna fuente');
-                    console.warn('[Calls.jsx][FETCH] currentCallInfo:', currentCallInfo);
-                    console.warn('[Calls.jsx][FETCH] twilioClient.activeCall:', twilioClient.activeCall);
-                    console.warn('[Calls.jsx][FETCH] twilioClient.getCallInfo():', twilioClient.getCallInfo());
                 }
             } else if (!isInCall) {
                 // Limpiar cuando no hay llamada
                 if (currentCallSid || fullCallInfo) {
-                    console.log('[Calls.jsx][FETCH] Limpiando CallSid y fullCallInfo');
                     setCurrentCallSid(null);
                     setFullCallInfo(null);
                 }

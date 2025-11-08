@@ -33,11 +33,8 @@ const useTwilioCall = () => {
   useEffect(() => {
     const initTwilio = async () => {
       try {
-        console.log('[useTwilioCall] Inicializando Twilio...');
-        
         // Configurar callbacks
         twilioClient.onReady(() => {
-          console.log('[useTwilioCall] Device listo');
           setIsReady(true);
           setError(null);
         });
@@ -49,7 +46,6 @@ const useTwilioCall = () => {
         });
 
         twilioClient.onIncoming((call) => {
-          console.log('[useTwilioCall] Llamada entrante - Auto-aceptando para llamadas automáticas');
           setIncomingCall(call);
           setCallStatus('ringing');
           setIsRinging(true);
@@ -58,21 +54,16 @@ const useTwilioCall = () => {
           // El sistema de llamadas automáticas ya conectó al cliente,
           // solo falta que el agente acepte para unirse a la conversación
           setTimeout(() => {
-            console.log('[useTwilioCall] Auto-aceptando llamada entrante');
             twilioClient.acceptIncomingCall();
           }, 100); // Pequeño delay para que los eventos se registren correctamente
         });
 
         twilioClient.onRinging(() => {
-          console.log('[useTwilioCall] Llamada sonando');
           setCallStatus('ringing');
           setIsRinging(true);
         });
 
         twilioClient.onConnect(async (call) => {
-          console.log('[useTwilioCall] Llamada conectada');
-          console.log('[useTwilioCall] Call parameters:', call.parameters);
-          
           setIsInCall(true);
           setIsRinging(false);
           setCallStatus('in-call');
@@ -82,16 +73,13 @@ const useTwilioCall = () => {
           try {
             const callSid = call.parameters.CallSid;
             if (callSid) {
-              console.log('[useTwilioCall] Obteniendo información de llamada con CallSid:', callSid);
               const response = await apiClient.get(`/calls/llamadas/by-sid/${callSid}/`);
               setCurrentCallInfo(response.data);
-              console.log('[useTwilioCall] Información de llamada obtenida:', response.data);
 
               // Obtener información del cliente
               try {
                 const clientResp = await apiClient.get(`/calls/llamadas/client-by-call-sid/${callSid}/`);
                 setCurrentClientInfo(clientResp.data);
-                console.log('[useTwilioCall] Información de cliente obtenida:', clientResp.data);
               } catch (clientErr) {
                 console.error('[useTwilioCall] Error obteniendo información de cliente:', clientErr);
                 setCurrentClientInfo(null);
@@ -109,7 +97,6 @@ const useTwilioCall = () => {
           // NO cambiar estado aquí para llamadas automáticas
           // El backend ya cambió el estado a EN_LLAMADA cuando inició la llamada
           // Solo notificar a los listeners para refrescar UI
-          console.log('[useTwilioCall] Llamada conectada, notificando listeners para refrescar UI...');
           stateChangeListeners.forEach(listener => {
             try {
               listener();
@@ -120,11 +107,6 @@ const useTwilioCall = () => {
         });
 
         twilioClient.onDisconnect(async (call) => {
-          console.log('[useTwilioCall] Llamada desconectada');
-          console.log('[useTwilioCall] Call info:', call);
-          console.log('[useTwilioCall] Was in call:', isInCall);
-          console.log('[useTwilioCall] Call duration:', callDuration);
-          
           setIsInCall(false);
           setIsRinging(false);
           setCallStatus('idle');
@@ -138,14 +120,10 @@ const useTwilioCall = () => {
           
           // Cambiar automáticamente el estado del agente a AFTERCALL (After Call)
           try {
-            console.log('[useTwilioCall] Cambiando estado del agente a AFTERCALL');
             const backendState = mapFrontendToBackend('AFTERCALL');
             
             // Esperamos la respuesta del servidor antes de notificar
             const response = await changeState(backendState, 'Llamada finalizada, en proceso after call');
-            
-            console.log('[useTwilioCall] Estado cambiado exitosamente a AFTERCALL:', response);
-            console.log('[useTwilioCall] Notificando listeners con la respuesta del servidor...');
             
             // Notificar a los listeners DESPUÉS de que el cambio fue exitoso
             // Pasamos la respuesta para que puedan usarla directamente
@@ -182,7 +160,6 @@ const useTwilioCall = () => {
 
     // Limpiar al desmontar
     return () => {
-      console.log('[useTwilioCall] Limpiando...');
       stopCallTimer();
       twilioClient.destroy();
     };
@@ -235,8 +212,6 @@ const useTwilioCall = () => {
         formattedNumber = `+57${formattedNumber}`;
       }
 
-      console.log('[useTwilioCall] Llamando a:', formattedNumber);
-
       // Parámetros adicionales para el backend
       const params = {
         agentId: user?.id,
@@ -257,7 +232,6 @@ const useTwilioCall = () => {
    * Cuelga la llamada activa
    */
   const hangup = useCallback(() => {
-    console.log('[useTwilioCall] Colgando...');
     twilioClient.hangup();
     setCallStatus('idle');
     setIsInCall(false);
@@ -278,7 +252,6 @@ const useTwilioCall = () => {
    * Acepta una llamada entrante
    */
   const acceptIncomingCall = useCallback(() => {
-    console.log('[useTwilioCall] Aceptando llamada entrante');
     twilioClient.acceptIncomingCall();
   }, []);
 
@@ -286,7 +259,6 @@ const useTwilioCall = () => {
    * Rechaza una llamada entrante
    */
   const rejectIncomingCall = useCallback(() => {
-    console.log('[useTwilioCall] Rechazando llamada entrante');
     twilioClient.rejectIncomingCall();
     setIncomingCall(null);
     setCallStatus('idle');
@@ -299,7 +271,6 @@ const useTwilioCall = () => {
    */
   const sendDigit = useCallback((digit) => {
     if (isInCall) {
-      console.log('[useTwilioCall] Enviando dígito:', digit);
       twilioClient.sendDigits(digit);
     }
   }, [isInCall]);

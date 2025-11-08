@@ -227,7 +227,7 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
     const handleCloseNotification = () => {
         setNotification(prev => ({ ...prev, open: false }));
     };
-    console.log("Render ClientInfoSection con cliente:", cliente.id);
+
     return (
         <Box
             sx={{
