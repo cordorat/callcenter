@@ -350,10 +350,7 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
         source='cliente.telefono',
         read_only=True
     )
-    cliente_otros_datos = serializers.JSONField(
-        source='cliente.otros_datos',
-        read_only=True
-    )
+    cliente_otros_datos = serializers.SerializerMethodField()
     duracion_total_formateada = serializers.ReadOnlyField()
     estado_venta_valor = serializers.CharField(
         source='estado_venta.valor',
@@ -407,6 +404,41 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
         if obj.cliente:
             return obj.cliente.nombre or 'Sin nombre'
         return 'Sin cliente'
+    
+    def get_cliente_otros_datos(self, obj):
+        """
+        Obtiene otros_datos del cliente procesados correctamente.
+        Extrae campos como documento_id, email, direccion usando las mismas
+        reglas que ClienteSerializer para mantener consistencia.
+        """
+        if not obj.cliente or not obj.cliente.otros_datos:
+            return {}
+        
+        otros_datos = obj.cliente.otros_datos
+        if not isinstance(otros_datos, dict):
+            return {}
+        
+        # Extraer campos usando la misma lógica que ClienteSerializer
+        return {
+            'documento_id': (otros_datos.get('documento_id') or 
+                           otros_datos.get('documento') or 
+                           otros_datos.get('cedula') or
+                           otros_datos.get('identificacion') or
+                           otros_datos.get('identificación')),
+            'email': (otros_datos.get('email') or 
+                     otros_datos.get('correo') or 
+                     otros_datos.get('correo_electronico') or
+                     otros_datos.get('correo electrónico') or
+                     otros_datos.get('correo_electrónico')),
+            'direccion': (otros_datos.get('direccion') or 
+                         otros_datos.get('dirección') or
+                         otros_datos.get('address')),
+            'observaciones': (otros_datos.get('observaciones') or 
+                            otros_datos.get('notas') or 
+                            otros_datos.get('comentarios')),
+            # Mantener también los datos raw por si se necesitan
+            '_raw': otros_datos
+        }
     
     def get_tiene_grabacion(self, obj):
         """Indica si la llamada tiene grabación disponible."""

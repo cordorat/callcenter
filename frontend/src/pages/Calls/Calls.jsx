@@ -14,6 +14,15 @@ import ClientInfoSection from '@/components/sales/ClientInfoSection';
 import SaleInfoSection from '@/components/sales/SaleInfoSection';
 
 const Calls = () => {
+    // Exponer twilioClient globalmente para debugging
+    React.useEffect(() => {
+        window.twilioClient = twilioClient;
+        console.log('[Calls.jsx] twilioClient expuesto en window.twilioClient para debugging');
+        return () => {
+            delete window.twilioClient;
+        };
+    }, []);
+
     const { frontendState, currentState } = useAgentState({ autoLoad: true, refreshInterval: 5000 });
     const { user } = useAuth();
     const [phoneNumber, setPhoneNumber] = React.useState('');
@@ -53,6 +62,13 @@ const Calls = () => {
     }, []);
     const toggleExpand = () => setIsExpanded((prev) => !prev);
     
+    // Helper: Elimina prefijo +57 del número de teléfono para mostrar en el teclado
+    const removePhonePrefix = (phone) => {
+        if (!phone) return '';
+        // Eliminar +57 si existe al inicio
+        return phone.replace(/^\+57/, '');
+    };
+    
     // Configuración de espaciado vertical del contenedor del teclado
     const keypadVerticalPadding = 10; 
     
@@ -87,10 +103,18 @@ const Calls = () => {
     React.useEffect(() => {
         const isEnLlamadaOAfterCall = frontendState === 'CALL' || frontendState === 'AFTERCALL' || frontendState === 'EN_LLAMADA';
         
+        console.log('[Calls.jsx][PHONE] 📞 Actualizando desde currentCallInfo:');
+        console.log('[Calls.jsx][PHONE] - frontendState:', frontendState);
+        console.log('[Calls.jsx][PHONE] - isEnLlamadaOAfterCall:', isEnLlamadaOAfterCall);
+        console.log('[Calls.jsx][PHONE] - currentCallInfo:', currentCallInfo);
+        console.log('[Calls.jsx][PHONE] - telefono original:', currentCallInfo?.telefono);
         
         // Solo actualizar si hay currentCallInfo disponible Y estamos en llamada
         if (currentCallInfo && isEnLlamadaOAfterCall) {
-            setPhoneNumber(currentCallInfo.telefono || '');
+            // Eliminar prefijo +57 del número para el teclado numérico
+            const cleanNumber = removePhonePrefix(currentCallInfo.telefono);
+            console.log('[Calls.jsx][PHONE] ✅ Actualizando phoneNumber a:', cleanNumber);
+            setPhoneNumber(cleanNumber);
             setCliente(prev => ({
                 ...prev, // Mantener datos anteriores por si acaso
                 id: currentCallInfo.cliente_id || prev.id, 
@@ -170,12 +194,13 @@ const Calls = () => {
                                 await new Promise(resolve => setTimeout(resolve, 2000));
                             }
                             
-                            const response = await apiClient.get(`/api/calls/llamadas/by-sid/${callSid}/`);
+                            const response = await apiClient.get(`/calls/llamadas/by-sid/${callSid}/`);
                             console.log(`[Calls.jsx][FETCH] ✓ Información completa obtenida (intento ${attempt}):`, response.data);
                             setFullCallInfo(response.data);
                             
                             if (response.data.cliente_nombre) {
                                 console.log('[Calls.jsx][FETCH] 📝 Actualizando cliente con fullCallInfo');
+                                console.log('[Calls.jsx][FETCH] 🔍 cliente_otros_datos recibido:', response.data.cliente_otros_datos);
                                 
                                 // Manejar cliente_otros_datos que puede ser string JSON o objeto
                                 let otrosDatos = {};
@@ -184,11 +209,24 @@ const Calls = () => {
                                         try {
                                             otrosDatos = JSON.parse(response.data.cliente_otros_datos);
                                         } catch (err) {
+                                            console.error('[Calls.jsx][FETCH] Error parseando cliente_otros_datos:', err);
                                             otrosDatos = {};
                                         }
                                     } else if (typeof response.data.cliente_otros_datos === 'object') {
                                         otrosDatos = response.data.cliente_otros_datos;
                                     }
+                                }
+                                
+                                console.log('[Calls.jsx][FETCH] 📦 otrosDatos procesado:', otrosDatos);
+                                console.log('[Calls.jsx][FETCH] 🔑 documento_id:', otrosDatos.documento_id);
+                                console.log('[Calls.jsx][FETCH] 📧 email:', otrosDatos.email);
+                                console.log('[Calls.jsx][FETCH] 🏠 direccion:', otrosDatos.direccion);
+                                
+                                // Actualizar también phoneNumber sin prefijo +57
+                                if (response.data.cliente_telefono) {
+                                    const cleanNumber = removePhonePrefix(response.data.cliente_telefono);
+                                    console.log('[Calls.jsx][FETCH] 📞 Actualizando phoneNumber desde fullCallInfo:', cleanNumber);
+                                    setPhoneNumber(cleanNumber);
                                 }
                                 
                                 setCliente(prev => ({
@@ -197,35 +235,8 @@ const Calls = () => {
                                     nombre: response.data.cliente_nombre || prev.nombre,
                                     telefono: response.data.cliente_telefono || prev.telefono,
                                     documento: otrosDatos.documento_id || otrosDatos.documento || prev.documento,
-                                    direccion: otrosDatos.direccion || prev.direccion,
-                                    correo: otrosDatos.email || otrosDatos.correo || prev.correo,
-                                    ciudad: otrosDatos.ciudad || prev.ciudad,
-                                }));
-                            }
-                            
-                            // Actualizar los datos del cliente si están disponibles
-                            if (response.data.cliente_nombre) {
-                                let otrosDatos = {};
-                                if (response.data.cliente_otros_datos) {
-                                    if (typeof response.data.cliente_otros_datos === 'string') {
-                                        try {
-                                            otrosDatos = JSON.parse(response.data.cliente_otros_datos);
-                                        } catch (err) {
-                                            otrosDatos = {};
-                                        }
-                                    } else if (typeof response.data.cliente_otros_datos === 'object') {
-                                        otrosDatos = response.data.cliente_otros_datos;
-                                    }
-                                }
-                                
-                                setCliente(prev => ({
-                                    ...prev,
-                                    id: response.data.cliente || prev.id, 
-                                    nombre: response.data.cliente_nombre || prev.nombre,
-                                    telefono: response.data.cliente_telefono || prev.telefono,
-                                    documento: otrosDatos.documento_id || otrosDatos.documento || prev.documento,
-                                    direccion: otrosDatos.direccion || prev.direccion,
-                                    correo: otrosDatos.email || otrosDatos.correo || prev.correo,
+                                    direccion: otrosDatos.direccion || otrosDatos.dirección || prev.direccion,
+                                    correo: otrosDatos.email || otrosDatos.correo || otrosDatos['correo electrónico'] || prev.correo,
                                     ciudad: otrosDatos.ciudad || prev.ciudad,
                                 }));
                             }
@@ -944,7 +955,14 @@ const Calls = () => {
                                 display: 'flex',
                             }}
                         >
-                            <ClientInfoSection cliente={cliente} handleChange={handleClienteChange} />
+                            <ClientInfoSection 
+                                cliente={{
+                                    ...cliente,
+                                    documento_id: cliente.documento || cliente.documento_id,
+                                    email: cliente.correo || cliente.email
+                                }} 
+                                handleChange={handleClienteChange} 
+                            />
                         </motion.div>
 
                         <motion.div
@@ -959,7 +977,11 @@ const Calls = () => {
                             }}
                         >
                             <SaleInfoSection 
-                                cliente={cliente} 
+                                cliente={{
+                                    ...cliente,
+                                    documento_id: cliente.documento || cliente.documento_id,
+                                    email: cliente.correo || cliente.email
+                                }} 
                                 llamada_id={fullCallInfo?.id || AfterfullCallInfo?.id || null}
                                 campana_id={campana_id}
                                 onVentaChange={setVenta}
@@ -985,9 +1007,20 @@ const Calls = () => {
                             flexDirection: 'column',
                             gap: 2,
                         }}>
-                            <ClientInfoSection cliente={cliente} handleChange={handleClienteChange} />
+                            <ClientInfoSection 
+                                cliente={{
+                                    ...cliente,
+                                    documento_id: cliente.documento || cliente.documento_id,
+                                    email: cliente.correo || cliente.email
+                                }} 
+                                handleChange={handleClienteChange} 
+                            />
                             <SaleInfoSection 
-                                cliente={cliente} 
+                                cliente={{
+                                    ...cliente,
+                                    documento_id: cliente.documento || cliente.documento_id,
+                                    email: cliente.correo || cliente.email
+                                }} 
                                 llamada_id={fullCallInfo?.id || AfterfullCallInfo?.id || null}
                                 campana_id={campana_id}
                                 onVentaChange={setVenta}

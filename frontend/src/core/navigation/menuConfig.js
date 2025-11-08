@@ -73,7 +73,7 @@ export const menuItems = [
     roles: ['COORDINADOR']
   },
   {
-    label: 'Auditoría de llamadas',
+    label: 'Auditoría de\nllamadas',
     path: '/auditoria-llamadas',
     icon: FactCheckIcon,
     roles: ['BACKOFFICE']

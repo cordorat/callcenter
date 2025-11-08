@@ -178,11 +178,13 @@ class EstadoAgenteActualSerializer(serializers.ModelSerializer):
                 campana_obj = equipo_agente.equipo_id.campana
                 campana_id = getattr(campana_obj, 'id', None) or getattr(campana_obj, 'pk', None) or getattr(campana_obj, 'campana_id', None)
                 agente_ident = getattr(obj.agente_id, 'documento_id', None) or getattr(obj.agente_id, 'email', 'unknown')
-                print(f"[get_campana_actual_id] Agente {agente_ident} → Equipo {equipo_agente.equipo_id.nombre} → Campaña ID: {campana_id}")
+                # 🔇 Log comentado para reducir ruido (se ejecuta cada 5s con polling de frontend)
+                # print(f"[get_campana_actual_id] Agente {agente_ident} → Equipo {equipo_agente.equipo_id.nombre} → Campaña ID: {campana_id}")
                 return campana_id
             else:
                 agente_ident = getattr(obj.agente_id, 'documento_id', None) or getattr(obj.agente_id, 'email', 'unknown')
-                print(f"[get_campana_actual_id] Agente {agente_ident} no tiene equipo activo o el equipo no tiene campaña")
+                # 🔇 Log comentado para reducir ruido
+                # print(f"[get_campana_actual_id] Agente {agente_ident} no tiene equipo activo o el equipo no tiene campaña")
             
             return None
         except Exception as e:

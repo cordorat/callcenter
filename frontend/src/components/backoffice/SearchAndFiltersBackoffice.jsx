@@ -39,151 +39,155 @@ export default function FiltrosyBusquedaBackoffice({
 
   return (
     <Box sx={{ mb: 1 }}>
+      <Stack direction="row" alignItems="center" justifyContent="flex-end" sx={{ mb: 1 }}>
+        <IconButton onClick={onRefresh} disabled={loading}>
+          <ButtonTooltip
+            title="Refrescar"
+            icon={<RefreshIcon />}
+            onClick={onRefresh}
+            color="primary"
+          />
+        </IconButton>
+      </Stack>
 
-      <Paper variant="outlined" sx={(t) => cardSx(t)}>
+      <Paper variant="outlined" sx={(t) => ({ ...cardSx(t), width: 'fit-content' })}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={2}
           alignItems={{ xs: "stretch", md: "center" }}
-          justifyContent="space-between"
         >
-
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={4}
-            alignItems={{ xs: "stretch", md: "center" }}
-            sx={{ flex: 1 }}
+          {/* Estado Reportada */}
+          <FormControl
+            sx={{
+              minWidth: 190,
+              "& .MuiOutlinedInput-root": (t) => ({
+                borderRadius: "14px",
+                backgroundColor:
+                  t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
+                "& fieldset": {
+                  borderColor:
+                    t.palette.mode === "light" ? "rgba(12,21,90,0.16)" : "rgba(255,255,255,0.18)",
+                  borderWidth: 2,
+                },
+                "&:hover fieldset": { borderColor: t.palette.primary.main },
+                "&.Mui-focused fieldset": { borderColor: t.palette.primary.main },
+                height: 44,
+              }),
+            }}
           >
-            <FormControl sx={{ minWidth: 200 }}>
-              <InputLabel
-                id="estado-reportada-label"
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  backgroundColor:
-                    theme.palette.mode === "light" ? "#FFFFFF" : "rgba(255,255,255,0.04)",
-                  px: 0.5,
-                  zIndex: 1,
-                }}
-              >
-                <FilterAltIcon fontSize="small" sx={{ mr: 1 }} /> Estado Reportada
-              </InputLabel>
-              <Select
-                labelId="estado-reportada-label"
-                value={estadoReportada}
-                label="Estado Reportada"
-                variant="outlined"
-                displayEmpty
-                onChange={(e) => setEstadoReportada(e.target.value)}
-                renderValue={(selected) => {
-                  if (selected === "") return "Todos";
-                  if (selected === "NO_REPORTADA") return "No reportada";
-                  if (selected === "REPORTADA") return "Reportada";
-                  return selected;
-                }}
-                sx={{
-                  borderRadius: "14px"
-                }}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="NO_REPORTADA">No reportada</MenuItem>
-                <MenuItem value="REPORTADA">Reportada</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControl sx={{ minWidth: 190 }}>
-              <InputLabel
-                id="estado-auditada-label"
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  backgroundColor:
-                    theme.palette.mode === "light" ? "#FFFFFF" : "rgba(255,255,255,0.04)",
-                  px: 0.5,
-                  zIndex: 1,
-                }}
-              >
-                <FilterAltIcon fontSize="small" sx={{ mr: 1 }} /> Estado Auditoría
-              </InputLabel>
-              <Select
-                labelId="estado-auditada-label"
-                value={estadoAuditada}
-                label="Estado Auditoría"
-                variant="outlined"
-                displayEmpty
-                onChange={(e) => setEstadoAuditada(e.target.value)}
-                renderValue={(selected) => {
-                  if (selected === "") return "Todos";
-                  if (selected === "NO_AUDITADA") return "No auditada";
-                  if (selected === "AUDITADA") return "Auditada";
-                  return selected;
-                }}
-                sx={{
-                  borderRadius: "14px"
-                }}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="NO_AUDITADA">No auditada</MenuItem>
-                <MenuItem value="AUDITADA">Auditada</MenuItem>
-              </Select>
-            </FormControl>
-
-            {[
-              { label: "Desde", value: fechaInicio, setter: setFechaInicio },
-              { label: "Hasta", value: fechaFin, setter: setFechaFin },
-            ].map(({ label, value, setter }) => (
-              <TextField
-                key={label}
-                label={label}
-                type="date"
-                size="small"
-                value={value}
-                onChange={(e) => setter(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{
-                  minWidth: 190,
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "14px",
-                    backgroundColor:
-                      theme.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
-                    "& fieldset": {
-                      borderColor:
-                        theme.palette.mode === "light"
-                          ? "rgba(12,21,90,0.16)"
-                          : "rgba(255,255,255,0.18)",
-                      borderWidth: 2,
-                    },
-                    "&:hover fieldset": { borderColor: theme.palette.primary.main },
-                    "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
-                    height: 44,
-                  },
-                }}
-              />
-            ))} 
-
-            <Button 
-              variant="text" 
-              onClick={onClear}
-              sx={{
-                fontSize: "1rem",
+            <InputLabel
+              id="estado-reportada-label"
+              sx={(theme) => ({
+                color: theme.palette.mode === "dark" ? "#FFFFFF" : undefined,
                 fontWeight: 700,
-              }}
+              })}
             >
-              LIMPIAR
-            </Button>
-          </Stack>
+              <FilterAltIcon fontSize="small" sx={{ mr: 1 }} /> Estado Reportada
+            </InputLabel>
+            <Select
+              labelId="estado-reportada-label"
+              value={estadoReportada}
+              label="Estado Reportada"
+              onChange={(e) => setEstadoReportada(e.target.value)}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              <MenuItem value="NO_REPORTADA">No reportada</MenuItem>
+              <MenuItem value="REPORTADA">Reportada</MenuItem>
+            </Select>
+          </FormControl>
 
+          {/* Estado Auditoría */}
+          <FormControl
+            sx={{
+              minWidth: 190,
+              "& .MuiOutlinedInput-root": (t) => ({
+                borderRadius: "14px",
+                backgroundColor:
+                  t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
+                "& fieldset": {
+                  borderColor:
+                    t.palette.mode === "light" ? "rgba(12,21,90,0.16)" : "rgba(255,255,255,0.18)",
+                  borderWidth: 2,
+                },
+                "&:hover fieldset": { borderColor: t.palette.primary.main },
+                "&.Mui-focused fieldset": { borderColor: t.palette.primary.main },
+                height: 44,
+              }),
+            }}
+          >
+            <InputLabel
+              id="estado-auditada-label"
+              sx={(theme) => ({
+                color: theme.palette.mode === "dark" ? "#FFFFFF" : undefined,
+                fontWeight: 700,
+              })}
+            >
+              <FilterAltIcon fontSize="small" sx={{ mr: 1 }} /> Estado Auditoría
+            </InputLabel>
+            <Select
+              labelId="estado-auditada-label"
+              value={estadoAuditada}
+              label="Estado Auditoría"
+              onChange={(e) => setEstadoAuditada(e.target.value)}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              <MenuItem value="NO_AUDITADA">No auditada</MenuItem>
+              <MenuItem value="AUDITADA">Auditada</MenuItem>
+            </Select>
+          </FormControl>
 
-          <IconButton onClick={onRefresh} disabled={loading}>
-            <ButtonTooltip
-              title="Refrescar"
-              icon={<RefreshIcon />}
-              onClick={onRefresh}
-              color="primary"
+          {/* Filtros de fecha */}
+          {[
+            { label: "Desde", value: fechaInicio, setter: setFechaInicio },
+            { label: "Hasta", value: fechaFin, setter: setFechaFin },
+          ].map(({ label, value, setter }) => (
+            <TextField
+              key={label}
+              label={label}
+              type="date"
+              size="small"
+              value={value}
+              onChange={(e) => setter(e.target.value)}
+              InputLabelProps={{
+                shrink: true,
+                sx: (theme) => ({
+                  color: theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.primary.dark,
+                  fontWeight: 700,
+                }),
+              }}
+              sx={{
+                minWidth: 190,
+                "& .MuiOutlinedInput-root": (t) => ({
+                  borderRadius: "14px",
+                  backgroundColor:
+                    t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
+                  "& fieldset": {
+                    borderColor:
+                      t.palette.mode === "light"
+                        ? "rgba(12,21,90,0.16)"
+                        : "rgba(255,255,255,0.18)",
+                    borderWidth: 2,
+                  },
+                  "&:hover fieldset": { borderColor: t.palette.primary.main },
+                  "&.Mui-focused fieldset": { borderColor: t.palette.primary.main },
+                  height: 44,
+                }),
+                "& input": { paddingY: 1.2 },
+              }}
             />
-          </IconButton>
+          ))}
+
+          <Button
+            variant="text"
+            onClick={onClear}
+            sx={{
+              fontWeight: 700,
+              color: (theme) =>
+                theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.primary.dark,
+            }}
+          >
+            LIMPIAR
+          </Button>
         </Stack>
       </Paper>
     </Box>

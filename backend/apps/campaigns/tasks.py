@@ -2,6 +2,7 @@
 Tareas asíncronas de Celery para gestión de campañas y llamadas automáticas.
 """
 from celery import shared_task
+from celery.exceptions import Retry
 from django.utils import timezone
 from django.conf import settings
 from apps.campaigns.models import BaseDatosCargada
@@ -46,6 +47,8 @@ def verificar_bases_programadas(self):
             'timestamp': str(ahora)
         }
         
+    except Retry:
+        raise
     except Exception as e:
         logger.error(f"Error en verificar_bases_programadas: {str(e)}")
         raise self.retry(exc=e, countdown=60, max_retries=3)
@@ -75,6 +78,8 @@ def iniciar_iteracion_base(self, base_datos_id: int):
         
         return resultado
         
+    except Retry:
+        raise
     except Exception as e:
         logger.error(f"Error en iniciar_iteracion_base: {str(e)}")
         raise self.retry(exc=e, countdown=60, max_retries=3)
@@ -145,6 +150,9 @@ def asignar_llamadas_pendientes(self, base_datos_id: int):
             'clientes_restantes': len(clientes_pendientes) - asignaciones
         }
         
+    except Retry:
+        # Re-lanzar excepciones de Retry sin capturarlas
+        raise
     except BaseDatosCargada.DoesNotExist:
         logger.error(f"Base de datos {base_datos_id} no encontrada")
         return {'error': 'Base de datos no encontrada'}
@@ -177,8 +185,6 @@ def procesar_llamada_automatica(self, cliente_id: int, agente_id: str, base_dato
         agente = User.objects.get(documento_id=agente_id)
         iteracion = IteracionCliente.objects.get(id=iteracion_id)
         base = BaseDatosCargada.objects.get(id=base_datos_id)
-        
-        logger.info(f"Procesando llamada: Cliente {cliente.nombre} -> Agente {agente.get_full_name()}")
         
         # Incrementar intento
         iteracion.intento += 1
@@ -226,13 +232,9 @@ def procesar_llamada_automatica(self, cliente_id: int, agente_id: str, base_dato
                 twilio_status='pending'
             )
             
-            logger.info(f"Registro de llamada {llamada.id} creado, cambiando agente a EN_LLAMADA...")
-            
             # Cambiar estado del agente a EN_LLAMADA DESPUÉS de crear el registro
             # para asegurar que la llamada existe antes de cualquier webhook
             IteracionService.cambiar_estado_agente(agente_id, 'EN_LLAMADA')
-            
-            logger.info(f"Agente {agente.get_full_name()} ahora EN_LLAMADA, iniciando llamada Twilio...")
             
             # URL del webhook que manejará la llamada cuando el cliente conteste
             webhook_url = f"{settings.SITE_URL}/api/webhooks/twilio/handle-call/"
@@ -249,9 +251,6 @@ def procesar_llamada_automatica(self, cliente_id: int, agente_id: str, base_dato
             llamada.twilio_status = call_result['status']
             llamada.save()
             
-            logger.info(f"✓ Llamada Twilio iniciada: {call_result['sid']}")
-            logger.info(f"✓ Llamada {llamada.id} actualizada con CallSid real: {llamada.twilio_call_sid}")
-            
             # El webhook de Twilio actualizará el estado del agente cuando la llamada termine
             # NO cambiar a AFTERCALL aquí, el agente sigue EN_LLAMADA
             
@@ -265,8 +264,6 @@ def procesar_llamada_automatica(self, cliente_id: int, agente_id: str, base_dato
             # Solo cambiar a AFTERCALL si hubo error
             IteracionService.cambiar_estado_agente(agente_id, 'AFTERCALL')
         
-        logger.info(f"Llamada procesada: Cliente {cliente_id}, Intento {iteracion.intento}")
-        
         return {
             'success': True,
             'cliente_id': cliente_id,
@@ -274,6 +271,8 @@ def procesar_llamada_automatica(self, cliente_id: int, agente_id: str, base_dato
             'intento': iteracion.intento
         }
         
+    except Retry:
+        raise
     except Exception as e:
         logger.error(f"Error en procesar_llamada_automatica: {str(e)}")
         
@@ -304,10 +303,7 @@ def procesar_llamadas_pendientes_continuo(self):
         bases_activas = BaseDatosCargada.objects.filter(iteracion_activa=True)
         
         if not bases_activas.exists():
-            logger.info("No hay bases de datos activas en este momento")
             return {'mensaje': 'Sin bases activas', 'bases': 0}
-        
-        logger.info(f"Encontradas {bases_activas.count()} bases activas")
         
         total_asignaciones = 0
         agentes_ya_asignados = set()  # 🔒 Mantener track de agentes ya asignados en ESTA ejecución
@@ -315,13 +311,10 @@ def procesar_llamadas_pendientes_continuo(self):
         # Para cada base activa, intentar asignar llamadas
         for base in bases_activas:
             try:
-                logger.info(f"Procesando base {base.id}: {base.nombre_bd}")
-                
                 # Obtener agentes disponibles
                 agentes_disponibles = IteracionService.obtener_agentes_disponibles(base.campana.id)
                 
                 if not agentes_disponibles:
-                    logger.info(f"No hay agentes disponibles para base {base.id}")
                     continue
                 
                 # 🔒 Filtrar agentes que ya fueron asignados en esta ejecución
@@ -331,21 +324,15 @@ def procesar_llamadas_pendientes_continuo(self):
                 ]
                 
                 if not agentes_disponibles:
-                    logger.info(f"Todos los agentes disponibles ya tienen asignaciones en proceso")
                     continue
-                
-                logger.info(f"Encontrados {len(agentes_disponibles)} agentes disponibles (sin asignaciones previas)")
                 
                 # Obtener clientes pendientes
                 clientes_pendientes = IteracionService.obtener_clientes_pendientes(base.id, MAX_INTENTOS)
                 
                 if not clientes_pendientes:
-                    logger.info(f"No hay clientes pendientes en base {base.id}")
                     # Si no hay más clientes, finalizar iteración
                     IteracionService.finalizar_iteracion(base.id)
                     continue
-                
-                logger.info(f"Encontrados {len(clientes_pendientes)} clientes pendientes")
                 
                 # Asignar clientes a agentes (máximo un cliente por agente disponible)
                 asignaciones_base = 0

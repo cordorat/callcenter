@@ -30,16 +30,16 @@ class TwilioClientService {
       console.log('[Twilio] Inicializando Device...');
       
       // Obtener token del backend
-      const response = await apiClient.post('/api/integrations/twilio-client-token/');
+      const response = await apiClient.post('integrations/twilio-client-token/');
       this.token = response.data.token;
       
       console.log('[Twilio] Token obtenido correctamente');
 
       // Crear Device con el token
       this.device = new Device(this.token, {
-        logLevel: 1, // 0=trace, 1=debug, 2=info, 3=warn, 4=error
+        logLevel: 0, // 🔥 0=trace (máximo detalle), 1=debug, 2=info, 3=warn, 4=error
         codecPreferences: ['opus', 'pcmu'], // Codecs de audio
-        edge: 'ashburn', // Servidor Twilio más cercano (puedes cambiarlo)
+        // edge: 'ashburn', // 🔥 Comentado para que Twilio elija automáticamente
       });
 
       // Registrar event listeners
@@ -112,7 +112,7 @@ class TwilioClientService {
     this.device.on('tokenWillExpire', async () => {
       console.log('[Twilio] Token por expirar, renovando...');
       try {
-        const response = await apiClient.post('/api/integrations/twilio-client-token/');
+        const response = await apiClient.post('/integrations/twilio-client-token/');
         this.device.updateToken(response.data.token);
         console.log('[Twilio] Token renovado correctamente');
       } catch (error) {

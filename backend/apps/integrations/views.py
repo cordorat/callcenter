@@ -153,9 +153,10 @@ def twilio_voice_request(request):
         # Obtener o crear cliente
         try:
             if client_id:
-                cliente = Cliente.objects.get(cliente_id=client_id)
+                # Buscar por cliente_id y campaña
+                cliente = Cliente.objects.get(cliente_id=client_id, campana=campaign)
             else:
-                # Buscar por teléfono y campaña, o crear nuevo
+                # Si no hay client_id, crear uno nuevo con teléfono
                 cliente, created = Cliente.objects.get_or_create(
                     telefono=to_number,
                     campana=campaign,
@@ -164,6 +165,15 @@ def twilio_voice_request(request):
                         'otros_datos': {'origen': 'llamada_saliente'}
                     }
                 )
+                if created:
+                    logger.info(f"Cliente creado: {cliente.cliente_id} - {to_number}")
+        except Cliente.DoesNotExist:
+            logger.error(f"Cliente {client_id} no encontrado en campaña {campaign_id}")
+            return HttpResponse('<Response><Say language="es-MX">Error: Cliente no encontrado</Say></Response>', content_type='text/xml')
+        except Cliente.MultipleObjectsReturned:
+            logger.error(f"Múltiples clientes encontrados con teléfono {to_number} en campaña {campaign_id}")
+            # En caso de duplicados, tomar el primero
+            cliente = Cliente.objects.filter(telefono=to_number, campana=campaign).first()
         except Exception as e:
             logger.error(f"Error obteniendo/creando cliente: {str(e)}")
             return HttpResponse('<Response><Say language="es-MX">Error al procesar cliente</Say></Response>', content_type='text/xml')

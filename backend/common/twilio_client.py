@@ -76,7 +76,7 @@ class TwilioClient:
                 **kwargs
             )
             
-            logger.info(f"Llamada creada: {call.sid} de {from_} a {to}")
+            logger.info(f"✅ Llamada creada: {call.sid}")
             
             return {
                 'sid': call.sid,
@@ -143,8 +143,6 @@ class TwilioClient:
                 status=status,
                 **kwargs
             )
-            
-            logger.info(f"Llamada {call_sid} actualizada a estado: {status}")
             
             return {
                 'sid': call.sid,

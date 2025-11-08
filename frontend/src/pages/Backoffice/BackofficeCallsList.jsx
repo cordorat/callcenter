@@ -9,8 +9,8 @@ export default function BackofficeCallsList() {
   const [loading, setLoading] = useState(false);
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
-  const [estadoReportada, setEstadoReportada] = useState("");
-  const [estadoAuditada, setEstadoAuditada] = useState("");
+  const [estadoReportada, setEstadoReportada] = useState("todos");
+  const [estadoAuditada, setEstadoAuditada] = useState("todos");
   const [page, setPage] = useState(1);
 
   const fetchData = useCallback(async () => {
@@ -19,8 +19,8 @@ export default function BackofficeCallsList() {
       const params = {
         fecha_desde: fechaInicio || undefined,
         fecha_hasta: fechaFin || undefined,
-        estado_reportada: estadoReportada || undefined,
-        estado_auditoria: estadoAuditada || undefined,
+        estado_reportada: estadoReportada !== "todos" ? estadoReportada : undefined,
+        estado_auditoria: estadoAuditada !== "todos" ? estadoAuditada : undefined,
         page,
         page_size: 10,
       };
@@ -40,8 +40,8 @@ export default function BackofficeCallsList() {
   }, [fetchData]);
   
   const handleClear = () => {
-    setEstadoReportada("");
-    setEstadoAuditada("");
+    setEstadoReportada("todos");
+    setEstadoAuditada("todos");
     setFechaInicio("");
     setFechaFin("");
     setPage(1);

@@ -35,19 +35,17 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
 
     const hasCliente = Boolean(cliente.id);
 
-    // Sincronizar con prop externa si cambia
+    // Sincronizar con prop externa solo cuando cambia el ID del cliente (nueva llamada)
     React.useEffect(() => {
-        if (clienteProp) {
+        if (clienteProp && clienteProp.id && clienteProp.id !== cliente.id) {
+            console.log('[ClientInfoSection] 🔄 Sincronizando con nuevo cliente desde prop:', clienteProp);
             setCliente(clienteProp);
         }
-    }, [clienteProp]);
+    }, [clienteProp?.id]); // Solo sincronizar cuando cambia el ID del cliente
 
-    // ⭐ CORREGIDO: Notificar cambios al padre solo cuando cambia el cliente
-    React.useEffect(() => {
-        if (onClienteChange) {
-            onClienteChange(cliente);
-        }
-    }, [cliente, onClienteChange]);
+    // Notificar cambios al padre solo cuando el usuario interactúa (no en sincronización automática)
+    // Este useEffect NO debe ejecutarse en cada cambio de cliente para evitar loops
+    // Los cambios se notifican manualmente en handleGetRandomCliente y handleSaveEdit
 
     // Obtener cliente aleatorio
     const handleGetRandomCliente = async () => {
@@ -59,7 +57,7 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
             
             if (response.success && response.cliente) {
                 const clienteData = {
-                    id: response.cliente.id, // ⭐ CORREGIDO: Usar 'id' consistentemente
+                    id: response.cliente.cliente_id || response.cliente.id, // ⭐ CORREGIDO: Backend usa 'cliente_id'
                     nombre: response.cliente.nombre || "",
                     documento_id: response.cliente.documento_id || "",
                     telefono: response.cliente.telefono || "",
@@ -172,7 +170,7 @@ export default function ClientInfoSection({ cliente: clienteProp, onClienteChang
             if (response.success) {
                 if (response.cliente) {
                     const updatedCliente = {
-                        id: response.cliente.id, // ⭐ CORREGIDO: Usar 'id' consistentemente
+                        id: response.cliente.cliente_id || response.cliente.id, // ⭐ CORREGIDO: Backend usa 'cliente_id'
                         nombre: response.cliente.nombre || "",
                         documento_id: response.cliente.documento_id || "",
                         telefono: response.cliente.telefono || "",

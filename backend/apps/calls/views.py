@@ -1,12 +1,15 @@
 """
 ViewSets para gestión de llamadas del call center.
 """
+import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import models as django_models
+
+logger = logging.getLogger(__name__)
 
 from apps.calls.models import Llamada, FormularioVenta, Venta
 from apps.campaigns.models import Cliente, Campana
