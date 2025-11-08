@@ -296,11 +296,11 @@ export default function AgentDetailPage() {
                 >
                   <span className="summary-label" style={{ color: '#fff', opacity: 0.9 }}>Período Seleccionado</span>
                   <span className="summary-value" style={{ color: '#fff' }}>
-                    {new Date(kpiData.fecha_desde).toLocaleDateString('es-ES', { 
+                    {new Date(kpiData.fecha_desde + 'T00:00:00').toLocaleDateString('es-ES', { 
                       day: '2-digit', 
                       month: 'short', 
                       year: 'numeric' 
-                    })} - {new Date(kpiData.fecha_hasta).toLocaleDateString('es-ES', { 
+                    })} - {new Date(kpiData.fecha_hasta + 'T00:00:00').toLocaleDateString('es-ES', { 
                       day: '2-digit', 
                       month: 'short', 
                       year: 'numeric' 

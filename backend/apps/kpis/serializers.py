@@ -138,3 +138,70 @@ class KPICampanaSerializer(serializers.Serializer):
     total_agentes = serializers.IntegerField(
         help_text='Total de agentes asignados a la campaña'
     )
+    
+class KPICoordinadorSerializer(serializers.Serializer):
+    """
+    Serializer para KPIs del equipo de un coordinador.
+    Incluye métricas agregadas de todos los agentes del equipo.
+    """
+    # Identificación del equipo/coordinador
+    coordinador_id = serializers.CharField(
+        help_text='ID del coordinador'
+    )
+    coordinador_nombre = serializers.CharField(
+        help_text='Nombre completo del coordinador'
+    )
+    total_equipos = serializers.IntegerField(
+        help_text='Número de equipos que coordina'
+    )
+    
+    # KPI 1: Llamadas activas (en tiempo real)
+    llamadas_activas = serializers.IntegerField(
+        help_text='Número de llamadas en curso en este momento'
+    )
+    
+    # KPI 2: Desglose de estados del equipo
+    estados_equipo = serializers.DictField(
+        child=serializers.IntegerField(),
+        help_text='Diccionario con cantidad de agentes por estado {DISPONIBLE: 3, EN_LLAMADA: 2, ...}'
+    )
+    
+    # KPI 3: Tiempo promedio de llamada
+    tiempo_promedio_llamada = serializers.FloatField(
+        help_text='Duración promedio de llamadas en segundos (período seleccionado)'
+    )
+    
+    # KPI 4: Llamadas del día/período
+    llamadas_del_periodo = serializers.IntegerField(
+        help_text='Total de llamadas realizadas en el período seleccionado'
+    )
+    
+    # KPI 5: Ventas realizadas
+    ventas_realizadas = serializers.IntegerField(
+        help_text='Total de ventas realizadas en el período'
+    )
+    
+    # KPI 6: Tasa de conversión
+    tasa_conversion = serializers.FloatField(
+        help_text='Tasa de conversión (%) = (ventas / llamadas contestadas) * 100'
+    )
+    
+    # KPI 7: Ranking de agentes por ventas
+    ranking_agentes = serializers.ListField(
+        child=serializers.DictField(),
+        help_text='Lista ordenada de agentes con sus ventas [{agente_id, nombre, ventas}, ...]'
+    )
+    
+    # Metadatos
+    total_agentes = serializers.IntegerField(
+        help_text='Total de agentes en los equipos del coordinador'
+    )
+    fecha_desde = serializers.DateField(
+        help_text='Fecha de inicio del período consultado'
+    )
+    fecha_hasta = serializers.DateField(
+        help_text='Fecha de fin del período consultado'
+    )
+    fecha_consulta = serializers.DateTimeField(
+        help_text='Timestamp de cuándo se generaron estos KPIs'
+    )

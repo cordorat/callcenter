@@ -40,6 +40,16 @@ export async function getEquipoKpiOverview({ from, to }) {
   return data;
 }
 
+// KPIs para Coordinador - Overview completo con todos los KPIs
+export async function getCoordinadorKpiOverview({ fecha_desde, fecha_hasta }) {
+  const params = {};
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_COORDINADOR_OVERVIEW, { params });
+  return data;
+}
+
 // KPIs para Jefe de Campaña - Overview de campaña
 export async function getCampanaKpiOverview({ campana_id, fecha_desde, fecha_hasta }) {
   const params = {};

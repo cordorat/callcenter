@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
-import { getEquipoKpiOverview } from "@/core/api/kpis";
+import { getCoordinadorKpiOverview } from "@/core/api/kpis";
 import {
   Box,
   Typography,
@@ -27,21 +27,29 @@ const toLocalDateString = (date) => {
   return `${y}-${m}-${d}`;
 };
 
+const formatTime = (seconds) => {
+  if (!seconds || seconds === 0) return '0m 0s';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}m ${secs}s`;
+};
+
 export default function CoordinadorDashboard() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
 
   const today = React.useMemo(() => toLocalDateString(new Date()), []);
-  const [range] = React.useState({ from: today, to: today });
+  const [range] = React.useState({ fecha_desde: today, fecha_hasta: today });
 
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [kpi, setKpi] = React.useState({
-    llamadasEnCurso: 0,
+    llamadasActivas: 0,
     agentesDisponibles: 0,
     tiempoPromedioCalls: 0,
     llamadasRealizadas: 0,
     tasaConversion: 0,
+    ventasRealizadas: 0,
   });
 
   const load = React.useCallback(async () => {
@@ -49,20 +57,25 @@ export default function CoordinadorDashboard() {
       setError(null);
       setLoading(true);
 
-      const data = await getEquipoKpiOverview({ from: range.from, to: range.to });
+      const data = await getCoordinadorKpiOverview({ 
+        fecha_desde: range.fecha_desde, 
+        fecha_hasta: range.fecha_hasta 
+      });
 
-      // Mapear los valores del API al estado
-      const llamadasEnCurso = Number(data.llamadas_en_curso ?? 0);
+      // Mapear los valores del API al estado (nombres correctos del backend)
+      const llamadasActivas = Number(data.llamadas_activas ?? 0);
       const agentesDisponibles = Number(data.agentes_disponibles ?? 0);
       const tiempoPromedioCalls = Number(data.tiempo_promedio_llamada ?? 0);
-      const llamadasRealizadas = Number(data.llamadas_realizadas ?? 0);
+      const llamadasRealizadas = Number(data.llamadas_del_periodo ?? 0);
+      const ventasRealizadas = Number(data.ventas_realizadas ?? 0);
       const tasaConvPct = Number(data.tasa_conversion ?? 0);
 
       setKpi({
-        llamadasEnCurso,
+        llamadasActivas,
         agentesDisponibles,
         tiempoPromedioCalls,
         llamadasRealizadas,
+        ventasRealizadas,
         tasaConversion: tasaConvPct,
       });
     } catch (e) {
@@ -160,7 +173,7 @@ export default function CoordinadorDashboard() {
               spacing={3}
               sx={{ mb: 4 }}
             >
-              {/* Tarjeta Llamadas en Curso */}
+              {/* Tarjeta Llamadas Activas */}
               <Card
                 sx={{
                   flex: 1,
@@ -190,7 +203,7 @@ export default function CoordinadorDashboard() {
                       mb: 2,
                     }}
                   >
-                    Llamadas en Curso
+                    Llamadas Activas
                   </Typography>
                   <Typography
                     variant="h3"
@@ -200,7 +213,7 @@ export default function CoordinadorDashboard() {
                       fontSize: "2.5rem",
                     }}
                   >
-                    {kpi.llamadasEnCurso}
+                    {kpi.llamadasActivas}
                   </Typography>
                 </CardContent>
               </Card>
@@ -287,16 +300,15 @@ export default function CoordinadorDashboard() {
                     sx={{
                       color: "text.primary",
                       fontWeight: 700,
-                      fontSize: "2.5rem",
+                      fontSize: "2rem",
                     }}
                   >
-                    {Math.floor(kpi.tiempoPromedioCalls / 60)}
-                    <span style={{ fontSize: '0.6em' }}>m</span>
+                    {formatTime(kpi.tiempoPromedioCalls)}
                   </Typography>
                 </CardContent>
               </Card>
 
-              {/* Tarjeta Llamadas Realizadas */}
+              {/* Tarjeta Llamadas del Día */}
               <Card
                 sx={{
                   flex: 1,
@@ -326,7 +338,7 @@ export default function CoordinadorDashboard() {
                       mb: 2,
                     }}
                   >
-                    Llamadas Realizadas
+                    Llamadas del Día
                   </Typography>
                   <Typography
                     variant="h3"
@@ -337,6 +349,51 @@ export default function CoordinadorDashboard() {
                     }}
                   >
                     {kpi.llamadasRealizadas}
+                  </Typography>
+                </CardContent>
+              </Card>
+
+              {/* Tarjeta Ventas Realizadas */}
+              <Card
+                sx={{
+                  flex: 1,
+                  backgroundColor: "background.paper",
+                  borderRadius: 4,
+                  boxShadow: isDark
+                    ? "0 6px 16px rgba(0,0,0,0.35)"
+                    : "0 6px 16px rgba(12,21,90,0.10)",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    boxShadow: isDark
+                      ? "0 8px 18px rgba(0,0,0,0.45)"
+                      : "0 8px 18px rgba(12,21,90,0.18)",
+                    transform: "translateY(-4px)",
+                  },
+                }}
+              >
+                <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      mb: 2,
+                    }}
+                  >
+                    Ventas Realizadas
+                  </Typography>
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      color: "text.primary",
+                      fontWeight: 700,
+                      fontSize: "2.5rem",
+                    }}
+                  >
+                    {kpi.ventasRealizadas}
                   </Typography>
                 </CardContent>
               </Card>
@@ -381,7 +438,7 @@ export default function CoordinadorDashboard() {
                       fontSize: "2.5rem",
                     }}
                   >
-                    {kpi.tasaConversion}%
+                    {kpi.tasaConversion.toFixed(1)}%
                   </Typography>
                 </CardContent>
               </Card>

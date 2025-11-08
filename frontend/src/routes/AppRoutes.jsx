@@ -6,6 +6,7 @@ import Dashboard from '../pages/Dashboard/Dashboard';
 import Calls from '../pages/Calls/Calls';
 import Kpis from '../pages/Kpis/Kpis';
 import KpisJefeCampana from '../pages/Kpis/KpisJefeCampana';
+import KpisCoordinador from '../pages/Kpis/KpisCoordinador';
 import Campaing from '../pages/Campaing/Campaing';
 import Teams from '../pages/Teams/Teams';
 import PrivateRoute from './PrivateRoute';
@@ -25,6 +26,11 @@ const KpisRouter = () => {
   // Si es Jefe de Campaña, mostrar KPIs de campaña
   if (user?.role === 'JEFE_CAMPANA') {
     return <KpisJefeCampana />;
+  }
+
+  // Si es Coordinador, mostrar KPIs de coordinador
+  if (user?.role === 'COORDINADOR') {
+    return <KpisCoordinador />;
   }
 
   // Por defecto (AGENTE), mostrar KPIs de agente

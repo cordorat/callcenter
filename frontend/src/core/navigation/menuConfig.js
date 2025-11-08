@@ -58,13 +58,13 @@ export const menuItems = [
     label: 'KPIs',
     path: '/kpis',
     icon: EqualizerIcon,
-    roles: ['AGENTE', 'JEFE_CAMPANA']
+    roles: ['AGENTE', 'JEFE_CAMPANA', 'COORDINADOR']
   },
   {
     label: 'Historial',
     path: '/historial',
     icon: HistoryIcon,
-    roles: ['AGENTE', 'JEFE_CAMPANA', 'JEFE_CENTRO', 'COORDINADOR']
+    roles: ['AGENTE', 'JEFE_CAMPANA', 'JEFE_CENTRO']
   },
   {
     label: 'Historial',
