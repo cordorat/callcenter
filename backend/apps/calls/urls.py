@@ -5,6 +5,7 @@ from .views import (
     CampanaViewSet,
     LlamadaViewSet,
     FormularioVentaViewSet,
+    HistorialJefeCampanaViewSet,
     VentaViewSet
 )
 

@@ -158,7 +158,47 @@
     align-items: center;
 }
 
-/* Contenedor para fecha y hora separados */
+/* Estilos para inputs de fecha - Compatible con Kpis.css */
+.dates {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.dates label {
+    font-size: 13px;
+    color: var(--text-primary, #0C155A);
+    font-weight: 600;
+    display: grid;
+    gap: 6px;
+}
+
+.dates input[type="date"],
+.dates input[type="time"] {
+    border: 1px solid var(--date-border, rgba(12, 21, 90, 0.15));
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    color: var(--text-primary, #0C155A);
+    background: var(--date-bg, #F0F4F8);
+    transition: all 0.2s ease;
+}
+
+.dates input[type="date"]:focus,
+.dates input[type="time"]:focus {
+    outline: none;
+    border-color: var(--primary-main, #0C155A);
+    box-shadow: var(--date-focus-shadow, 0 0 0 3px rgba(12, 21, 90, 0.1));
+}
+
+/* Estilos para el calendario del input date en modo oscuro */
+.dates input[type="date"]::-webkit-calendar-picker-indicator,
+.dates input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: var(--date-icon-filter, none);
+    cursor: pointer;
+}
+
+/* LEGACY: Contenedor para fecha y hora separados (mantener por compatibilidad) */
 .date-time-inputs {
     display: flex;
     align-items: center;

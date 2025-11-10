@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 from apps.calls.models import Llamada, FormularioVenta, Venta
 from apps.campaigns.models import Cliente, Campana
+from apps.users.permissions import IsAdmin, IsJefeCampana, IsAdminOrOwner
 from apps.users.models import User
-from apps.users.permissions import IsAdmin, IsAdminOrOwner
 from apps.calls.serializers import (
     CampanaSerializer,
     LlamadaSerializer,
@@ -25,12 +25,14 @@ from apps.calls.serializers import (
     CompletarLlamadaSerializer,
     RechazarLlamadaSerializer,
     TransferirLlamadaSerializer,
+    HistorialJefeCampanaSerializer,
     RegistrarVentaSerializer,
     VentaSerializer
 )
-from common.estados_helper import get_estado_id
+from common.estados_helper import get_estado, get_estado_id
 from apps.campaigns.serializers import ClienteSerializer
 from rest_framework.decorators import api_view
+import math
 
 class ClienteViewSet(viewsets.ModelViewSet):
     """
@@ -1189,7 +1191,217 @@ class LlamadaViewSet(viewsets.ModelViewSet):
             page = 1
         return page
 
+class HistorialJefeCampanaViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para historial de llamadas del Jefe de Campaña.
+    Solo lectura - permite ver llamadas de sus campañas asignadas.
+    
+    Endpoints:
+    - GET /api/calls/historial-jefecampana/ - Lista de llamadas con filtros
+    - GET /api/calls/historial-jefecampana/{id}/ - Detalle de una llamada específica
+    - GET /api/calls/historial-jefecampana/mis_campanas/ - Lista de campañas del jefe
 
+    Filtros disponibles (query params):
+    - campana_id: ID de la campaña (obligatorio si tiene más de una)
+    - agente_nombre: Nombre del agente (búsqueda parcial)
+    - telefono: Teléfono del cliente (búsqueda parcial)
+    - fue_contestada: true/false
+    - estado_llamada: COMPLETADA, NO_CONTESTADA, etc.
+    - fecha_desde: YYYY-MM-DD
+    - fecha_hasta: YYYY-MM-DD
+    - page: Número de página (default: 1)
+    - page_size: Tamaño de página (default: 6, max: 100)
+    """
+    serializer_class = HistorialJefeCampanaSerializer
+    permission_classes = [IsAuthenticated, IsJefeCampana]
+    
+    def get_queryset(self):
+        """
+        Retorna llamadas de las campañas asignadas al jefe de campaña.
+        Solo el admin puede ver todas las llamadas.
+        """
+        user = self.request.user
+        
+        # Verificar si es admin
+        rol_admin = get_estado('ROL_USUARIO', 'ADMIN')
+        es_admin = user.rol == rol_admin
+        
+        # Base queryset
+        if es_admin:
+            # Admin ve todas las llamadas
+            queryset = Llamada.objects.all()
+        else:
+            # Jefe de campaña solo ve llamadas de sus campañas
+            from apps.campaigns.models import Campana
+            campanas_ids = Campana.objects.filter(
+                jefe_campana=user
+            ).values_list('id', flat=True)
+            
+            # Filtrar por campañas del jefe usando la relación a través del cliente
+            queryset = Llamada.objects.filter(
+                cliente__campana_id__in=campanas_ids
+            )
+        
+        # ===== APLICAR FILTROS =====
+        
+        # Filtro por campaña específica
+        campana_id = self.request.query_params.get('campana_id')
+        if campana_id:
+            try:
+                queryset = queryset.filter(cliente__campana_id=campana_id)
+            except ValueError:
+                pass
+        
+        # Filtro por nombre de agente
+        agente_nombre = self.request.query_params.get('agente_nombre')
+        if agente_nombre:
+            queryset = queryset.filter(
+                django_models.Q(agente__first_name__icontains=agente_nombre) |
+                django_models.Q(agente__last_name__icontains=agente_nombre)
+            )
+        
+        # Filtro por teléfono
+        telefono = self.request.query_params.get('telefono')
+        if telefono:
+            telefono_limpio = telefono.replace('+', '').replace(' ', '').replace('-', '')
+            queryset = queryset.filter(
+                django_models.Q(telefono_destino__icontains=telefono) |
+                django_models.Q(telefono_destino__icontains=telefono_limpio) |
+                django_models.Q(cliente__telefono__icontains=telefono) |
+                django_models.Q(cliente__telefono__icontains=telefono_limpio)
+            )
+        
+        # Filtro por fue_contestada
+        fue_contestada = self.request.query_params.get('fue_contestada')
+        if fue_contestada is not None:
+            if fue_contestada.lower() in ['true', '1', 'yes', 'si']:
+                queryset = queryset.filter(fue_contestada=True)
+            elif fue_contestada.lower() in ['false', '0', 'no']:
+                queryset = queryset.filter(fue_contestada=False)
+        
+        # Filtro por estado de llamada
+        estado_llamada = self.request.query_params.get('estado_llamada')
+        if estado_llamada:
+            estado_id = get_estado_id('ESTADO_LLAMADA', estado_llamada.upper())
+            if estado_id:
+                queryset = queryset.filter(estado_llamada_id=estado_id)
+        
+        # Filtro por rango de fechas
+        fecha_desde = self.request.query_params.get('fecha_desde')
+        if fecha_desde:
+            try:
+                queryset = queryset.filter(fecha_hora_inicio__date__gte=fecha_desde)
+            except Exception:
+                pass
+        
+        fecha_hasta = self.request.query_params.get('fecha_hasta')
+        if fecha_hasta:
+            try:
+                queryset = queryset.filter(fecha_hora_inicio__date__lte=fecha_hasta)
+            except Exception:
+                pass
+        
+        # Optimizar consulta
+        queryset = queryset.select_related(
+            'agente',
+            'cliente',
+            'cliente__campana',
+            'venta',
+            'estado_llamada',
+            'estado_venta',
+            'estado_reportada'
+        ).prefetch_related(
+            'formularios'
+        )
+        
+        return queryset.order_by('-fecha_hora_inicio')
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Lista paginada de llamadas con validación de campaña.
+        """
+        queryset = self.get_queryset()
+        
+        # Contar total antes de paginar
+        total_count = queryset.count()
+        
+        # Configurar paginación
+        page_size = request.query_params.get('page_size', 6)
+        try:
+            page_size = int(page_size)
+            if page_size < 1:
+                page_size = 6
+            elif page_size > 100:
+                page_size = 100
+        except ValueError:
+            page_size = 6
+        
+        page = request.query_params.get('page', 1)
+        try:
+            page = int(page)
+            if page < 1:
+                page = 1
+        except ValueError:
+            page = 1
+        
+        # Paginar
+        start = (page - 1) * page_size
+        end = start + page_size
+        llamadas_pagina = queryset[start:end]
+        
+        # Serializar
+        serializer = self.get_serializer(llamadas_pagina, many=True)
+        
+        # Calcular total de páginas
+        import math
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 0
+        
+        return Response({
+            'count': total_count,
+            'total_pages': total_pages,
+            'current_page': page,
+            'page_size': page_size,
+            'results': serializer.data
+        })
+    
+    @action(detail=False, methods=['get'], url_path='mis-campanas')
+    def mis_campanas(self, request):
+        """
+        Retorna las campañas asignadas al jefe de campaña.
+        Útil para el selector de campaña en el frontend.
+        """
+        user = request.user
+        
+        # Verificar si es admin
+        rol_admin = get_estado('ROL_USUARIO', 'ADMIN')
+        es_admin = user.rol == rol_admin
+        
+        from apps.campaigns.models import Campana
+        
+        if es_admin:
+            # Admin ve todas las campañas
+            campanas = Campana.objects.all()
+        else:
+            # Jefe solo ve sus campañas
+            campanas = Campana.objects.filter(jefe_campana=user)
+        
+        # Serializar
+        campanas_data = []
+        for campana in campanas:
+            campanas_data.append({
+                'id': campana.id,
+                'nombre': campana.nombre,
+                'descripcion': campana.descripcion,
+                'fecha_inicio': campana.fecha_inicio,
+                'fecha_fin': campana.fecha_fin,
+                'estado': campana.estado.valor if campana.estado else None,
+            })
+        
+        return Response({
+            'count': len(campanas_data),
+            'campanas': campanas_data
+        })
+        
 class FormularioVentaViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de formularios de venta.
