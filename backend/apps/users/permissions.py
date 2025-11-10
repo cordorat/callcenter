@@ -63,3 +63,21 @@ class IsJefeCampana(BasePermission):
         
         # Admin también tiene acceso
         return request.user.rol in [jefe_campana_role, admin_role]
+    
+class IsJefeCentro(BasePermission):
+    """
+    Permiso personalizado para permitir solo a Jefes de Centro.
+    También permite acceso a administradores por jerarquía.
+    """
+    
+    def has_permission(self, request, view):
+        # Verificar que el usuario esté autenticado
+        if not request.user or not request.user.is_authenticated:
+            return False
+        
+        # Obtener los roles necesarios desde TiposParametros
+        jefe_centro_role = get_estado('ROL_USUARIO', 'JEFE_CENTRO')
+        admin_role = get_estado('ROL_USUARIO', 'ADMIN')
+        
+        # Permitir acceso a Jefe de Centro y Admin
+        return request.user.rol in [jefe_centro_role, admin_role]

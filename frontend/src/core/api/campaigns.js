@@ -20,6 +20,52 @@ export const getCampaigns = async (params = {}) => {
 };
 
 /**
+ * Crear una nueva campaña
+ * @param {Object} data - Datos de la campaña
+ * @returns {Promise<Object>} { message, data }
+ */
+export const createCampaign = async (data) => {
+  try {
+    const response = await apiClient.post('/campaigns/', data);
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al crear campaña:', error);
+    throw error;
+  }
+};
+
+/**
+ * Buscar jefes de campaña en tiempo real
+ * @param {string} query - Término de búsqueda (nombre o código)
+ * @returns {Promise<Array>} Lista de jefes de campaña
+ */
+export const searchJefesCampana = async (query) => {
+  try {
+    const response = await apiClient.get('/campaigns/buscar-jefes/', {
+      params: { q: query }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al buscar jefes de campaña:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener productos activos disponibles
+ * @returns {Promise<Object>} { success, productos }
+ */
+export const getProductosActivos = async () => {
+  try {
+    const response = await apiClient.get('/campaigns/productos/');
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al obtener productos:', error);
+    throw error;
+  }
+};
+
+/**
  * Obtener lista de campañas activas
  */
 export const getActiveCampaigns = async () => {

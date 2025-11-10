@@ -7,6 +7,7 @@
 @adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMzA2MDQzLCJpYXQiOjE3NjAyNzcyNDMsImp0aSI6IjVmZjNlMjA5ZWNiZDRhZTI4MjUwMzRlNzg1YzQwN2ViIiwiZG9jdW1lbnRvX2lkIjoiIn0.4Rlhe7w0p2DWoMHRd2hmbfbO6BhkXbxc16-Bn5UPvqo
 @agentToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMDk0MTEwLCJpYXQiOjE3NjAwNjUzMTAsImp0aSI6ImYwOGU5YWEwNzJmZDRhODFhNTNlNGY4N2ZjY2VjNjM0IiwidXNlcl9pZCI6Mn0.9PdfqN60ALXpylUaxb3vVo3qjCe_gaycYHySIbxtyiI
 @coordinadorToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNjU5OTAwLCJpYXQiOjE3NjI2MzExMDAsImp0aSI6IjQ5OTM4OTRlNDJhYjRmNDc4Y2VlMzUyNWJlYmVkYTAxIiwiZG9jdW1lbnRvX2lkIjoiMDk4NzU0MjM0NSJ9.Hhj7WWItZiGhvidYa5juCyANpzMR55unaKRMkJLKnDI
+@tokenJefeCentro = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNzY0ODg4LCJpYXQiOjE3NjI3MzYwODgsImp0aSI6IjkzMDRmMzRiZTNlMjQyYjA5ZTM2YjcyNTY2MDViOWRjIiwiZG9jdW1lbnRvX2lkIjoiMTAwMDAwMDAwMiJ9.AgtaEhf6pJILBYfqotOiGLcJahp4xUT65O6xPZBfwo0
 
 ### ============================================
 ### 1. AUTENTICACIÓN
@@ -547,3 +548,40 @@ Authorization: Bearer {{coordinadorToken}}
 ### 5. Intentar con rango inválido (debe fallar)
 GET {{baseUrl}}/kpis/coordinador/overview/?fecha_desde=2025-11-08&fecha_hasta=2025-11-01
 Authorization: Bearer {{coordinadorToken}}
+
+
+### 1. Login como Jefe de Centro
+POST http://localhost:8000/api/auth/login/
+Content-Type: application/json
+
+{
+  "email": "jefe1@callcenter.com",
+  "password": "jefe123!"
+}
+
+### 2. Listar campañas (usar token del login)
+GET http://localhost:8000/api/campaigns/
+Authorization: Bearer {{tokenJefeCentro}}
+
+### 3. Buscar jefes de campaña
+GET http://localhost:8000/api/campaigns/buscar-jefes/?q=juan
+Authorization: Bearer {{tokenJefeCentro}}
+
+### 4. Listar productos activos
+GET http://localhost:8000/api/campaigns/productos/
+Authorization: Bearer {{tokenJefeCentro}}
+
+### 5. Crear campaña
+POST http://localhost:8000/api/campaigns/
+Authorization: Bearer {{tokenJefeCentro}}
+Content-Type: application/json
+
+{
+  "nombre": "Campaña Navidad 2025",
+  "descripcion": "Campaña especial de ventas navideñas con descuentos exclusivos",
+  "fecha_inicio": "2025-12-01",
+  "fecha_fin": "2025-12-31",
+  "estado": 1,
+  "jefe_campana": 5,
+  "productos_ids": [1, 2, 3]
+}
