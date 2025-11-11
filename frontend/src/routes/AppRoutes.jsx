@@ -4,7 +4,9 @@ import { useAuth } from '@/core/context/AuthContext';
 import Login from '../pages/Login/Login';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import Calls from '../pages/Calls/Calls';
-import Kpis from '../pages/Kpis/Kpis';          
+import Kpis from '../pages/Kpis/Kpis';
+import KpisJefeCampana from '../pages/Kpis/KpisJefeCampana';
+import KpisCoordinador from '../pages/Kpis/KpisCoordinador';
 import Campaing from '../pages/Campaing/Campaing';
 import Teams from '../pages/Teams/Teams';
 import PrivateRoute from './PrivateRoute';
@@ -17,6 +19,26 @@ import AgentDetailPage from '../pages/Kpis/AgentDetailPage';
 import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
 import ProfilePage from '@/pages/Profile/ProfilePage';
 
+// Componente que decide qué página de KPIs mostrar según el rol
+const KpisRouter = () => {
+  const { user } = useAuth();
+
+  // Si es Jefe de Campaña, mostrar KPIs de campaña
+  if (user?.role === 'JEFE_CAMPANA') {
+    return <KpisJefeCampana />;
+  }
+
+  // Si es Coordinador, mostrar KPIs de coordinador
+  if (user?.role === 'COORDINADOR') {
+    return <KpisCoordinador />;
+  }
+
+  // Por defecto (AGENTE), mostrar KPIs de agente
+  return <Kpis />;
+};
+import CoordinadorCallHistoryAgents from '@/pages/Historial/CoordinadorCallHistoryAgents';
+import BackofficeCallsList from '@/pages/Backoffice/BackofficeCallsList';
+
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
 
@@ -24,41 +46,41 @@ const AppRoutes = () => {
     <Router>
       <Routes>
         {/* Ruta pública: Login */}
-        <Route 
-          path="/" 
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
+        <Route
+          path="/"
+          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
         />
 
         {/* Ruta pública: Reset Password */}
-        <Route 
-          path="/reset-password" 
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
+        <Route
+          path="/reset-password"
+          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
         />
-        
+
         {/* Rutas protegidas */}
 
         {/* Ruta Dashboard */}
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <PrivateRoute>
               <Dashboard />
             </PrivateRoute>
-          } 
+          }
         />
 
         {/* Ruta Llamadas */}
-        <Route 
-          path="/llamadas" 
+        <Route
+          path="/llamadas"
           element={
             <PrivateRoute>
               <Calls />
             </PrivateRoute>
-          } 
+          }
         />
-        
+
         {/* Ruta Historial de Llamadas */}
-         <Route
+        <Route
           path="/historial"
           element={
             <PrivateRoute>
@@ -67,12 +89,29 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Ruta KPIs */}
+        <Route
+          path="/historial/coordinador"
+          element={
+            <PrivateRoute>
+              <CoordinadorCallHistoryAgents />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/auditoria-llamadas"
+          element={
+            <PrivateRoute>
+              <BackofficeCallsList />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Ruta KPIs - Renderiza según rol */}
         <Route
           path="/kpis"
           element={
             <PrivateRoute>
-              <Kpis />
+              <KpisRouter />
             </PrivateRoute>
           }
         />
@@ -132,9 +171,9 @@ const AppRoutes = () => {
         } />
 
         {/* Ruta por defecto */}
-        <Route 
-          path="*" 
-          element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} 
+        <Route
+          path="*"
+          element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />}
         />
       </Routes>
     </Router>

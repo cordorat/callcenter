@@ -2,7 +2,7 @@
 //Pantalla para gestionar campañas
 
 import * as React from "react";
-import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert } from '@mui/material';
+import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { useTheme } from '@mui/material/styles';
 import MainLayout from '@/core/components/layout/MainLayout';
@@ -61,6 +61,10 @@ export default function CampaingJefeCampana() {
   const [isEditingSalesGoal, setIsEditingSalesGoal] = useState(false);
   const [tempSalesGoal, setTempSalesGoal] = useState('');
   const [savingSalesGoal, setSavingSalesGoal] = useState(false);
+
+  // Estado para el modal de iteración
+  const [openIteracionModal, setOpenIteracionModal] = useState(false);
+  const [iniciandoIteracion, setIniciandoIteracion] = useState(false);
 
   // Cargar campañas al montar el componente
   useEffect(() => {
@@ -144,8 +148,8 @@ export default function CampaingJefeCampana() {
     );
   }
 
-  // Handler para iniciar la iteración
-  const handleIniciarIteracion = async () => {
+  // Handler para abrir el modal de iteración
+  const handleOpenIteracionModal = () => {
     if (!selectedBaseId) {
       setSnackbar({
         open: true,
@@ -154,6 +158,17 @@ export default function CampaingJefeCampana() {
       });
       return;
     }
+    setOpenIteracionModal(true);
+  };
+
+  // Handler para cerrar el modal
+  const handleCloseIteracionModal = () => {
+    setOpenIteracionModal(false);
+  };
+
+  // Handler para confirmar y iniciar la iteración
+  const handleConfirmarIteracion = async () => {
+    setIniciandoIteracion(true);
     const baseId = selectedBaseId;
     const fechaISO = toLocalISOStringWithTZ(from); // ahora incluye zona horaria
     try {
@@ -163,6 +178,7 @@ export default function CampaingJefeCampana() {
         message: '¡La iteración de la base de datos fue programada exitosamente! Puedes ver la fecha en la columna correspondiente.',
         severity: 'success'
       });
+      setOpenIteracionModal(false);
     } catch (error) {
       let backendMsg = 'No se pudo programar la iteración. Por favor verifica la campaña y la fecha seleccionada.';
       if (error && error.response && error.response.data) {
@@ -176,32 +192,41 @@ export default function CampaingJefeCampana() {
       }
       setSnackbar({
         open: true,
-        message: 'No se pudo programar la iteración. Por favor verifica la campaña y la fecha seleccionada.',
+        message: backendMsg,
         severity: 'error'
       });
       console.error('Error al programar iteración:', error);
+    } finally {
+      setIniciandoIteracion(false);
     }
   };
 
   // Variables CSS dinámicas según el tema
+  const isDark = theme.palette.mode === 'dark';
   const cssVariables = {
     '--text-primary': theme.palette.text.primary,
+    '--text-secondary': theme.palette.text.secondary,
     '--primary-main': theme.palette.primary.main,
-    '--campaign-filter-bg': theme.palette.mode === 'light' ? '#F8FAFB' : 'rgba(255,255,255,0.03)',
-    '--campaign-filter-shadow': theme.palette.mode === 'light' 
-      ? '0 2px 8px rgba(12, 21, 90, 0.06)' 
-      : '0 2px 8px rgba(0, 0, 0, 0.3)',
-    '--segmented-bg': theme.palette.mode === 'light' ? '#F0F4F8' : 'rgba(255,255,255,0.05)',
-    '--segmented-border': theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.12)' : 'rgba(255,255,255,0.1)',
-    '--segmented-text': theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.7)' : 'rgba(255,255,255,0.7)',
-    '--segmented-hover': theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.05)' : 'rgba(255,255,255,0.08)',
-    '--segmented-active-shadow': theme.palette.mode === 'light' 
-      ? '0 2px 4px rgba(12, 21, 90, 0.2)' 
-      : '0 2px 4px rgba(0, 0, 0, 0.5)',
-    '--campaign-content-bg': theme.palette.mode === 'light' ? '#F8FAFB' : 'rgba(255,255,255,0.03)',
-    '--campaign-content-shadow': theme.palette.mode === 'light' 
-      ? '0 2px 8px rgba(12, 21, 90, 0.06)' 
-      : '0 2px 8px rgba(0, 0, 0, 0.3)',
+    '--primary-dark': isDark ? theme.palette.primary.dark : '#1a2b7a',
+    '--campaign-filter-bg': isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFB',
+    '--campaign-filter-shadow': isDark 
+      ? '0 2px 8px rgba(0, 0, 0, 0.3)' 
+      : '0 2px 8px rgba(12, 21, 90, 0.06)',
+    '--segmented-bg': isDark ? 'rgba(255,255,255,0.05)' : '#F0F4F8',
+    '--segmented-border': isDark ? 'rgba(255,255,255,0.1)' : 'rgba(12, 21, 90, 0.12)',
+    '--segmented-text': isDark ? 'rgba(255,255,255,0.7)' : 'rgba(12, 21, 90, 0.7)',
+    '--segmented-hover': isDark ? 'rgba(255,255,255,0.08)' : 'rgba(12, 21, 90, 0.05)',
+    '--segmented-active-shadow': isDark 
+      ? '0 2px 4px rgba(0, 0, 0, 0.5)' 
+      : '0 2px 4px rgba(12, 21, 90, 0.2)',
+    '--campaign-content-bg': isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFB',
+    '--campaign-content-shadow': isDark 
+      ? '0 2px 8px rgba(0, 0, 0, 0.3)' 
+      : '0 2px 8px rgba(12, 21, 90, 0.06)',
+    '--date-bg': isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F4F8',
+    '--date-border': isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(12, 21, 90, 0.15)',
+    '--date-focus-shadow': isDark ? '0 0 0 3px rgba(47, 118, 230, 0.3)' : '0 0 0 3px rgba(12, 21, 90, 0.1)',
+    '--date-icon-filter': isDark ? 'invert(1)' : 'none',
   };
 
   return (
@@ -353,52 +378,8 @@ export default function CampaingJefeCampana() {
             </div>
           </div>
           
-          {/* Lado derecho: Fecha y botones de acción */}
+          {/* Lado derecho: Botones de acción */}
           <div className="campaign-actions">
-            <Tooltip
-              title="Fecha y hora de inicio de iteración"
-              placement="bottom"
-              arrow
-              slotProps={{
-                tooltip: {
-                  sx: {
-                    bgcolor: (theme) => theme.palette.primary.main,
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    py: 1,
-                    px: 1.5,
-                    borderRadius: '8px',
-                    textAlign: 'center',
-                  }
-                },
-                arrow: {
-                  sx: {
-                    color: (theme) => theme.palette.primary.main,
-                  }
-                }
-              }}
-            >
-              <div className="date-time-inputs">
-                <input
-                  type="date"
-                  value={from.split('T')[0]}
-                  onChange={(e) => {
-                    const time = from.split('T')[1] || '00:00';
-                    setFrom(`${e.target.value}T${time}`);
-                  }}
-                  className="date-input"
-                />
-                <input
-                  type="time"
-                  value={from.split('T')[1] || '00:00'}
-                  onChange={(e) => {
-                    const date = from.split('T')[0];
-                    setFrom(`${date}T${e.target.value}`);
-                  }}
-                  className="time-input"
-                />
-              </div>
-            </Tooltip>
             <Tooltip
               title="Iniciar iteración"
               placement="bottom"
@@ -450,7 +431,7 @@ export default function CampaingJefeCampana() {
                     fontSize: '1.8rem',
                   },
                 }}
-                onClick={handleIniciarIteracion}
+                onClick={handleOpenIteracionModal}
               >
                 <PlayCircleFilledIcon />
               </Button>
@@ -497,6 +478,125 @@ export default function CampaingJefeCampana() {
           )}
         </div>
       </div>
+
+      {/* Modal para programar iteración */}
+      <Dialog
+        open={openIteracionModal}
+        onClose={handleCloseIteracionModal}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            padding: '8px',
+            backgroundColor: theme.palette.background.paper,
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontSize: '1.25rem',
+            fontWeight: 700,
+            color: theme.palette.text.primary,
+            paddingBottom: '8px',
+          }}
+        >
+          Programar Iteración de Base de Datos
+        </DialogTitle>
+        
+        <DialogContent sx={{ paddingTop: '16px !important' }}>
+          <Box sx={{ mb: 3 }}>
+            <Alert severity="info" sx={{ mb: 2, borderRadius: '10px' }}>
+              Selecciona la fecha y hora en la que deseas iniciar la iteración de la base de datos.
+            </Alert>
+            
+            <div 
+              className="dates" 
+              style={{
+                '--text-primary': theme.palette.text.primary,
+                '--text-secondary': theme.palette.text.secondary,
+                '--primary-main': theme.palette.primary.main,
+                '--date-bg': isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F4F8',
+                '--date-border': isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(12, 21, 90, 0.15)',
+                '--date-focus-shadow': isDark ? '0 0 0 3px rgba(47, 118, 230, 0.3)' : '0 0 0 3px rgba(12, 21, 90, 0.1)',
+                '--date-icon-filter': isDark ? 'invert(1)' : 'none',
+              }}
+            >
+              <label>
+                Fecha
+                <input
+                  type="date"
+                  value={from.split('T')[0]}
+                  onChange={(e) => {
+                    const time = from.split('T')[1] || '00:00';
+                    setFrom(`${e.target.value}T${time}`);
+                  }}
+                />
+              </label>
+              <label>
+                Hora
+                <input
+                  type="time"
+                  value={from.split('T')[1] || '00:00'}
+                  onChange={(e) => {
+                    const date = from.split('T')[0];
+                    setFrom(`${date}T${e.target.value}`);
+                  }}
+                />
+              </label>
+            </div>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ padding: '16px 24px', gap: '12px' }}>
+          <Button
+            onClick={handleCloseIteracionModal}
+            disabled={iniciandoIteracion}
+            sx={{
+              color: theme.palette.text.secondary,
+              fontWeight: 600,
+              borderRadius: '8px',
+              padding: '8px 20px',
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              '&:hover': {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(12, 21, 90, 0.05)',
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleConfirmarIteracion}
+            disabled={iniciandoIteracion}
+            variant="contained"
+            sx={{
+              backgroundColor: theme.palette.primary.main,
+              color: 'white',
+              fontWeight: 600,
+              borderRadius: '8px',
+              padding: '8px 24px',
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              boxShadow: isDark 
+                ? '0 2px 8px rgba(0, 0, 0, 0.5)' 
+                : '0 2px 8px rgba(12, 21, 90, 0.2)',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.dark,
+                boxShadow: isDark 
+                  ? '0 4px 12px rgba(0, 0, 0, 0.7)' 
+                  : '0 4px 12px rgba(12, 21, 90, 0.3)',
+              },
+              '&:disabled': {
+                backgroundColor: theme.palette.action.disabledBackground,
+                color: theme.palette.action.disabled,
+              }
+            }}
+          >
+            {iniciandoIteracion ? 'Programando...' : 'Programar Iteración'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </MainLayout>
   );
 }

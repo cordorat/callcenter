@@ -27,19 +27,17 @@ class TwilioClientService {
    */
   async initialize() {
     try {
-      console.log('[Twilio] Inicializando Device...');
+      console.log('[Twilio] 🔄 Inicializando conexión...');
       
       // Obtener token del backend
       const response = await apiClient.post('integrations/twilio-client-token/');
       this.token = response.data.token;
-      
-      console.log('[Twilio] Token obtenido correctamente');
 
       // Crear Device con el token
       this.device = new Device(this.token, {
-        logLevel: 1, // 0=trace, 1=debug, 2=info, 3=warn, 4=error
+        logLevel: 3, // 0=trace, 1=debug, 2=info, 3=warn, 4=error (solo warnings y errores)
         codecPreferences: ['opus', 'pcmu'], // Codecs de audio
-        edge: 'ashburn', // Servidor Twilio más cercano (puedes cambiarlo)
+        // edge: 'ashburn', // Comentado para que Twilio elija automáticamente
       });
 
       // Registrar event listeners
@@ -49,11 +47,11 @@ class TwilioClientService {
       await this.device.register();
       
       this.isReady = true;
-      console.log('[Twilio] Device registrado y listo');
+      console.log('[Twilio] ✅ Conexión establecida');
       
       return true;
     } catch (error) {
-      console.error('[Twilio] Error inicializando Device:', error);
+      console.error('[Twilio] ❌ Error inicializando Device:', error);
       if (this.onErrorCallback) {
         this.onErrorCallback(error);
       }
@@ -69,7 +67,6 @@ class TwilioClientService {
 
     // Device está listo
     this.device.on('registered', () => {
-      console.log('[Twilio] Device registrado correctamente');
       if (this.onReadyCallback) {
         this.onReadyCallback();
       }
@@ -77,7 +74,7 @@ class TwilioClientService {
 
     // Error en el Device
     this.device.on('error', (error) => {
-      console.error('[Twilio] Error en Device:', error);
+      console.error('[Twilio] ❌ Error en Device:', error);
       if (this.onErrorCallback) {
         this.onErrorCallback(error);
       }
@@ -86,17 +83,16 @@ class TwilioClientService {
     // Llamada entrante
     this.device.on('incoming', (call) => {
       const callSid = call.parameters.CallSid;
-      console.log('[Twilio] Llamada entrante:', call.parameters);
+      console.log('[Twilio] 📞 Llamada entrante de:', call.parameters.From);
       
       // Deduplicar: Ignorar si ya procesamos esta llamada
       if (this.processedCallSids.has(callSid)) {
-        console.log('[Twilio] ⚠️ Llamada duplicada detectada, ignorando:', callSid);
+        console.log('[Twilio] ⚠️ Llamada duplicada detectada, ignorando');
         return;
       }
       
       // Marcar como procesada
       this.processedCallSids.add(callSid);
-      console.log('[Twilio] ✓ Primera vez que recibimos esta llamada:', callSid);
       
       this.activeCall = call;
       
@@ -110,19 +106,19 @@ class TwilioClientService {
 
     // Token a punto de expirar (renovar)
     this.device.on('tokenWillExpire', async () => {
-      console.log('[Twilio] Token por expirar, renovando...');
+      console.log('[Twilio] 🔄 Renovando token...');
       try {
-        const response = await apiClient.post('integrations/twilio-client-token/');
+        const response = await apiClient.post('/integrations/twilio-client-token/');
         this.device.updateToken(response.data.token);
-        console.log('[Twilio] Token renovado correctamente');
+        console.log('[Twilio] ✅ Token renovado');
       } catch (error) {
-        console.error('[Twilio] Error renovando token:', error);
+        console.error('[Twilio] ❌ Error renovando token:', error);
       }
     });
 
     // Device desregistrado
     this.device.on('unregistered', () => {
-      console.log('[Twilio] Device desregistrado');
+      console.log('[Twilio] ⚠️ Device desconectado');
       this.isReady = false;
     });
   }
@@ -133,7 +129,7 @@ class TwilioClientService {
   _registerCallListeners(call) {
     // Llamada sonando (ringing)
     call.on('ringing', () => {
-      console.log('[Twilio] Llamada sonando...');
+      console.log('[Twilio] 📞 Llamando...');
       if (this.onRingingCallback) {
         this.onRingingCallback(call);
       }
@@ -141,7 +137,7 @@ class TwilioClientService {
 
     // Llamada aceptada/conectada
     call.on('accept', () => {
-      console.log('[Twilio] Llamada conectada');
+      console.log('[Twilio] ✅ Llamada conectada');
       if (this.onConnectCallback) {
         this.onConnectCallback(call);
       }
@@ -149,13 +145,12 @@ class TwilioClientService {
 
     // Llamada desconectada
     call.on('disconnect', () => {
-      console.log('[Twilio] Llamada desconectada');
+      console.log('[Twilio] 📴 Llamada finalizada');
       
       // Limpiar del Set de llamadas procesadas
       const callSid = call.parameters?.CallSid;
       if (callSid) {
         this.processedCallSids.delete(callSid);
-        console.log('[Twilio] ✓ CallSid removido del Set:', callSid);
       }
       
       this.activeCall = null;
@@ -166,13 +161,12 @@ class TwilioClientService {
 
     // Llamada cancelada
     call.on('cancel', () => {
-      console.log('[Twilio] Llamada cancelada');
+      console.log('[Twilio] ⚠️ Llamada cancelada');
       
       // Limpiar del Set de llamadas procesadas
       const callSid = call.parameters?.CallSid;
       if (callSid) {
         this.processedCallSids.delete(callSid);
-        console.log('[Twilio] ✓ CallSid removido del Set (cancelado):', callSid);
       }
       
       this.activeCall = null;
@@ -183,13 +177,12 @@ class TwilioClientService {
 
     // Llamada rechazada
     call.on('reject', () => {
-      console.log('[Twilio] Llamada rechazada');
+      console.log('[Twilio] ⛔ Llamada rechazada');
       
       // Limpiar del Set de llamadas procesadas
       const callSid = call.parameters?.CallSid;
       if (callSid) {
         this.processedCallSids.delete(callSid);
-        console.log('[Twilio] ✓ CallSid removido del Set (rechazado):', callSid);
       }
       
       this.activeCall = null;
@@ -200,7 +193,7 @@ class TwilioClientService {
 
     // Error en la llamada
     call.on('error', (error) => {
-      console.error('[Twilio] Error en llamada:', error);
+      console.error('[Twilio] ❌ Error en llamada:', error);
       this.activeCall = null;
       if (this.onErrorCallback) {
         this.onErrorCallback(error);
@@ -224,7 +217,7 @@ class TwilioClientService {
         ...params // agentId, campaignId, clientId
       };
 
-      console.log('[Twilio] Iniciando llamada a:', phoneNumber, callParams);
+      console.log('[Twilio] 📞 Llamando a:', phoneNumber);
       
       const call = await this.device.connect({
         params: callParams
@@ -235,7 +228,7 @@ class TwilioClientService {
       
       return call;
     } catch (error) {
-      console.error('[Twilio] Error al realizar llamada:', error);
+      console.error('[Twilio] ❌ Error al realizar llamada:', error);
       throw error;
     }
   }
@@ -245,7 +238,7 @@ class TwilioClientService {
    */
   acceptIncomingCall() {
     if (this.activeCall) {
-      console.log('[Twilio] Aceptando llamada entrante');
+      console.log('[Twilio] ✅ Aceptando llamada');
       this.activeCall.accept();
     }
   }
@@ -255,7 +248,7 @@ class TwilioClientService {
    */
   rejectIncomingCall() {
     if (this.activeCall) {
-      console.log('[Twilio] Rechazando llamada entrante');
+      console.log('[Twilio] ⛔ Rechazando llamada');
       this.activeCall.reject();
       this.activeCall = null;
     }
@@ -266,7 +259,7 @@ class TwilioClientService {
    */
   hangup() {
     if (this.activeCall) {
-      console.log('[Twilio] Colgando llamada');
+      console.log('[Twilio] 📴 Finalizando llamada');
       this.activeCall.disconnect();
       this.activeCall = null;
     }
@@ -280,7 +273,7 @@ class TwilioClientService {
     if (this.activeCall) {
       const isMuted = this.activeCall.isMuted();
       this.activeCall.mute(!isMuted);
-      console.log('[Twilio] Mute:', !isMuted);
+      console.log('[Twilio]', !isMuted ? '🔇 Micrófono silenciado' : '🎤 Micrófono activo');
       return !isMuted;
     }
     return false;
@@ -303,7 +296,6 @@ class TwilioClientService {
    */
   sendDigits(digits) {
     if (this.activeCall) {
-      console.log('[Twilio] Enviando dígitos:', digits);
       this.activeCall.sendDigits(digits);
     }
   }
@@ -313,7 +305,7 @@ class TwilioClientService {
    */
   destroy() {
     if (this.device) {
-      console.log('[Twilio] Destruyendo Device');
+      console.log('[Twilio] ⚠️ Cerrando conexión');
       this.device.destroy();
       this.device = null;
       this.activeCall = null;

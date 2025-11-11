@@ -1,0 +1,392 @@
+### ============================================================================
+### PRUEBAS DE HISTORIAL DE LLAMADAS - JEFE DE CAMPAÑA
+### ============================================================================
+### 
+### Este archivo contiene todas las pruebas para el módulo de Historial de
+### Llamadas del Jefe de Campaña según la HU implementada.
+###
+### CONFIGURACIÓN INICIAL:
+### 1. Ejecutar el backend: python manage.py runserver
+### 2. Tener un usuario con rol JEFE_CAMPANA creado
+### 3. Tener campañas asignadas al jefe de campaña
+### 4. Tener llamadas registradas en la base de datos
+###
+### INSTRUCCIONES:
+### 1. Hacer login como Jefe de Campaña (sección 1)
+### 2. Copiar el access token y pegarlo en la variable {{jefeCampanaToken}}
+### 3. Ejecutar las pruebas en orden
+###
+### ============================================================================
+
+@baseUrl = http://localhost:8000/api
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNDI2OTkzLCJpYXQiOjE3NjIzOTgxOTMsImp0aSI6ImUzNWY4MGU5YzMxYjQwODY4NTA4YzI4NTQwNzY3Yzc1IiwiZG9jdW1lbnRvX2lkIjoiMCJ9.UdaEcS_9C8h12IkiNz7s-1jbRy9zNplkfLPG-z-LrMQ
+@jefeCampanaToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNDI2OTA0LCJpYXQiOjE3NjIzOTgxMDQsImp0aSI6IjJhZTM5ZmRmOWQxYTQ2MzM4ZTc3ZTcwMTg5MzE4NWE5IiwiZG9jdW1lbnRvX2lkIjoiMTIzNDU2Nzg5MCJ9.hQ6BiPeOX2qQq51rd7hNkFY2UMPaQxLVmSeiU47354A
+@agenteToken = 
+
+### ============================================================================
+### 1. AUTENTICACIÓN - LOGIN
+### ============================================================================
+
+### 1.1. Login como Admin (para setup inicial)
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "email": "admin@callcenter.com",
+    "password": "admin123"
+}
+
+### 1.2. Login como Jefe de Campaña
+# NOTA: Reemplazar con las credenciales reales de tu jefe de campaña
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "email": "jefe_campana1@callcenter.com",
+    "password": "jefe_campana123!"
+}
+
+### 1.3. Login como Agente (para comparar permisos)
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "email": "agente@callcenter.com",
+    "password": "agente123"
+}
+
+
+### ============================================================================
+### 2. CAMPAÑAS DEL JEFE - Criterio 2.2 y 2.3
+### ============================================================================
+
+### 2.1. Obtener campañas asignadas al jefe de campaña
+# Retorna la lista de campañas para el selector del frontend
+GET {{baseUrl}}/calls/historial-jefe/mis-campanas/
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 2.2. Obtener campañas como Admin (debe ver todas)
+GET {{baseUrl}}/calls/historial-jefe/mis-campanas/
+Authorization: Bearer {{adminToken}}
+
+### 2.3. Intentar obtener campañas como Agente (debe fallar - 403 Forbidden)
+GET {{baseUrl}}/calls/historial-jefe/mis-campanas/
+Authorization: Bearer {{agenteToken}}
+
+
+### ============================================================================
+### 3. HISTORIAL DE LLAMADAS - Criterio 2.4 y 2.5
+### ============================================================================
+
+### 3.1. Listar todas las llamadas (sin filtros)
+# Paginación por defecto: 6 registros (criterio 2.4.2)
+GET {{baseUrl}}/calls/historial-jefe/
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 3.2. Listar llamadas de una campaña específica
+# NOTA: Reemplazar {campana_id} con un ID real de tu base de datos
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 3.3. Listar llamadas con paginación personalizada
+# Segunda página con 10 registros por página
+GET {{baseUrl}}/calls/historial-jefe/?page=2&page_size=10
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 3.4. Listar primera página (6 registros - default)
+GET {{baseUrl}}/calls/historial-jefe/?page=1
+Authorization: Bearer {{jefeCampanaToken}}
+
+
+### ============================================================================
+### 4. FILTROS - Criterio 2.4.1
+### ============================================================================
+
+### 4.1. Filtro por nombre de agente
+# Búsqueda parcial en first_name y last_name
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&agente_nombre=Carlos
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 4.2. Filtro por teléfono del cliente
+# Búsqueda parcial en telefono_destino y cliente.telefono
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&telefono=300
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 4.3. Filtro por teléfono completo
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&telefono=+573001234567
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 4.4. Filtro por llamadas CONTESTADAS
+# Solo llamadas donde fue_contestada = true
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&fue_contestada=true
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 4.5. Filtro por llamadas NO CONTESTADAS
+# Solo llamadas donde fue_contestada = false
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&fue_contestada=false
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 4.6. Filtro por estado de llamada
+# Estados posibles: COMPLETADA, NO_CONTESTADA, RECHAZADA, FALLIDA, EN_CURSO, TIMBRADO
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&estado_llamada=COMPLETADA
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 4.7. Filtros combinados (agente + teléfono + contestada)
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&agente_nombre=Juan&telefono=300&fue_contestada=true
+Authorization: Bearer {{jefeCampanaToken}}
+
+
+### ============================================================================
+### 5. FILTROS POR FECHA
+### ============================================================================
+
+### 5.1. Filtro por fecha desde
+# Formato: YYYY-MM-DD
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&fecha_desde=2025-10-01
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 5.2. Filtro por fecha hasta
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&fecha_hasta=2025-11-05
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 5.3. Filtro por rango de fechas
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&fecha_desde=2025-01-01&fecha_hasta=2025-11-05
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 5.4. Llamadas del último mes
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&fecha_desde=2025-10-01
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 5.5. Llamadas de hoy
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&fecha_desde=2025-11-05&fecha_hasta=2025-11-05
+Authorization: Bearer {{jefeCampanaToken}}
+
+
+### ============================================================================
+### 6. FILTROS AVANZADOS - Combinaciones múltiples
+### ============================================================================
+
+### 6.1. Llamadas contestadas de un agente en un rango de fechas
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&agente_nombre=Carlos&fue_contestada=true&fecha_desde=2025-10-01&fecha_hasta=2025-11-05
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 6.2. Llamadas completadas con venta en un rango
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&estado_llamada=COMPLETADA&fue_contestada=true&fecha_desde=2025-10-01
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 6.3. Búsqueda por teléfono en llamadas no contestadas
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&telefono=300&fue_contestada=false
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 6.4. Filtro completo con paginación
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&agente_nombre=Juan&telefono=300&fue_contestada=true&estado_llamada=COMPLETADA&fecha_desde=2025-10-01&page=1&page_size=10
+Authorization: Bearer {{jefeCampanaToken}}
+
+
+### ============================================================================
+### 7. DETALLE DE LLAMADA ESPECÍFICA - Criterio 3.1 y 3.2
+### ============================================================================
+
+### 7.1. Ver detalle de llamada específica (CON VENTA)
+# NOTA: Reemplazar {id} con un ID real de una llamada con venta
+# Debe mostrar: información de venta, notas del agente, información del cliente
+GET {{baseUrl}}/calls/historial-jefe/1/
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 7.2. Ver detalle de llamada específica (SIN VENTA)
+# NOTA: Reemplazar {id} con un ID real de una llamada sin venta
+# Debe mostrar: notas del agente, información del cliente (sin datos de venta)
+GET {{baseUrl}}/calls/historial-jefe/2/
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 7.3. Intentar ver detalle de llamada que no pertenece al jefe (debe fallar - 404)
+# Si el jefe no tiene acceso a esta campaña, retorna 404
+GET {{baseUrl}}/calls/historial-jefe/999/
+Authorization: Bearer {{jefeCampanaToken}}
+
+
+### ============================================================================
+### 8. VALIDACIÓN DE PERMISOS
+### ============================================================================
+
+### 8.1. Intentar acceder sin autenticación (debe fallar - 401)
+GET {{baseUrl}}/calls/historial-jefe/
+
+### 8.2. Intentar acceder como Agente (debe fallar - 403 Forbidden)
+GET {{baseUrl}}/calls/historial-jefe/
+Authorization: Bearer {{agenteToken}}
+
+### 8.3. Acceder como Admin (debe funcionar - ve todas las llamadas)
+GET {{baseUrl}}/calls/historial-jefe/?page=1&page_size=6
+Authorization: Bearer {{adminToken}}
+
+### 8.4. Jefe intenta ver llamada de otra campaña (debe fallar - 404)
+# NOTA: Usar ID de llamada que pertenece a campaña de otro jefe
+GET {{baseUrl}}/calls/historial-jefe/998/
+Authorization: Bearer {{jefeCampanaToken}}
+
+
+### ============================================================================
+### 9. PAGINACIÓN - Criterio 2.4.2
+### ============================================================================
+
+### 9.1. Primera página (6 registros por defecto)
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&page=1
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 9.2. Segunda página
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&page=2
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 9.3. Tercera página
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&page=3
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 9.4. Paginación con 20 registros por página
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&page=1&page_size=20
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 9.5. Página con tamaño máximo (100 registros)
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&page=1&page_size=100
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 9.6. Intentar página con tamaño mayor a 100 (se limita a 100)
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&page=1&page_size=500
+Authorization: Bearer {{jefeCampanaToken}}
+
+
+### ============================================================================
+### 10. CASOS EDGE - Validaciones
+### ============================================================================
+
+### 10.1. Sin especificar campaña (si tiene múltiples campañas)
+# Debe retornar llamadas de TODAS sus campañas
+GET {{baseUrl}}/calls/historial-jefe/
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 10.2. Campaña inexistente
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=99999
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 10.3. Estado de llamada inválido
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&estado_llamada=ESTADO_INEXISTENTE
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 10.4. Página negativa (se ajusta a 1)
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&page=-1
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 10.5. Page size negativo (se ajusta a 6)
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&page_size=-10
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 10.6. Fecha con formato incorrecto
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&fecha_desde=05-11-2025
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 10.7. Búsqueda sin resultados
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1&agente_nombre=NOMBRE_QUE_NO_EXISTE
+Authorization: Bearer {{jefeCampanaToken}}
+
+
+### ============================================================================
+### 11. ESTRUCTURA DE RESPUESTA - Verificación de campos
+### ============================================================================
+### 
+### Respuesta esperada de LIST (Criterio 2.5):
+### {
+###     "count": 25,
+###     "total_pages": 5,
+###     "current_page": 1,
+###     "page_size": 6,
+###     "results": [
+###         {
+###             "id": 1,
+###             "cliente_nombre": "Juan Pérez",
+###             "cliente_telefono": "+573001234567",
+###             "cliente_otros_datos": {...},
+###             "agente_id": "1234567890",
+###             "agente_nombre": "Pedro García",
+###             "telefono_destino": "+573007654321",
+###             "fecha_hora_inicio": "2025-11-05T10:30:00-05:00",
+###             "fecha_hora_fin": "2025-11-05T10:35:00-05:00",
+###             "duracion": 300,
+###             "duracion_formateada": "5m 0s",
+###             "fue_contestada": true,
+###             "estado_llamada_valor": "COMPLETADA",
+###             "estado_venta_valor": "VENTA",
+###             "hubo_venta": true,
+###             "monto_venta": 150.50,
+###             "notas_agente": [...],
+###             "transcipcion": "...",
+###             "grabacion_url": "https://...",
+###             "twilio_recording_url": "https://..."
+###         }
+###     ]
+### }
+###
+### Respuesta esperada de RETRIEVE (Criterio 3.1 y 3.2):
+### Mismo objeto individual con todos los campos detallados
+###
+### ============================================================================
+
+
+### ============================================================================
+### 12. PRUEBAS DE INTEGRACIÓN
+### ============================================================================
+
+### 12.1. Flujo completo: Login → Obtener campañas → Ver historial
+# Paso 1: Login
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "email": "jefe@callcenter.com",
+    "password": "jefe123"
+}
+
+# Paso 2: Obtener campañas (copiar token del paso 1)
+# GET {{baseUrl}}/calls/historial-jefe/mis-campanas/
+
+# Paso 3: Ver historial de una campaña (copiar campana_id del paso 2)
+# GET {{baseUrl}}/calls/historial-jefe/?campana_id={id_de_campaña}
+
+# Paso 4: Ver detalle de una llamada (copiar id del paso 3)
+# GET {{baseUrl}}/calls/historial-jefe/{id_de_llamada}/
+
+
+### ============================================================================
+### 13. COMPARACIÓN CON ENDPOINT DE AGENTE
+### ============================================================================
+
+### 13.1. Historial del Jefe de Campaña (ve todas las llamadas de la campaña)
+GET {{baseUrl}}/calls/historial-jefe/?campana_id=1
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 13.2. Historial del Agente (solo ve sus propias llamadas)
+GET {{baseUrl}}/calls/llamadas/historial/
+Authorization: Bearer {{agenteToken}}
+
+### DIFERENCIAS:
+### - Jefe ve TODAS las llamadas de su(s) campaña(s)
+### - Agente solo ve SUS propias llamadas
+### - Jefe puede filtrar por agente_nombre
+### - Jefe tiene acceso a /mis-campanas/
+
+
+### ============================================================================
+### FIN DE PRUEBAS
+### ============================================================================
+###
+### CHECKLIST DE VALIDACIÓN:
+###
+### ✅ Criterio 1.1-1.3: Acceso con autenticación correcta
+### ✅ Criterio 2.2: Lista de campañas si tiene más de una
+### ✅ Criterio 2.3: Historial directo si solo tiene una campaña
+### ✅ Criterio 2.4.1: Filtros por agente, teléfono y estado
+### ✅ Criterio 2.4.2: Paginación automática cada 6 registros
+### ✅ Criterio 2.5: Campos mostrados en lista
+### ✅ Criterio 3.1: Detalle con venta, notas e info cliente
+### ✅ Criterio 3.2: Detalle sin venta, notas e info cliente
+###
+### ============================================================================

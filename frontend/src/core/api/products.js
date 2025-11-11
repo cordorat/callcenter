@@ -11,13 +11,14 @@ import apiClient from "./apiClient";
  */
 export const getProducts = async (params = {}) => {
   try {
-    const response = await apiClient.get('campaigns/productos/', { params });
+    const response = await apiClient.get('/campaigns/productos/', { params });
     return response.data;
   } catch (error) {
     console.error('Error obteniendo los productos:', error);
     throw error;
   }
 };
+
 
 /**
  * Crea un nuevo producto.
@@ -26,7 +27,7 @@ export const getProducts = async (params = {}) => {
  */
 export const createProduct = async (data) => {
   try {
-    const response = await apiClient.post('campaigns/productos/', data);
+    const response = await apiClient.post('/campaigns/productos/', data);
     return response.data;
   } catch (error) {
     console.error('Error creando el producto:', error);

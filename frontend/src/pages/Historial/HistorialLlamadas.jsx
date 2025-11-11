@@ -1,18 +1,14 @@
 // PATH: src/pages/Historial/HistorialLlamadas.jsx
 // -----------------------------------------------------------------------------
-// Historial de llamadas (React + MUI, conectado al backend con apiClient)
-// Funcionalidad:
-// - Filtros: búsqueda (q), estado, rango de fechas (desde/hasta).
-// - Auto-refresh opcional (autoRefreshMs).
-// - Fila clickeable para ver detalle (sin icono).
-// - Botón de recarga circular.
-// Backend:
-// - Endpoint: /calls/llamadas/historial/
+// Historial de llamadas - Dispatcher por rol
+// - AGENTE: Ve solo sus propias llamadas
+// - JEFE_CAMPAÑA: Ve todas las llamadas de sus campañas
 // -----------------------------------------------------------------------------
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import MainLayout from "@/core/components/layout/MainLayout";
 import { useAuth } from "@/core/context/AuthContext";
+import HistorialJefeCampana from "./HistorialJefeCampana";
+import MainLayout from "@/core/components/layout/MainLayout";
 import { callsService } from "@/core/api/calls";
 
 import {
@@ -137,7 +133,7 @@ function RefreshCircle({ onClick, loading }) {
 }
 
 // ======================== Componente principal ========================
-export default function HistorialLlamadas() {
+function HistorialAgente() {
   const { user } = useAuth();
   const today = toYMD(new Date());
 
@@ -577,4 +573,20 @@ export default function HistorialLlamadas() {
       </Box>
     </MainLayout>
   );
+}
+
+// ======================== Dispatcher por rol ========================
+export default function HistorialLlamadas() {
+  const { user } = useAuth();
+
+  // Determinar qué componente renderizar según el rol
+  // Verificar ambos formatos por compatibilidad
+  const rolUsuario = user?.rol?.valor || user?.role;
+  
+  if (rolUsuario === "JEFE_CAMPANA" || rolUsuario === "JEFE_CAMPAÑA") {
+    return <HistorialJefeCampana />;
+  }
+
+  // Por defecto, mostrar historial de agente
+  return <HistorialAgente />;
 }

@@ -1,6 +1,8 @@
 from rest_framework import serializers
-from .models import Cliente, BaseDatosCargada, Producto
+from .models import Cliente, BaseDatosCargada, Producto, ProductoCampanaDetalle, Campana, User, Centro
 import re
+from common.estados_helper import get_estado, get_estado_id
+from django.utils import timezone
 
 
 class ClienteSerializer(serializers.ModelSerializer):
@@ -25,19 +27,29 @@ class ClienteSerializer(serializers.ModelSerializer):
     def get_documento_id(self, obj):
         """Extrae documento_id de otros_datos."""
         if obj.otros_datos and isinstance(obj.otros_datos, dict):
-            return obj.otros_datos.get('documento_id') or obj.otros_datos.get('documento') or obj.otros_datos.get('cedula')
+            return (obj.otros_datos.get('documento_id') or 
+                    obj.otros_datos.get('documento') or 
+                    obj.otros_datos.get('cedula') or
+                    obj.otros_datos.get('identificacion') or
+                    obj.otros_datos.get('identificación'))
         return None
     
     def get_email(self, obj):
         """Extrae email de otros_datos."""
         if obj.otros_datos and isinstance(obj.otros_datos, dict):
-            return obj.otros_datos.get('email') or obj.otros_datos.get('correo') or obj.otros_datos.get('correo_electronico')
+            return (obj.otros_datos.get('email') or 
+                    obj.otros_datos.get('correo') or 
+                    obj.otros_datos.get('correo_electronico') or
+                    obj.otros_datos.get('correo electrónico') or
+                    obj.otros_datos.get('correo_electrónico'))
         return None
     
     def get_direccion(self, obj):
         """Extrae dirección de otros_datos."""
         if obj.otros_datos and isinstance(obj.otros_datos, dict):
-            return obj.otros_datos.get('direccion') or obj.otros_datos.get('address')
+            return (obj.otros_datos.get('direccion') or 
+                    obj.otros_datos.get('dirección') or
+                    obj.otros_datos.get('address'))
         return None
     
     def get_observaciones(self, obj):
@@ -220,6 +232,337 @@ class BaseDatosCargadaSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class CampanaSerializer(serializers.ModelSerializer):
+    """
+    Serializer para lectura de campañas.
+    Incluye información detallada de relaciones (jefe, centro, productos).
+    """
+    
+    # Campos nested para mostrar información completa de relaciones
+    jefe_campana_nombre = serializers.CharField(
+        source='jefe_campana.full_name', 
+        read_only=True
+    )
+    jefe_campana_codigo = serializers.CharField(
+        source='jefe_campana.documento_id', 
+        read_only=True
+    )
+    centro_nombre = serializers.CharField(
+        source='centro.nombre_centro', 
+        read_only=True
+    )
+    estado_nombre = serializers.CharField(
+        source='estado.valor', 
+        read_only=True
+    )
+    
+    # Lista de productos asociados a la campaña
+    productos = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Campana
+        fields = [
+            'id',  # Django crea automáticamente el campo id (PK)
+            'nombre',
+            'descripcion',
+            'fecha_inicio',
+            'fecha_fin',
+            'estado',
+            'estado_nombre',  # Valor legible del estado
+            'jefe_campana',  # ID del jefe
+            'jefe_campana_nombre',  # Nombre completo del jefe
+            'jefe_campana_codigo',  # Código/documento del jefe
+            'centro',  # ID del centro
+            'centro_nombre',  # Nombre del centro
+            'objetivo_llamadas',
+            'objetivo_ventas',
+            'productos',  # Lista de productos
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_productos(self, obj):
+        """
+        Método personalizado para obtener productos de la campaña.
+        Se llama automáticamente por SerializerMethodField.
+        
+        Args:
+            obj: Instancia de Campana
+            
+        Returns:
+            Lista de diccionarios con info de productos
+        """
+        # Obtener todos los productos asociados mediante la tabla intermedia
+        productos_detalle = ProductoCampanaDetalle.objects.filter(
+            campana=obj
+        ).select_related('producto')
+        
+        return [
+            {
+                'id': detalle.producto.id,
+                'nombre': detalle.producto.nombre,
+                'descripcion': detalle.producto.descripcion,
+                'precio': str(detalle.producto.precio),  # Convertir Decimal a string
+                'activo': detalle.producto.activo
+            }
+            for detalle in productos_detalle
+        ]
+        
+class CampanaCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer para creación de campañas.
+    Incluye todas las validaciones de la historia de usuario.
+    """
+    
+    # Campo para recibir lista de IDs de productos
+    productos_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=True,
+        help_text='Lista de IDs de productos a asociar (mínimo 1)'
+    )
+    
+    class Meta:
+        model = Campana
+        fields = [
+            'nombre',
+            'descripcion',
+            'fecha_inicio',
+            'fecha_fin',
+            'estado',
+            'jefe_campana',
+            'centro',
+            'objetivo_llamadas',
+            'objetivo_ventas',
+            'productos_ids'
+        ]
+    
+    def validate_nombre(self, value):
+        """
+        Validación del campo nombre según criterio 2.1.2.
+        - Mínimo 5 caracteres, máximo 50
+        - Solo caracteres alfabéticos (espacios permitidos)
+        
+        Args:
+            value: Valor del campo nombre
+            
+        Returns:
+            value validado
+            
+        Raises:
+            ValidationError si no cumple las reglas
+        """
+        # Verificar longitud
+        if len(value) < 5:
+            raise serializers.ValidationError(
+                'El nombre debe tener al menos 5 caracteres'
+            )
+        
+        if len(value) > 50:
+            raise serializers.ValidationError(
+                'El nombre no puede exceder 50 caracteres'
+            )
+        
+        # Verificar que solo contenga letras y espacios
+        # value.replace(' ', '') elimina espacios para validar solo letras
+        if not value.replace(' ', '').isalpha():
+            raise serializers.ValidationError(
+                'El nombre solo puede contener caracteres alfabéticos'
+            )
+        
+        return value.strip()  # Eliminar espacios al inicio/fin
+    
+    def validate_descripcion(self, value):
+        """
+        Validación del campo descripción según criterio 2.1.4.
+        - Máximo 200 caracteres
+        - Solo caracteres alfabéticos (espacios permitidos)
+        """
+        if len(value) > 200:
+            raise serializers.ValidationError(
+                'La descripción no puede exceder 200 caracteres'
+            )
+        
+        if value and not value.replace(' ', '').replace('.', '').replace(',', '').isalpha():
+            raise serializers.ValidationError(
+                'La descripción solo puede contener caracteres alfabéticos'
+            )
+        
+        return value.strip()
+    
+    def validate_jefe_campana(self, value):
+        """
+        Validación del jefe de campaña según criterio 2.1.1.
+        Verifica que:
+        - El usuario exista
+        - Tenga rol de JEFE_CAMPANA
+        - Esté activo
+        
+        Args:
+            value: Instancia de User (DRF convierte el ID automáticamente)
+        """
+        jefe_campana_role = get_estado('ROL_USUARIO', 'JEFE_CAMPANA')
+        
+        if value.rol != jefe_campana_role:
+            raise serializers.ValidationError(
+                'El usuario seleccionado no tiene rol de Jefe de Campaña'
+            )
+        
+        if not value.is_active:
+            raise serializers.ValidationError(
+                'El jefe de campaña seleccionado no está activo'
+            )
+        
+        return value
+    
+    def validate_productos_ids(self, value):
+        """
+        Validación de productos según criterio 2.1.8.
+        - Debe haber al menos 1 producto
+        - Todos los IDs deben existir
+        - Los productos deben estar activos
+        """
+        if not value or len(value) == 0:
+            raise serializers.ValidationError(
+                'Debe seleccionar al menos un producto'
+            )
+        
+        # Verificar que todos los productos existan y estén activos
+        productos = Producto.objects.filter(
+            id__in=value,
+            activo=True
+        )
+        
+        if productos.count() != len(value):
+            raise serializers.ValidationError(
+                'Uno o más productos seleccionados no existen o no están activos'
+            )
+        
+        return value
+    
+    def validate(self, attrs):
+        """
+        Validaciones cruzadas (que involucran múltiples campos).
+        Se ejecuta después de las validaciones individuales.
+        
+        Args:
+            attrs: Diccionario con todos los campos validados
+        """
+        # Criterio 2.1.7: Fecha fin debe ser posterior a fecha inicio
+        fecha_inicio = attrs.get('fecha_inicio')
+        fecha_fin = attrs.get('fecha_fin')
+        
+        if fecha_fin and fecha_inicio and fecha_fin <= fecha_inicio:
+            raise serializers.ValidationError({
+                'fecha_fin': 'La fecha de fin debe ser posterior a la fecha de inicio'
+            })
+        
+        # Criterio 2.2: Verificar si ya existe una campaña con el mismo nombre
+        # (excluyendo la campaña actual en caso de actualización)
+        nombre = attrs.get('nombre')
+        instance_id = self.instance.id if self.instance else None
+        
+        campana_existente = Campana.objects.filter(nombre=nombre).exclude(
+            id=instance_id
+        ).exists()
+        
+        if campana_existente:
+            raise serializers.ValidationError({
+                'nombre': 'La campaña ya existe'
+            })
+        
+        # Obtener el centro del Jefe de Centro autenticado
+        request = self.context.get('request')
+        if request and request.user:
+            # El Jefe de Centro solo puede crear campañas en su centro
+            # La relación es: User -> centros_a_cargo (related_name)
+            jefe_centro_role_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+            if request.user.rol_id == jefe_centro_role_id:
+                # Obtener el primer centro donde el usuario es jefe
+                centros = Centro.objects.filter(jefe_centro=request.user)
+                if not centros.exists():
+                    raise serializers.ValidationError({
+                        'centro': 'No tiene un centro asignado como jefe'
+                    })
+                # Asignar el primer centro (asumiendo que un jefe maneja un centro)
+                attrs['centro'] = centros.first()
+        
+        return attrs
+    
+    def create(self, validated_data):
+        """
+        Método personalizado para crear campaña + asociar productos.
+        Se ejecuta cuando se llama a serializer.save() en la vista.
+        
+        Args:
+            validated_data: Datos ya validados
+            
+        Returns:
+            Instancia de Campana creada
+        """
+        # Extraer productos_ids del diccionario (no es campo del modelo)
+        productos_ids = validated_data.pop('productos_ids')
+        
+        # Crear la campaña con los campos restantes
+        campana = Campana.objects.create(**validated_data)
+        
+        # Crear registros en la tabla intermedia ProductoCampanaDetalle
+        for producto_id in productos_ids:
+            ProductoCampanaDetalle.objects.create(
+                campana=campana,
+                producto_id=producto_id
+            )
+        
+        return campana
+    
+class CampanaListSerializer(serializers.ModelSerializer):
+    """
+    Serializer simplificado para listados de campañas.
+    Solo incluye campos esenciales para optimizar performance.
+    """
+    
+    jefe_campana_nombre = serializers.CharField(
+        source='jefe_campana.full_name', 
+        read_only=True
+    )
+    estado_nombre = serializers.CharField(
+        source='estado.valor', 
+        read_only=True
+    )
+    cantidad_productos = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Campana
+        fields = [
+            'id',
+            'nombre',
+            'descripcion',
+            'fecha_inicio',
+            'fecha_fin',
+            'estado_nombre',
+            'jefe_campana_nombre',
+            'cantidad_productos',
+            'created_at'
+        ]
+    
+    def get_cantidad_productos(self, obj):
+        """Retorna la cantidad de productos asociados."""
+        return obj.productos_detalle.count()
+    
+class JefeCampanaSearchSerializer(serializers.ModelSerializer):
+    """
+    Serializer para búsqueda de jefes de campaña según criterio 2.1.1.
+    Usado en el campo de búsqueda en tiempo real del frontend.
+    """
+    
+    codigo = serializers.CharField(source='documento_id', read_only=True)
+    nombre_completo = serializers.CharField(source='full_name', read_only=True)
+    
+    class Meta:
+        model = User
+        fields = ['documento_id', 'codigo', 'nombre_completo', 'email']
+
 # ============================================================
 # SERIALIZERS PARA EQUIPOS
 # ============================================================
@@ -245,23 +588,6 @@ class AgenteSimpleSerializer(serializers.ModelSerializer):
         return obj.documento_id[:6] if obj.documento_id else None
 
 
-class CampanaSimpleSerializer(serializers.ModelSerializer):
-    """Serializer simple para campañas."""
-    
-    estado_nombre = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Campana
-        fields = ['id', 'nombre', 'descripcion', 'estado', 'estado_nombre', 'fecha_inicio', 'fecha_fin','jefe_campana','centro','objetivo_llamadas','objetivo_ventas']
-        read_only_fields = fields
-    
-    def get_estado_nombre(self, obj):
-        """Retorna el nombre del estado de la campaña."""
-        if obj.estado:
-            return obj.estado.valor
-        return None
-
-
 class EquipoSerializer(serializers.ModelSerializer):
     """
     Serializer para lectura de equipos.
@@ -270,7 +596,7 @@ class EquipoSerializer(serializers.ModelSerializer):
     """
     centro_nombre = serializers.SerializerMethodField()
     coordinador_nombre = serializers.SerializerMethodField()
-    campana_info = CampanaSimpleSerializer(source='campana', read_only=True)
+    campana_info = CampanaListSerializer(source='campana', read_only=True) 
     agentes = serializers.SerializerMethodField()
     cantidad_agentes = serializers.SerializerMethodField()
     
@@ -563,5 +889,6 @@ class EquipoUpdateSerializer(serializers.ModelSerializer):
 class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Producto
-        fields = ['nombre', 'descripcion', 'precio', 'activo']
+        fields = ['nombre', 'descripcion', 'precio', 'activo', 'id']
         read_only_fields = []
+        

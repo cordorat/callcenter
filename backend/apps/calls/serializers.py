@@ -3,8 +3,9 @@ Serializadores para gestión de llamadas del call center.
 """
 from rest_framework import serializers
 from django.utils import timezone
+from django.db import transaction
 from apps.calls.models import Llamada, IteracionCliente, Venta, FormularioVenta
-from apps.campaigns.models import Cliente, Campana
+from apps.campaigns.models import Cliente, Campana, Producto
 from apps.users.models import User, EstadoAgenteActual, EstadoAgenteDetalle, TiposParametros
 from common.estados_helper import EstadosHelper, get_estado, get_estado_id
 
@@ -68,6 +69,213 @@ class VentaSerializer(serializers.ModelSerializer):
         model = Venta
         fields = ['venta_id', 'campana_id', 'monto']
         read_only_fields = ['venta_id']
+
+
+class RegistrarVentaSerializer(serializers.Serializer):
+    """
+    Serializer para registrar una nueva venta desde el módulo de llamadas.
+    
+    Valida todos los campos requeridos y crea tanto el registro de venta
+    como actualiza el estado de la llamada.
+    """
+    # Campos requeridos
+    llamada_id = serializers.IntegerField(
+        required=True,
+        help_text='ID de la llamada asociada a la venta'
+    )
+    cliente_nombre = serializers.CharField(
+        required=True,
+        max_length=255,
+        help_text='Nombre completo del cliente',
+        error_messages={
+            'required': 'El nombre del cliente es obligatorio.',
+            'blank': 'El nombre del cliente no puede estar vacío.'
+        }
+    )
+    cliente_id = serializers.IntegerField(
+        required=True,
+        help_text='ID del cliente',
+        error_messages={
+            'required': 'El ID del cliente es obligatorio.',
+        }
+    )
+    producto_id = serializers.IntegerField(
+        required=True,
+        help_text='ID del producto o servicio adquirido',
+        error_messages={
+            'required': 'Debe seleccionar un producto.',
+        }
+    )
+    
+    # Campos opcionales
+    observaciones = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text='Observaciones adicionales sobre la venta'
+    )
+    monto = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        help_text='Monto de la venta (opcional, se puede tomar del producto)'
+    )
+    
+    def validate_llamada_id(self, value):
+        """Valida que la llamada exista y pertenezca al agente autenticado."""
+        user = self.context.get('request').user
+        
+        try:
+            llamada = Llamada.objects.select_related('agente', 'cliente').get(pk=value)
+        except Llamada.DoesNotExist:
+            raise serializers.ValidationError(
+                f'No existe una llamada con ID {value}.'
+            )
+        
+        # Verificar que la llamada pertenezca al agente
+        if llamada.agente != user and not user.is_admin():
+            raise serializers.ValidationError(
+                'No tienes permiso para registrar ventas en esta llamada.'
+            )
+        
+        # Verificar que no tenga ya una venta asociada
+        if llamada.venta:
+            raise serializers.ValidationError(
+                f'Esta llamada ya tiene una venta registrada (ID: {llamada.venta.venta_id}).'
+            )
+        
+        return value
+    
+    def validate_producto_id(self, value):
+        """Valida que el producto exista y esté activo."""
+        try:
+            producto = Producto.objects.get(pk=value)
+        except Producto.DoesNotExist:
+            raise serializers.ValidationError(
+                f'No existe un producto con ID {value}.'
+            )
+        
+        if not producto.activo:
+            raise serializers.ValidationError(
+                f'El producto "{producto.nombre}" no está disponible.'
+            )
+        
+        return value
+    
+    def validate_cliente_id(self, value):
+        """Valida que el cliente exista."""
+        try:
+            cliente = Cliente.objects.get(pk=value)
+        except Cliente.DoesNotExist:
+            raise serializers.ValidationError(
+                f'No existe un cliente con ID {value}.'
+            )
+        
+        return value
+    
+    @transaction.atomic
+    def create(self, validated_data):
+        """
+        Crea el registro de venta y actualiza la llamada.
+        
+        Proceso:
+        1. Obtener la llamada y producto
+        2. Crear el registro de venta (solo campaña y monto según MER)
+        3. Guardar datos del formulario en FormularioVenta.campos_json
+        4. Vincular la venta a la llamada
+        5. Actualizar el estado de la llamada a "VENTA"
+        
+        Returns:
+            Venta: Instancia de la venta creada
+        """
+        # Obtener datos validados
+        llamada_id = validated_data['llamada_id']
+        producto_id = validated_data['producto_id']
+        
+        # Obtener instancias
+        llamada = Llamada.objects.select_related(
+            'agente', 'cliente', 'cliente__campana'
+        ).get(pk=llamada_id)
+        producto = Producto.objects.get(pk=producto_id)
+        
+        # Determinar el monto (del request o del producto)
+        monto = validated_data.get('monto') or producto.precio
+        
+        # Crear la venta (solo campos del MER)
+        # La campaña viene del cliente de la llamada
+        venta = Venta.objects.create(
+            campana_id=llamada.cliente.campana if llamada.cliente else None,
+            monto=monto
+        )
+        
+        # Guardar los datos del formulario en FormularioVenta
+        FormularioVenta.objects.create(
+            llamada=llamada,
+            agente=llamada.agente,
+            completado=True,
+            fecha_completado=timezone.now(),
+            campos_json={
+                'cliente_nombre': validated_data['cliente_nombre'],
+                'cliente_id': validated_data['cliente_id'],
+                'producto_id': producto_id,
+                'producto_nombre': producto.nombre,
+                'observaciones': validated_data.get('observaciones', ''),
+                'monto': str(monto)
+            }
+        )
+        
+        # Actualizar la llamada para vincular la venta
+        llamada.venta = venta
+        
+        # Cambiar estado de la llamada a VENTA
+        estado_venta = get_estado('ESTADO_VENTA', 'VENTA')
+        if estado_venta:
+            llamada.estado_venta = estado_venta
+        
+        llamada.save()
+        
+        return venta
+    
+    def to_representation(self, instance):
+        """
+        Personaliza la respuesta para incluir información completa de la venta.
+        Obtiene datos del agente y formulario desde la llamada asociada.
+        """
+        # Obtener la llamada asociada a esta venta
+        llamada = instance.llamadas.first()
+        agente_info = None
+        formulario_data = {}
+        
+        if llamada:
+            # Información del agente
+            if llamada.agente:
+                agente_info = {
+                    'id': llamada.agente.documento_id,
+                    'nombre': llamada.agente.full_name
+                }
+            
+            # Datos del formulario
+            formulario = llamada.formularios.first()
+            if formulario:
+                formulario_data = formulario.campos_json
+        
+        return {
+            'venta_id': instance.venta_id,
+            'mensaje': f'La venta ha sido registrada exitosamente con ID #{instance.venta_id}',
+            'venta': {
+                'id': instance.venta_id,
+                'cliente_nombre': formulario_data.get('cliente_nombre', ''),
+                'cliente_id': formulario_data.get('cliente_id'),
+                'producto': {
+                    'id': formulario_data.get('producto_id'),
+                    'nombre': formulario_data.get('producto_nombre', ''),
+                    'precio': formulario_data.get('monto', '0')
+                },
+                'monto': str(instance.monto) if instance.monto else None,
+                'observaciones': formulario_data.get('observaciones', ''),
+                'agente': agente_info
+            }
+        }
 
 
 class IteracionClienteSerializer(serializers.ModelSerializer):
@@ -142,10 +350,7 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
         source='cliente.telefono',
         read_only=True
     )
-    cliente_otros_datos = serializers.JSONField(
-        source='cliente.otros_datos',
-        read_only=True
-    )
+    cliente_otros_datos = serializers.SerializerMethodField()
     duracion_total_formateada = serializers.ReadOnlyField()
     estado_venta_valor = serializers.CharField(
         source='estado_venta.valor',
@@ -159,9 +364,19 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
         source='estado_reportada.valor',
         read_only=True
     )
+    estado_auditoria_valor = serializers.CharField(
+        source='estado_auditoria.valor',
+        read_only=True
+    )
+    auditado_por_nombre = serializers.CharField(
+        source='auditado_por.full_name',
+        read_only=True
+    )
     tiene_grabacion = serializers.SerializerMethodField()
     notas = serializers.SerializerMethodField()
     resultado_llamada = serializers.SerializerMethodField()
+    es_venta = serializers.SerializerMethodField()
+    venta_info = serializers.SerializerMethodField()
     
     class Meta:
         model = Llamada
@@ -173,9 +388,11 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             'duracion_total_formateada', 'tiene_grabacion', 'grabacion_url',
             'twilio_call_sid', 'twilio_recording_url', 'fue_contestada',
             'estado_llamada', 'estado_llamada_valor',
-            'estado_venta', 'estado_venta_valor',
+            'estado_venta', 'estado_venta_valor', 'es_venta',
             'estado_reportada', 'estado_reportada_valor',
-            'notas', 'resultado_llamada',
+            'estado_auditoria', 'estado_auditoria_valor',
+            'fecha_auditoria', 'auditado_por', 'auditado_por_nombre', 'notas_auditoria',
+            'notas', 'resultado_llamada', 'venta_info',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -188,9 +405,50 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             return obj.cliente.nombre or 'Sin nombre'
         return 'Sin cliente'
     
+    def get_cliente_otros_datos(self, obj):
+        """
+        Obtiene otros_datos del cliente procesados correctamente.
+        Extrae campos como documento_id, email, direccion usando las mismas
+        reglas que ClienteSerializer para mantener consistencia.
+        """
+        if not obj.cliente or not obj.cliente.otros_datos:
+            return {}
+        
+        otros_datos = obj.cliente.otros_datos
+        if not isinstance(otros_datos, dict):
+            return {}
+        
+        # Extraer campos usando la misma lógica que ClienteSerializer
+        return {
+            'documento_id': (otros_datos.get('documento_id') or 
+                           otros_datos.get('documento') or 
+                           otros_datos.get('cedula') or
+                           otros_datos.get('identificacion') or
+                           otros_datos.get('identificación')),
+            'email': (otros_datos.get('email') or 
+                     otros_datos.get('correo') or 
+                     otros_datos.get('correo_electronico') or
+                     otros_datos.get('correo electrónico') or
+                     otros_datos.get('correo_electrónico')),
+            'direccion': (otros_datos.get('direccion') or 
+                         otros_datos.get('dirección') or
+                         otros_datos.get('address')),
+            'observaciones': (otros_datos.get('observaciones') or 
+                            otros_datos.get('notas') or 
+                            otros_datos.get('comentarios')),
+            # Mantener también los datos raw por si se necesitan
+            '_raw': otros_datos
+        }
+    
     def get_tiene_grabacion(self, obj):
         """Indica si la llamada tiene grabación disponible."""
         return bool(obj.grabacion_url or obj.twilio_recording_url)
+    
+    def get_es_venta(self, obj):
+        """Indica si la llamada resultó en venta."""
+        if obj.estado_venta:
+            return obj.estado_venta.valor == 'VENTA'
+        return False
     
     def get_notas(self, obj):
         """Obtiene las notas de la transcripción o formularios asociados."""
@@ -230,6 +488,30 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             resultado['monto_venta'] = None
         
         return resultado
+    
+    def get_venta_info(self, obj):
+        """Obtiene información completa de la venta si existe."""
+        if not obj.venta:
+            return None
+        
+        # Información básica de la venta
+        venta_data = {
+            'venta_id': obj.venta.venta_id,
+            'monto': str(obj.venta.monto) if obj.venta.monto else None,
+            'campana_id': obj.venta.campana_id.id if obj.venta.campana_id else None,
+            'campana_nombre': obj.venta.campana_id.nombre if obj.venta.campana_id else None,
+        }
+        
+        # Obtener datos del formulario de venta si existe
+        formulario = obj.formularios.filter(completado=True).first()
+        if formulario and formulario.campos_json:
+            venta_data['cliente_nombre'] = formulario.campos_json.get('cliente_nombre')
+            venta_data['cliente_id'] = formulario.campos_json.get('cliente_id')
+            venta_data['producto_id'] = formulario.campos_json.get('producto_id')
+            venta_data['producto_nombre'] = formulario.campos_json.get('producto_nombre')
+            venta_data['observaciones'] = formulario.campos_json.get('observaciones')
+        
+        return venta_data
 
 
 class RecibirLlamadaSerializer(serializers.Serializer):
@@ -679,3 +961,144 @@ class TransferirLlamadaSerializer(serializers.Serializer):
             pass
         
         return instance
+    
+class HistorialJefeCampanaSerializer(serializers.ModelSerializer):
+    """
+    Serializer para historial de llamadas del Jefe de Campaña.
+    Muestra información resumida y detallada de cada llamada.
+    """
+    
+    # Información del cliente
+    cliente_nombre = serializers.CharField(
+        source='cliente.nombre',
+        read_only=True
+    )
+    cliente_telefono = serializers.CharField(
+        source='cliente.telefono',
+        read_only=True
+    )
+    
+    # Información del agente
+    agente_nombre = serializers.CharField(
+        source='agente.full_name',
+        read_only=True
+    )
+    agente_id = serializers.IntegerField(
+        source='agente.documento_id',
+        read_only=True
+    )
+    
+    # Información de la llamada
+    duracion_formateada = serializers.ReadOnlyField(source='duracion_total_formateada')
+    fue_contestada = serializers.BooleanField(read_only=True)
+    
+    # Estados
+    estado_llamada_valor = serializers.CharField(
+        source='estado_llamada.valor',
+        read_only=True
+    )
+    estado_venta_valor = serializers.CharField(
+        source='estado_venta.valor',
+        read_only=True
+    )
+    
+    # Información de venta
+    hubo_venta = serializers.SerializerMethodField()
+    monto_venta = serializers.SerializerMethodField()
+    
+    # Información adicional (para vista detallada)
+    notas_agente = serializers.SerializerMethodField()
+    cliente_otros_datos = serializers.JSONField(
+        source='cliente.otros_datos',
+        read_only=True
+    )
+    
+    class Meta:
+        model = Llamada
+        fields = [
+            # IDs
+            'id',
+            # Cliente
+            'cliente_nombre',
+            'cliente_telefono',
+            'cliente_otros_datos',
+            # Agente
+            'agente_id',
+            'agente_nombre',
+            # Llamada
+            'telefono_destino',
+            'fecha_hora_inicio',
+            'fecha_hora_fin',
+            'duracion',
+            'duracion_formateada',
+            'fue_contestada',
+            # Estados
+            'estado_llamada_valor',
+            'estado_venta_valor',
+            # Venta
+            'hubo_venta',
+            'monto_venta',
+            # Detalles adicionales
+            'notas_agente',
+            'transcipcion',
+            'grabacion_url',
+            'twilio_recording_url',
+        ]
+        read_only_fields = [
+            'id',
+            'cliente_nombre',
+            'cliente_telefono',
+            'cliente_otros_datos',
+            'agente_id',
+            'agente_nombre',
+            'telefono_destino',
+            'fecha_hora_inicio',
+            'fecha_hora_fin',
+            'duracion',
+            'duracion_formateada',
+            'fue_contestada',
+            'estado_llamada_valor',
+            'estado_venta_valor',
+            'hubo_venta',
+            'monto_venta',
+            'notas_agente',
+            'transcipcion',
+            'grabacion_url',
+            'twilio_recording_url',
+        ]
+    
+    def get_hubo_venta(self, obj):
+        """Indica si hubo venta en la llamada."""
+        return obj.venta is not None
+    
+    def get_monto_venta(self, obj):
+        """Retorna el monto de la venta si existe."""
+        if obj.venta and obj.venta.monto:
+            return float(obj.venta.monto)
+        return None
+    
+    def get_notas_agente(self, obj):
+        """
+        Obtiene las notas del agente desde:
+        - Transcripción de la llamada
+        - Formularios asociados
+        """
+        notas = []
+        
+        # Agregar transcripción si existe
+        if obj.transcipcion:
+            notas.append({
+                'tipo': 'transcripcion',
+                'contenido': obj.transcipcion
+            })
+        
+        # Agregar notas de formularios
+        formularios = obj.formularios.all()
+        for formulario in formularios:
+            if formulario.campos_json:
+                notas.append({
+                    'tipo': 'formulario',
+                    'campos': formulario.campos_json
+                })
+        
+        return notas

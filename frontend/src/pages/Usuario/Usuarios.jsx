@@ -54,7 +54,7 @@ export default function Usuarios() {
     'ADMIN': 'Administrador',
     'COORDINADOR': 'Coordinador',
     'AGENTE': 'Agente',
-    'JEFE_CAMPAÑA': 'Jefe de Campaña',
+    'JEFE_CAMPANA': 'Jefe de Campaña',
     'JEFE_CENTRO': 'Jefe de Centro',
     'BACKOFFICE': 'Backoffice'
   };

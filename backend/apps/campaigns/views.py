@@ -11,15 +11,17 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import api_view, action
 from rest_framework.permissions import IsAuthenticated
-from .models import Cliente, BaseDatosCargada, Equipo, EquipoAgenteDetalle, Campana, Producto
+from .models import Cliente, BaseDatosCargada, Equipo, EquipoAgenteDetalle, Campana, Producto, ProductoCampanaDetalle
 from .serializers import (
     BaseDatosCargadaSerializer, ClienteSerializer, ClienteUpdateSerializer,
     EquipoSerializer, EquipoCreateSerializer, EquipoUpdateSerializer,
-    AgenteSimpleSerializer, CampanaSimpleSerializer, ProductoSerializer
+    AgenteSimpleSerializer, CampanaSerializer, CampanaCreateSerializer,CampanaListSerializer, JefeCampanaSearchSerializer, ProductoSerializer
 )
 from apps.users.models import User, Centro
 from common.estados_helper import get_estado_id
 from django.core.paginator import Paginator
+from apps.users.permissions import IsJefeCentro
+
 
 class CargarBaseDatosView(APIView):
 
@@ -705,35 +707,6 @@ class EquipoViewSet(viewsets.ModelViewSet):
             'agentes': serializer.data
         }, status=status.HTTP_200_OK)
     
-    @action(detail=False, methods=['get'], url_path='campanas-activas')
-    def campanas_activas(self, request):
-        """
-        Lista de campañas activas para seleccionar.
-        Si el usuario es jefe de centro, solo muestra campañas de su centro.
-        
-        GET /api/campaigns/equipos/campanas-activas/
-        """
-        estado_activo_id = get_estado_id('ESTADO_CAMPANA', 'ACTIVA')
-        queryset = Campana.objects.filter(
-            estado_id=estado_activo_id
-        )
-        
-        # Si es jefe de centro, filtrar por campañas de su centro
-        user = request.user
-        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
-        if user.rol_id == rol_jefe_centro_id:
-            centros = Centro.objects.filter(jefe_centro=user)
-            queryset = queryset.filter(centro__in=centros)
-        
-        queryset = queryset.order_by('nombre')
-        
-        serializer = CampanaSimpleSerializer(queryset, many=True)
-        
-        return Response({
-            'success': True,
-            'count': queryset.count(),
-            'campanas': serializer.data
-        }, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['get'], url_path='coordinadores-disponibles')
     def coordinadores_disponibles(self, request):
@@ -825,35 +798,102 @@ class EquipoViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 class ProductoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de productos.
+    
+    Endpoints:
+    - GET    /api/campaigns/productos/           → Listar productos activos
+    - GET    /api/campaigns/productos/?campaña=X → Productos de una campaña
+    - POST   /api/campaigns/productos/           → Crear producto (Jefe Centro/Admin)
+    - GET    /api/campaigns/productos/{id}/      → Detalle de producto
+    - PUT    /api/campaigns/productos/{id}/      → Actualizar producto
+    - PATCH  /api/campaigns/productos/{id}/      → Actualizar parcialmente
+    - DELETE /api/campaigns/productos/{id}/      → Desactivar producto
+    """
+    
+    serializer_class = ProductoSerializer
+    # Definir queryset base explícitamente
+    queryset = Producto.objects.all()
+    # Todos los endpoints requieren autenticación
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """
+        Filtra productos según los parámetros de consulta.
+        
+        Query params:
+        - campaña: ID de campaña para filtrar productos asociados
+        - activo: true/false para filtrar por estado (por defecto: true)
+        
+        Returns:
+            QuerySet filtrado
+        """
+        queryset = Producto.objects.all()
+        
+        # Por defecto, mostrar solo productos activos
+        # A menos que explícitamente se pida mostrar inactivos
+        mostrar_inactivos = self.request.query_params.get('mostrar_inactivos', 'false').lower() == 'true'
+        
+        if not mostrar_inactivos:
+            queryset = queryset.filter(activo=True)
+        
+        # Filtrar por campaña específica si se proporciona
+        campana_id = self.request.query_params.get('campaña')
+        if campana_id:
+            # Usar la tabla intermedia ProductoCampanaDetalle
+            queryset = queryset.filter(
+                campanas_detalle__campana_id=campana_id
+            ).distinct()  # distinct() evita duplicados en caso de múltiples relaciones
+        
+        return queryset.order_by('nombre')  # Ordenar alfabéticamente
+    
     def create(self, request, *args, **kwargs):
-        # Obtener los IDs de los roles permitidos
+        """
+        Crear un nuevo producto.
+        
+        Criterio: Solo Jefes de Centro y Administradores pueden crear productos.
+        
+        Body JSON:
+        {
+            "nombre": "Producto X",
+            "descripcion": "Descripción opcional",
+            "precio": 100.50,
+            "activo": true
+        }
+        """
+        # Obtener los IDs de los roles permitidos usando el helper
         rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
         rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
 
-        # Validar que el usuario tenga alguno de esos roles
+        # Validación de autenticación y rol
         if not request.user or not request.user.rol:
             return Response({
                 'success': False,
                 'message': 'Usuario no autenticado o sin rol asignado.'
             }, status=status.HTTP_403_FORBIDDEN)
 
+        # Validar que el usuario tenga uno de los roles permitidos
+        # Comparar con parametros_id (PK de TiposParametros)
         if request.user.rol.parametros_id not in [rol_jefe_centro_id, rol_admin_id]:
             return Response({
                 'success': False,
                 'message': 'Solo los jefes de centro o administradores pueden crear productos.'
             }, status=status.HTTP_403_FORBIDDEN)
 
-        # Serializar y guardar el producto
-        serializer = ProductoSerializer(data=request.data)
+        # Serializar y validar los datos
+        serializer = self.get_serializer(data=request.data)
+        
         if serializer.is_valid():
+            # Guardar el producto en la base de datos
             serializer.save()
+            
             return Response({
                 'success': True,
                 'message': 'El producto ha sido creado correctamente.',
                 'producto': serializer.data
             }, status=status.HTTP_201_CREATED)
 
-        # Si la validación falla
+        # Si la validación falla, retornar errores específicos
         return Response({
             'success': False,
             'message': 'Error de validación en los datos proporcionados.',
@@ -861,25 +901,239 @@ class ProductoViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_400_BAD_REQUEST)
 
     def list(self, request, *args, **kwargs):
-
-        queryset = Producto.objects.all()
+        """
+        Listar productos con filtros opcionales.
         
+        Query params:
+        - campaña: Filtrar productos de una campaña específica
+        - mostrar_inactivos: true para incluir productos inactivos
+        - search: Búsqueda por nombre (opcional, para futura implementación)
+        
+        Returns:
+            Lista de productos con formato de respuesta exitoso
+        """
+        # get_queryset() ya aplica los filtros necesarios
+        queryset = self.get_queryset()
+        
+        # Serializar el queryset completo
         serializer = self.get_serializer(queryset, many=True)
         
         return Response({
             'success': True,
+            'count': queryset.count(),  # Número total de resultados
             'productos': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Obtener detalle de un producto específico.
+        
+        GET /api/campaigns/productos/{id}/
+        """
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        
+        return Response({
+            'success': True,
+            'producto': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Actualizar un producto (PUT completo o PATCH parcial).
+        Solo Jefes de Centro y Admins pueden actualizar.
+        """
+        # Validar permisos (mismo que en create)
+        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+
+        if request.user.rol.parametros_id not in [rol_jefe_centro_id, rol_admin_id]:
+            return Response({
+                'success': False,
+                'message': 'Solo los jefes de centro o administradores pueden actualizar productos.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'message': 'El producto ha sido actualizado correctamente.',
+                'producto': serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            'success': False,
+            'message': 'Error de validación en los datos proporcionados.',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Actualización parcial (PATCH).
+        """
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Soft delete: Desactivar producto en lugar de eliminarlo.
+        Solo Jefes de Centro y Admins pueden desactivar.
+        """
+        # Validar permisos
+        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+
+        if request.user.rol.parametros_id not in [rol_jefe_centro_id, rol_admin_id]:
+            return Response({
+                'success': False,
+                'message': 'Solo los jefes de centro o administradores pueden desactivar productos.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        instance = self.get_object()
+        
+        # Soft delete: marcar como inactivo en lugar de borrar
+        instance.activo = False
+        instance.save()
+        
+        return Response({
+            'success': True,
+            'message': f'El producto "{instance.nombre}" ha sido desactivado correctamente.'
         }, status=status.HTTP_200_OK)
 
 class CampanaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de campañas.
+    
+    Endpoints generados automáticamente:
+    - GET    /api/campaigns/            → Listar campañas
+    - POST   /api/campaigns/            → Crear campaña
+    - GET    /api/campaigns/{id}/       → Detalle de campaña
+    - PUT    /api/campaigns/{id}/       → Actualizar campaña completa
+    - PATCH  /api/campaigns/{id}/       → Actualizar parcialmente
+    - DELETE /api/campaigns/{id}/       → Eliminar campaña
+    
+    Endpoints personalizados (actions):
+    - GET    /api/campaigns/buscar_jefes/?q=texto  → Buscar jefes de campaña
+    """
+    
     queryset = Campana.objects.all()
-    serializer_class = CampanaSimpleSerializer  
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
+    permission_classes = [IsAuthenticated, IsJefeCentro]
+    
+    def get_serializer_class(self):
+        """
+        Retorna el serializer apropiado según la acción.
+        Este método es llamado automáticamente por DRF.
         
-        return Response({
-            'success': True,
-            'campanas': serializer.data
-        }, status=status.HTTP_200_OK)
+        Returns:
+            Clase de serializer a usar
+        """
+        if self.action == 'list':
+            # Para listados, usar versión simplificada
+            return CampanaListSerializer
+        elif self.action == 'create':
+            # Para crear, usar versión con validaciones
+            return CampanaCreateSerializer
+        # Para retrieve, update, partial_update
+        return CampanaSerializer
+    
+    def get_queryset(self):
+        """
+        Filtra las campañas según el rol del usuario.
+        - Admin: Ve todas las campañas
+        - Jefe de Centro: Solo campañas de sus centros a cargo
+        
+        Returns:
+            QuerySet filtrado
+        """
+        user = self.request.user
+        
+        # Admin ve todo
+        admin_role_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        if user.rol_id == admin_role_id:
+            return Campana.objects.all()
+        
+        # Jefe de Centro solo ve campañas de sus centros a cargo
+        # La relación es: Centro.jefe_centro = User
+        # Entonces User.centros_a_cargo = todos los centros donde es jefe
+        jefe_centro_role_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        if user.rol_id == jefe_centro_role_id:
+            # Obtener los centros donde este usuario es jefe
+            centros = Centro.objects.filter(jefe_centro=user)
+            # Filtrar campañas que pertenecen a esos centros
+            return Campana.objects.filter(centro__in=centros)
+        
+        # Otros roles no tienen acceso a campañas
+        return Campana.objects.none()
+    
+    def perform_create(self, serializer):
+        """
+        Hook llamado al crear una campaña.
+        Automáticamente asigna el centro del usuario autenticado.
+        
+        Args:
+            serializer: Instancia de CampanaCreateSerializer
+        """
+        # El centro ya se asigna en el serializer.validate()
+        # Aquí podríamos agregar lógica adicional si fuera necesario
+        serializer.save()
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Override del método create para personalizar la respuesta.
+        Retorna el mensaje de éxito según criterio 3.2.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        # Respuesta personalizada según criterio 3.2
+        return Response(
+            {
+                'message': 'Campaña agregada exitosamente',
+                'data': CampanaSerializer(serializer.instance).data
+            },
+            status=status.HTTP_201_CREATED
+        )
+    
+    @action(detail=False, methods=['get'], url_path='buscar-jefes')
+    def buscar_jefes(self, request):
+        """
+        Endpoint personalizado para búsqueda de jefes de campaña.
+        Criterio 2.1.1: Campo de búsqueda en tiempo real por nombre o código.
+        
+        URL: GET /api/campaigns/buscar-jefes/?q=texto
+        
+        Query params:
+            q: Texto a buscar (nombre o código)
+            
+        Returns:
+            Lista de jefes que coinciden con la búsqueda
+        """
+        query = request.query_params.get('q', '').strip()
+        
+        if not query:
+            return Response(
+                {'detail': 'Debe proporcionar un término de búsqueda'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Obtener el ID del rol JEFE_CAMPANA
+        jefe_campana_role_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
+        
+        # Buscar usuarios con rol JEFE_CAMPANA que estén activos
+        # Q objects permiten OR en queries de Django
+        jefes = User.objects.filter(
+            rol_id=jefe_campana_role_id,
+            is_active=True
+        ).filter(
+            Q(first_name__icontains=query) |  # Búsqueda por nombre
+            Q(last_name__icontains=query) |   # Búsqueda por apellido
+            Q(documento_id__icontains=query)  # Búsqueda por código
+        )[:10]  # Limitar a 10 resultados (performance)
+        
+        serializer = JefeCampanaSearchSerializer(jefes, many=True)
+        return Response(serializer.data)

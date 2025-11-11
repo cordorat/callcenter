@@ -16,4 +16,5 @@ urlpatterns = [
     path('twilio/call-status/<int:llamada_id>/', views.twilio_call_status_webhook, name='twilio_call_status_webhook'),
     path('twilio/call-status/', views.twilio_call_status_webhook, name='twilio_call_status_webhook_no_id'),
     path('twilio/recording/', views.twilio_recording_webhook, name='twilio_recording_webhook'),
+    path('twilio/dial-status/', views.twilio_dial_status_webhook, name='twilio_dial_status_webhook'),  # 🆕 Captura child CallSid
 ]
