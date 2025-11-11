@@ -30,7 +30,7 @@ class TwilioClientService {
       console.log('[Twilio] Inicializando Device...');
       
       // Obtener token del backend
-      const response = await apiClient.post('/api/integrations/twilio-client-token/');
+      const response = await apiClient.post('integrations/twilio-client-token/');
       this.token = response.data.token;
       
       console.log('[Twilio] Token obtenido correctamente');
@@ -112,7 +112,7 @@ class TwilioClientService {
     this.device.on('tokenWillExpire', async () => {
       console.log('[Twilio] Token por expirar, renovando...');
       try {
-        const response = await apiClient.post('/api/integrations/twilio-client-token/');
+        const response = await apiClient.post('integrations/twilio-client-token/');
         this.device.updateToken(response.data.token);
         console.log('[Twilio] Token renovado correctamente');
       } catch (error) {
