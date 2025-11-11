@@ -1059,3 +1059,144 @@ class ReporteLlamadaListSerializer(serializers.ModelSerializer):
             'fecha_reporte'
         ]
         read_only_fields = fields
+
+class HistorialJefeCampanaSerializer(serializers.ModelSerializer):
+    """
+    Serializer para historial de llamadas del Jefe de Campaña.
+    Muestra información resumida y detallada de cada llamada.
+    """
+    
+    # Información del cliente
+    cliente_nombre = serializers.CharField(
+        source='cliente.nombre',
+        read_only=True
+    )
+    cliente_telefono = serializers.CharField(
+        source='cliente.telefono',
+        read_only=True
+    )
+    
+    # Información del agente
+    agente_nombre = serializers.CharField(
+        source='agente.full_name',
+        read_only=True
+    )
+    agente_id = serializers.IntegerField(
+        source='agente.documento_id',
+        read_only=True
+    )
+    
+    # Información de la llamada
+    duracion_formateada = serializers.ReadOnlyField(source='duracion_total_formateada')
+    fue_contestada = serializers.BooleanField(read_only=True)
+    
+    # Estados
+    estado_llamada_valor = serializers.CharField(
+        source='estado_llamada.valor',
+        read_only=True
+    )
+    estado_venta_valor = serializers.CharField(
+        source='estado_venta.valor',
+        read_only=True
+    )
+    
+    # Información de venta
+    hubo_venta = serializers.SerializerMethodField()
+    monto_venta = serializers.SerializerMethodField()
+    
+    # Información adicional (para vista detallada)
+    notas_agente = serializers.SerializerMethodField()
+    cliente_otros_datos = serializers.JSONField(
+        source='cliente.otros_datos',
+        read_only=True
+    )
+    
+    class Meta:
+        model = Llamada
+        fields = [
+            # IDs
+            'id',
+            # Cliente
+            'cliente_nombre',
+            'cliente_telefono',
+            'cliente_otros_datos',
+            # Agente
+            'agente_id',
+            'agente_nombre',
+            # Llamada
+            'telefono_destino',
+            'fecha_hora_inicio',
+            'fecha_hora_fin',
+            'duracion',
+            'duracion_formateada',
+            'fue_contestada',
+            # Estados
+            'estado_llamada_valor',
+            'estado_venta_valor',
+            # Venta
+            'hubo_venta',
+            'monto_venta',
+            # Detalles adicionales
+            'notas_agente',
+            'transcipcion',
+            'grabacion_url',
+            'twilio_recording_url',
+        ]
+        read_only_fields = [
+            'id',
+            'cliente_nombre',
+            'cliente_telefono',
+            'cliente_otros_datos',
+            'agente_id',
+            'agente_nombre',
+            'telefono_destino',
+            'fecha_hora_inicio',
+            'fecha_hora_fin',
+            'duracion',
+            'duracion_formateada',
+            'fue_contestada',
+            'estado_llamada_valor',
+            'estado_venta_valor',
+            'hubo_venta',
+            'monto_venta',
+            'notas_agente',
+            'transcipcion',
+            'grabacion_url',
+            'twilio_recording_url',
+        ]
+    
+    def get_hubo_venta(self, obj):
+        """Indica si hubo venta en la llamada."""
+        return obj.venta is not None
+    
+    def get_monto_venta(self, obj):
+        """Retorna el monto de la venta si existe."""
+        if obj.venta and obj.venta.monto:
+            return float(obj.venta.monto)
+        return None
+    
+    def get_notas_agente(self, obj):
+        """
+        Obtiene las notas del agente desde:
+        - Transcripción de la llamada
+        - Formularios asociados
+        """
+        notas = []
+        
+        # Agregar transcripción si existe
+        if obj.transcipcion:
+            notas.append({
+                'tipo': 'transcripcion',
+                'contenido': obj.transcipcion
+            })
+        
+        # Agregar notas de formularios
+        formularios = obj.formularios.all()
+        for formulario in formularios:
+            if formulario.campos_json:
+                notas.append({
+                    'tipo': 'formulario',
+                    'campos': formulario.campos_json
+                })
+        
+        return notas

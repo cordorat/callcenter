@@ -6,7 +6,8 @@ from .views import (
     LlamadaViewSet,
     FormularioVentaViewSet,
     VentaViewSet,
-    ReporteLlamadaViewSet
+    ReporteLlamadaViewSet,
+    HistorialJefeCampanaViewSet
 )
 
 app_name = 'calls'
