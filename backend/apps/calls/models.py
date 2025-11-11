@@ -317,3 +317,48 @@ class FormularioVenta(models.Model):
     
     def __str__(self):
         return f"Formulario {self.id} - Llamada {self.llamada_id}"
+
+
+class ReporteLlamada(models.Model):
+    """
+    Reporte de problemas o incidencias en una llamada.
+    Permite al BackOffice documentar problemas encontrados durante la auditoría.
+    """
+    llamada = models.ForeignKey(
+        Llamada,
+        on_delete=models.CASCADE,
+        related_name='reportes',
+        help_text='Llamada reportada'
+    )
+    reportado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='reportes_creados',
+        help_text='Usuario de BackOffice que creó el reporte'
+    )
+    descripcion = models.TextField(
+        'Descripción del Reporte',
+        help_text='Descripción detallada del problema (mínimo 10, máximo 500 caracteres)'
+    )
+    fecha_reporte = models.DateTimeField(
+        'Fecha del Reporte',
+        auto_now_add=True,
+        help_text='Fecha y hora en que se creó el reporte'
+    )
+    
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)
+    
+    class Meta:
+        db_table = 'reporte_llamada'
+        verbose_name = 'Reporte de Llamada'
+        verbose_name_plural = 'Reportes de Llamadas'
+        ordering = ['-fecha_reporte']
+        indexes = [
+            models.Index(fields=['llamada', '-fecha_reporte']),
+            models.Index(fields=['reportado_por', '-fecha_reporte']),
+        ]
+    
+    def __str__(self):
+        return f"Reporte {self.id} - Llamada {self.llamada_id} - {self.fecha_reporte.strftime('%Y-%m-%d %H:%M')}"

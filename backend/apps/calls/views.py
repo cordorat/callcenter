@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import models as django_models
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -188,17 +189,25 @@ class LlamadaViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """
-        Agentes solo ven sus propias llamadas.
-        Admins ven todas las llamadas.
+        - BackOffice y Admin ven todas las llamadas
+        - Coordinadores ven llamadas de su equipo
+        - Agentes solo ven sus propias llamadas
         """
         user = self.request.user
         
-        # Validar rol de usuario
-        rol_admin_id = get_estado_id('ROL_USUARIO', 'ADMIN')
-        es_admin = hasattr(user, 'rol_id') and user.rol_id == rol_admin_id
-        
-        if es_admin:
+        # BackOffice y Admin ven todas las llamadas
+        if user.is_backoffice() or user.is_admin():
             queryset = Llamada.objects.all()
+        # Coordinadores ven llamadas de su equipo
+        elif user.is_coordinador():
+            from apps.campaigns.models import Equipo
+            equipos = Equipo.objects.filter(coordinador=user, is_active=True)
+            if equipos.exists():
+                agentes_equipo = User.objects.filter(equipos__in=equipos).distinct()
+                queryset = Llamada.objects.filter(agente__in=agentes_equipo)
+            else:
+                queryset = Llamada.objects.none()
+        # Agentes solo ven sus propias llamadas
         else:
             queryset = Llamada.objects.filter(agente=user)
         
@@ -207,7 +216,7 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         if estado_valor:
             estado_id = get_estado_id('ESTADO_LLAMADA', estado_valor)
             if estado_id:
-                queryset = queryset.filter(estado_recibida_id=estado_id)
+                queryset = queryset.filter(estado_llamada_id=estado_id)
         
         campana_id = self.request.query_params.get('campana_id')
         if campana_id:
@@ -215,15 +224,15 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         
         fecha_desde = self.request.query_params.get('fecha_desde')
         if fecha_desde:
-            queryset = queryset.filter(hora_inicio_timbrado__gte=fecha_desde)
+            queryset = queryset.filter(fecha_hora_inicio__gte=fecha_desde)
         
         fecha_hasta = self.request.query_params.get('fecha_hasta')
         if fecha_hasta:
-            queryset = queryset.filter(hora_inicio_timbrado__lte=fecha_hasta)
+            queryset = queryset.filter(fecha_hora_inicio__lte=fecha_hasta)
         
         return queryset.select_related(
-            'agente', 'cliente_id', 'campana_id', 'estado_venta', 'estado_recibida'
-        ).order_by('-hora_inicio_timbrado')
+            'agente', 'cliente', 'venta', 'estado_venta', 'estado_llamada', 'estado_auditoria', 'estado_reportada'
+        ).order_by('-fecha_hora_inicio')
     
     @action(detail=False, methods=['post'])
     def recibir_llamada(self, request):
@@ -1190,6 +1199,215 @@ class LlamadaViewSet(viewsets.ModelViewSet):
         except ValueError:
             page = 1
         return page
+    
+    @action(detail=True, methods=['post'], url_path='marcar-auditada')
+    def marcar_auditada(self, request, pk=None):
+        """
+        Marca una llamada como auditada.
+        Solo accesible por usuarios BackOffice o Admin.
+        
+        POST /api/calls/llamadas/{id}/marcar-auditada/
+        
+        Body (opcional):
+        {
+            "notas_auditoria": "Observaciones del auditor"
+        }
+        
+        Response:
+        {
+            "success": true,
+            "message": "La llamada ha sido auditada exitosamente",
+            "llamada": {
+                "id": 123,
+                "estado_auditoria": "AUDITADA",
+                "fecha_auditoria": "2025-11-10T10:30:00Z",
+                "auditado_por": "Juan Pérez",
+                "notas_auditoria": "Todo correcto"
+            }
+        }
+        """
+        try:
+            llamada = self.get_object()
+            
+            # Verificar permisos: Solo BackOffice o Admin
+            if not (request.user.is_backoffice() or request.user.is_admin()):
+                return Response(
+                    {'error': 'No tiene permisos para auditar llamadas'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Verificar si ya está auditada
+            estado_auditada = get_estado_id('ESTADO_AUDITORIA', 'AUDITADA')
+            if llamada.estado_auditoria_id == estado_auditada:
+                return Response(
+                    {'error': 'Esta llamada ya ha sido auditada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Actualizar la llamada
+            llamada.estado_auditoria_id = estado_auditada
+            llamada.fecha_auditoria = timezone.now()
+            llamada.auditado_por = request.user
+            
+            # Guardar notas si se proporcionan
+            notas = request.data.get('notas_auditoria', '')
+            if notas:
+                llamada.notas_auditoria = notas
+            
+            llamada.save()
+            
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"[AUDITORIA] Llamada {llamada.id} auditada por {request.user.get_full_name()}")
+            
+            return Response({
+                'success': True,
+                'message': 'La llamada ha sido auditada exitosamente',
+                'llamada': {
+                    'id': llamada.id,
+                    'estado_auditoria': 'AUDITADA',
+                    'fecha_auditoria': llamada.fecha_auditoria,
+                    'auditado_por': request.user.get_full_name(),
+                    'notas_auditoria': llamada.notas_auditoria
+                }
+            })
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[AUDITORIA] Error al auditar llamada {pk}: {str(e)}")
+            return Response(
+                {'error': f'Error al auditar la llamada: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['post'], url_path='reportar')
+    def reportar(self, request, pk=None):
+        """
+        Crea un reporte de problema para una llamada.
+        Solo accesible por usuarios BackOffice o Admin.
+        
+        POST /api/calls/llamadas/{id}/reportar/
+        
+        Body:
+        {
+            "descripcion": "Descripción del problema (10-500 caracteres)"
+        }
+        
+        Response:
+        {
+            "success": true,
+            "message": "La llamada ha sido reportada exitosamente",
+            "reporte": {
+                "id": 45,
+                "descripcion": "...",
+                "fecha_reporte": "2025-11-10T10:30:00Z",
+                "reportado_por": "Juan Pérez"
+            }
+        }
+        """
+        try:
+            llamada = self.get_object()
+            
+            # Verificar permisos: Solo BackOffice o Admin
+            if not (request.user.is_backoffice() or request.user.is_admin()):
+                return Response(
+                    {'error': 'No tiene permisos para reportar llamadas'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Crear el reporte usando el serializer
+            from apps.calls.serializers import ReporteLlamadaSerializer
+            
+            serializer = ReporteLlamadaSerializer(
+                data={'llamada': llamada.id, 'descripcion': request.data.get('descripcion')},
+                context={'request': request}
+            )
+            
+            if serializer.is_valid():
+                reporte = serializer.save()
+                estado_reporte = get_estado_id('ESTADO_REPORTE', 'REPORTADA')
+                llamada.estado_reportada_id = estado_reporte
+                llamada.save()
+                
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"[REPORTE] Llamada {llamada.id} reportada por {request.user.get_full_name()}")
+                
+                return Response({
+                    'success': True,
+                    'message': 'La llamada ha sido reportada exitosamente',
+                    'reporte': {
+                        'id': reporte.id,
+                        'descripcion': reporte.descripcion,
+                        'fecha_reporte': reporte.fecha_reporte,
+                        'reportado_por': request.user.get_full_name()
+                    }
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response(
+                    {'error': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[REPORTE] Error al reportar llamada {pk}: {str(e)}")
+            return Response(
+                {'error': f'Error al reportar la llamada: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['get'], url_path='reportes')
+    def obtener_reportes(self, request, pk=None):
+        """
+        Obtiene todos los reportes de una llamada.
+        
+        GET /api/calls/llamadas/{id}/reportes/
+        
+        Response:
+        {
+            "count": 2,
+            "reportes": [
+                {
+                    "id": 45,
+                    "descripcion": "...",
+                    "fecha_reporte": "2025-11-10T10:30:00Z",
+                    "reportado_por": "Juan Pérez"
+                }
+            ]
+        }
+        """
+        try:
+            llamada = self.get_object()
+            
+            # Verificar permisos
+            if not (request.user.is_backoffice() or request.user.is_admin()):
+                return Response(
+                    {'error': 'No tiene permisos para ver reportes'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            from apps.calls.models import ReporteLlamada
+            from apps.calls.serializers import ReporteLlamadaListSerializer
+            
+            reportes = ReporteLlamada.objects.filter(llamada=llamada).order_by('-fecha_reporte')
+            serializer = ReporteLlamadaListSerializer(reportes, many=True)
+            
+            return Response({
+                'count': reportes.count(),
+                'reportes': serializer.data
+            })
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[REPORTE] Error al obtener reportes de llamada {pk}: {str(e)}")
+            return Response(
+                {'error': f'Error al obtener reportes: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class HistorialJefeCampanaViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -1610,4 +1828,73 @@ class VentaViewSet(viewsets.ModelViewSet):
             'total': len(productos_data),
             'productos': productos_data
         })
+
+
+class ReporteLlamadaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de reportes de llamadas.
+    Solo accesible por BackOffice y Admin.
+    
+    list: Listar todos los reportes
+    retrieve: Obtener un reporte específico
+    create: Crear un nuevo reporte (también disponible via LlamadaViewSet.reportar)
+    """
+    from apps.calls.models import ReporteLlamada
+    from apps.calls.serializers import ReporteLlamadaSerializer, ReporteLlamadaListSerializer
+    
+    queryset = ReporteLlamada.objects.all()
+    serializer_class = ReporteLlamadaSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """
+        Solo BackOffice y Admin pueden ver reportes.
+        """
+        user = self.request.user
+        
+        if not (user.is_backoffice() or user.is_admin()):
+            from apps.calls.models import ReporteLlamada
+            return ReporteLlamada.objects.none()
+        
+        queryset = self.queryset.select_related(
+            'llamada',
+            'llamada__agente',
+            'llamada__cliente',
+            'reportado_por'
+        ).order_by('-fecha_reporte')
+        
+        # Filtros opcionales
+        llamada_id = self.request.query_params.get('llamada_id')
+        if llamada_id:
+            queryset = queryset.filter(llamada_id=llamada_id)
+        
+        reportado_por = self.request.query_params.get('reportado_por')
+        if reportado_por:
+            queryset = queryset.filter(reportado_por_id=reportado_por)
+        
+        fecha_desde = self.request.query_params.get('fecha_desde')
+        if fecha_desde:
+            queryset = queryset.filter(fecha_reporte__gte=fecha_desde)
+        
+        fecha_hasta = self.request.query_params.get('fecha_hasta')
+        if fecha_hasta:
+            queryset = queryset.filter(fecha_reporte__lte=fecha_hasta)
+        
+        return queryset
+    
+    def get_serializer_class(self):
+        """
+        Usa serializer simplificado para list, completo para retrieve/create.
+        """
+        if self.action == 'list':
+            from apps.calls.serializers import ReporteLlamadaListSerializer
+            return ReporteLlamadaListSerializer
+        from apps.calls.serializers import ReporteLlamadaSerializer
+        return ReporteLlamadaSerializer
+    
+    def perform_create(self, serializer):
+        """
+        Asigna automáticamente el usuario que crea el reporte.
+        """
+        serializer.save(reportado_por=self.request.user)
 
