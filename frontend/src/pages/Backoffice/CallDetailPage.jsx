@@ -124,13 +124,14 @@ export default function CallDetailPage() {
   const handleConfirmAudit = async () => {
     try {
       setConfirmDialogOpen(false);
-      // Aquí iría la lógica para marcar como auditada
-      // await auditCall(llamadaId, { notes: auditNotes });
+      
+      // Llamar al endpoint del backend para auditar
+      const result = await callsService.auditCall(llamadaId, auditNotes);
       
       // Mostrar éxito
       setSnackbar({
         open: true,
-        message: "Llamada marcada como auditada correctamente",
+        message: result.message || "Llamada marcada como auditada correctamente",
         severity: "success",
       });
       
@@ -142,7 +143,7 @@ export default function CallDetailPage() {
       console.error("Error al marcar como auditada:", err);
       setSnackbar({
         open: true,
-        message: "Error al marcar la llamada como auditada",
+        message: err.response?.data?.error || "Error al marcar la llamada como auditada",
         severity: "error",
       });
     }
@@ -151,20 +152,14 @@ export default function CallDetailPage() {
   const handleReportCall = async (description) => {
     try {
       setReportLoading(true);
-      // TODO: Implementar llamada a API para reportar la llamada
-      // await callsService.reportCall(llamadaId, { description });
       
-      console.log("📋 Reporte creado:", {
-        llamadaId,
-        description,
-        timestamp: new Date().toISOString(),
-        usuario: user?.email,
-      });
+      // Llamar al endpoint del backend para reportar
+      const result = await callsService.reportCall(llamadaId, description);
       
       // Mostrar éxito
       setSnackbar({
         open: true,
-        message: "La llamada ha sido reportada exitosamente",
+        message: result.message || "La llamada ha sido reportada exitosamente",
         severity: "success",
       });
       setReportDialogOpen(false);
@@ -177,7 +172,7 @@ export default function CallDetailPage() {
       console.error("Error al reportar la llamada:", err);
       setSnackbar({
         open: true,
-        message: "Error al reportar la llamada",
+        message: err.response?.data?.error || "Error al reportar la llamada",
         severity: "error",
       });
     } finally {

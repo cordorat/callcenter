@@ -64,4 +64,35 @@ export const callsService = {
     const response = await apiClient.get(ENDPOINTS.CALLS_HISTORY, { params });
     return response.data; // { count, total_pages, current_page, page_size, results }
   },
+
+  /**
+   * Marca una llamada como auditada
+   * POST /api/calls/llamadas/{id}/marcar-auditada/
+   * 
+   * @param {number} llamadaId - ID de la llamada
+   * @param {string} notas_auditoria - Notas opcionales del auditor
+   * @returns {Promise} Respuesta del backend con confirmación
+   */
+  auditCall: async (llamadaId, notas_auditoria = "") => {
+    const url = `${ENDPOINTS.CALLS}llamadas/${llamadaId}/marcar-auditada/`;
+    const payload = notas_auditoria ? { notas_auditoria } : {};
+    
+    const response = await apiClient.post(url, payload);
+    return response.data;
+  },
+
+  /**
+   * Reporta un problema en una llamada
+   * POST /api/calls/llamadas/{id}/reportar/
+   * 
+   * @param {number} llamadaId - ID de la llamada
+   * @param {string} descripcion - Descripción del problema (10-500 caracteres)
+   * @returns {Promise} Respuesta del backend con datos del reporte
+   */
+  reportCall: async (llamadaId, descripcion) => {
+    const url = `${ENDPOINTS.CALLS}llamadas/${llamadaId}/reportar/`;
+    
+    const response = await apiClient.post(url, { descripcion });
+    return response.data;
+  },
 };
