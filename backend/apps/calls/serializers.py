@@ -960,7 +960,106 @@ class TransferirLlamadaSerializer(serializers.Serializer):
         except EstadoAgenteActual.DoesNotExist:
             pass
         
-        return instance    
+        return instance
+
+
+class ReporteLlamadaSerializer(serializers.ModelSerializer):
+    """
+    Serializer para reportes de llamadas.
+    Permite al BackOffice reportar problemas encontrados en las llamadas.
+    """
+    reportado_por_nombre = serializers.SerializerMethodField()
+    llamada_info = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ReporteLlamada
+        fields = [
+            'id',
+            'llamada',
+            'reportado_por',
+            'reportado_por_nombre',
+            'descripcion',
+            'fecha_reporte',
+            'llamada_info',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'fecha_reporte', 'created_at', 'updated_at', 'reportado_por']
+    
+    def get_reportado_por_nombre(self, obj):
+        """Obtiene el nombre completo del usuario que reportó."""
+        if obj.reportado_por:
+            return obj.reportado_por.get_full_name()
+        return None
+    
+    def get_llamada_info(self, obj):
+        """Obtiene información básica de la llamada reportada."""
+        if obj.llamada:
+            return {
+                'id': obj.llamada.id,
+                'fecha_inicio': obj.llamada.fecha_hora_inicio,
+                'duracion': obj.llamada.duracion,
+                'agente_nombre': obj.llamada.agente.get_full_name() if obj.llamada.agente else None,
+                'cliente_nombre': obj.llamada.cliente.nombre if obj.llamada.cliente else None
+            }
+        return None
+    
+    def validate_descripcion(self, value):
+        """
+        Valida que la descripción tenga entre 10 y 500 caracteres.
+        """
+        if len(value.strip()) < 10:
+            raise serializers.ValidationError(
+                "La descripción debe contener al menos 10 caracteres"
+            )
+        if len(value) > 500:
+            raise serializers.ValidationError(
+                "La descripción no puede exceder los 500 caracteres"
+            )
+        return value.strip()
+    
+    def create(self, validated_data):
+        """
+        Crea el reporte y actualiza el estado de la llamada.
+        """
+        # Obtener el usuario del contexto
+        request = self.context.get('request')
+        if request and request.user:
+            validated_data['reportado_por'] = request.user
+        
+        # Crear el reporte
+        reporte = ReporteLlamada.objects.create(**validated_data)
+        
+        # Actualizar estado_reportada de la llamada
+        llamada = reporte.llamada
+        estado_reportada = get_estado_id('ESTADO_REPORTADA', 'REPORTADA')
+        if estado_reportada:
+            llamada.estado_reportada_id = estado_reportada
+            llamada.save(update_fields=['estado_reportada'])
+        
+        return reporte
+
+
+class ReporteLlamadaListSerializer(serializers.ModelSerializer):
+    """
+    Serializer simplificado para listar reportes.
+    """
+    reportado_por_nombre = serializers.CharField(
+        source='reportado_por.get_full_name',
+        read_only=True
+    )
+
+    class Meta:
+        model = ReporteLlamada
+        fields = [
+            'id',
+            'llamada',
+            'reportado_por_nombre',
+            'descripcion',
+            'fecha_reporte'
+        ]
+        read_only_fields = fields
+
 class HistorialJefeCampanaSerializer(serializers.ModelSerializer):
     """
     Serializer para historial de llamadas del Jefe de Campaña.
@@ -1011,7 +1110,7 @@ class HistorialJefeCampanaSerializer(serializers.ModelSerializer):
         source='cliente.otros_datos',
         read_only=True
     )
-
+    
     class Meta:
         model = Llamada
         fields = [
@@ -1101,100 +1200,3 @@ class HistorialJefeCampanaSerializer(serializers.ModelSerializer):
                 })
         
         return notas
-
-class ReporteLlamadaSerializer(serializers.ModelSerializer):
-    """
-    Serializer para reportes de llamadas.
-    Permite al BackOffice reportar problemas encontrados en las llamadas.
-    """
-    reportado_por_nombre = serializers.SerializerMethodField()
-    llamada_info = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = ReporteLlamada
-        fields = [
-            'id',
-            'llamada',
-            'reportado_por',
-            'reportado_por_nombre',
-            'descripcion',
-            'fecha_reporte',
-            'llamada_info',
-            'created_at',
-            'updated_at'
-        ]
-        read_only_fields = ['id', 'fecha_reporte', 'created_at', 'updated_at', 'reportado_por']
-    
-    def get_reportado_por_nombre(self, obj):
-        """Obtiene el nombre completo del usuario que reportó."""
-        if obj.reportado_por:
-            return obj.reportado_por.get_full_name()
-        return None
-    
-    def get_llamada_info(self, obj):
-        """Obtiene información básica de la llamada reportada."""
-        if obj.llamada:
-            return {
-                'id': obj.llamada.id,
-                'fecha_inicio': obj.llamada.fecha_hora_inicio,
-                'duracion': obj.llamada.duracion,
-                'agente_nombre': obj.llamada.agente.get_full_name() if obj.llamada.agente else None,
-                'cliente_nombre': obj.llamada.cliente.nombre if obj.llamada.cliente else None
-            }
-        return None
-    
-    def validate_descripcion(self, value):
-        """
-        Valida que la descripción tenga entre 10 y 500 caracteres.
-        """
-        if len(value.strip()) < 10:
-            raise serializers.ValidationError(
-                "La descripción debe contener al menos 10 caracteres"
-            )
-        if len(value) > 500:
-            raise serializers.ValidationError(
-                "La descripción no puede exceder los 500 caracteres"
-            )
-        return value.strip()
-    
-    def create(self, validated_data):
-        """
-        Crea el reporte y actualiza el estado de la llamada.
-        """
-        # Obtener el usuario del contexto
-        request = self.context.get('request')
-        if request and request.user:
-            validated_data['reportado_por'] = request.user
-        
-        # Crear el reporte
-        reporte = ReporteLlamada.objects.create(**validated_data)
-        
-        # Actualizar estado_reportada de la llamada
-        llamada = reporte.llamada
-        estado_reportada = get_estado_id('ESTADO_REPORTADA', 'REPORTADA')
-        if estado_reportada:
-            llamada.estado_reportada_id = estado_reportada
-            llamada.save(update_fields=['estado_reportada'])
-        
-        return reporte
-
-
-class ReporteLlamadaListSerializer(serializers.ModelSerializer):
-    """
-    Serializer simplificado para listar reportes.
-    """
-    reportado_por_nombre = serializers.CharField(
-        source='reportado_por.get_full_name',
-        read_only=True
-    )
-    
-    class Meta:
-        model = ReporteLlamada
-        fields = [
-            'id',
-            'llamada',
-            'reportado_por_nombre',
-            'descripcion',
-            'fecha_reporte'
-        ]
-        read_only_fields = fields
