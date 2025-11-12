@@ -3,8 +3,9 @@ import FiltrosyBusquedaBackoffice from "@/components/backoffice/SearchAndFilters
 import { callsService } from "@/core/api/calls";
 import MainLayout from "@/core/components/layout/MainLayout";
 import React, { useState, useCallback, useEffect } from "react";
-import { Box } from "@mui/material";
+import { Box, Typography, useTheme } from "@mui/material";
 export default function BackofficeCallsList() {
+  const theme = useTheme();
   const [data, setData] = useState({ total_pages: 1 });
   const [loading, setLoading] = useState(false);
   const [fechaInicio, setFechaInicio] = useState("");
@@ -12,6 +13,27 @@ export default function BackofficeCallsList() {
   const [estadoReportada, setEstadoReportada] = useState("todos");
   const [estadoAuditada, setEstadoAuditada] = useState("todos");
   const [page, setPage] = useState(1);
+
+  // Generar título dinámico basado en filtros activos
+  const getTitleSubtitle = () => {
+    const filters = [];
+    if (estadoReportada !== "todos") {
+      filters.push(`Reportada: ${estadoReportada === "REPORTADA" ? "Sí" : "No"}`);
+    }
+    if (estadoAuditada !== "todos") {
+      filters.push(`Auditada: ${estadoAuditada === "AUDITADA" ? "Sí" : "No"}`);
+    }
+    if (fechaInicio || fechaFin) {
+      if (fechaInicio && fechaFin) {
+        filters.push(`${fechaInicio} a ${fechaFin}`);
+      } else if (fechaInicio) {
+        filters.push(`Desde ${fechaInicio}`);
+      } else if (fechaFin) {
+        filters.push(`Hasta ${fechaFin}`);
+      }
+    }
+    return filters.length > 0 ? filters.join(" • ") : "Sin filtros";
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -47,8 +69,32 @@ export default function BackofficeCallsList() {
     setPage(1);
   };
   return (
-    <MainLayout title="Listado de Llamadas Backoffice">
+    <MainLayout title="Auditoria de Llamadas">
         <Box sx={{ p: 2 }}>
+          {/* Subtítulo con filtros activos */}
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                color: "text.secondary",
+                fontSize: "0.95rem",
+              }}
+            >
+              {getTitleSubtitle()}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                mt: 0.5,
+                fontSize: "0.85rem",
+              }}
+            >
+              Total: {data.count || 0} llamadas • Página {page} de {data.total_pages || 1}
+            </Typography>
+          </Box>
+
           <FiltrosyBusquedaBackoffice
             estadoReportada={estadoReportada}
             setEstadoReportada={setEstadoReportada}

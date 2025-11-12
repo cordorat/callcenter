@@ -6,6 +6,7 @@ import AgenteDashboard from "./AgenteDashboard";
 import JefeCentroDashboard from "./JefeCentroDashboard";
 import JefeCampañaDashboard from "./JefeCampañaDashboard";
 import CoordinadorDashboard from "./CoordinadorDashboard";
+import BackOfficeDashboard from "./BackOfficeDashboard";
 
 // Mapeo de componentes por rol (Patrón moderno)
 const DASHBOARD_BY_ROLE = {
@@ -13,7 +14,8 @@ const DASHBOARD_BY_ROLE = {
   AGENTE: AgenteDashboard,
   JEFE_CENTRO: JefeCentroDashboard,
   JEFE_CAMPAÑA: JefeCampañaDashboard,
-  COORDINADOR: CoordinadorDashboard
+  COORDINADOR: CoordinadorDashboard,
+  BACKOFFICE: BackOfficeDashboard,
 };
 
 export default function Dashboard() {
