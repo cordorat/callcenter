@@ -28,7 +28,6 @@ const Login = () => {
   
   // Token de recuperación desde URL
   const [resetToken, setResetToken] = useState(null);
-  const [tokenValid, setTokenValid] = useState(false);
   const [maskedEmail, setMaskedEmail] = useState("");
 
   // Errores por campo
@@ -55,7 +54,6 @@ const Login = () => {
       const response = await validateResetToken(token);
       if (response.valid) {
         setResetToken(token);
-        setTokenValid(true);
         setMaskedEmail(response.email || "");
         setView('confirm-reset');
       } else {
@@ -86,7 +84,6 @@ const Login = () => {
     setSuccessMessage("");
   };
 
-  
   const validateFront = () => {
     let ok = true;
     if (!email.trim()) { setEmailError("El usuario es obligatorio"); ok = false; } else setEmailError("");
@@ -94,7 +91,6 @@ const Login = () => {
     return ok;
   };
 
- 
   const mapBackendErrors = (status, data) => {
     let uErr = "", pErr = "";
     const textify = (v) => (Array.isArray(v) ? String(v[0] ?? "") : (v ? String(v) : "")).toLowerCase();
@@ -104,7 +100,6 @@ const Login = () => {
     const nfe = textify(data?.non_field_errors);
     const uMsg = textify(data?.username ?? data?.user ?? data?.email);
     const pMsg = textify(data?.password);
-
 
     if (status === 404 || code === "USER_NOT_FOUND") {
       uErr = "Usuario inexistente";
@@ -128,7 +123,6 @@ const Login = () => {
       }
     }
 
-    
     if (!uErr && !pErr) {
       if (status === 404) uErr = "Usuario inexistente";
       else if (status === 401 || status === 400) pErr = "Contraseña incorrecta";
@@ -148,7 +142,7 @@ const Login = () => {
 
     setLoading(true);
     try {
-      await login(email, password); 
+      await login(email, password);
       navigate("/dashboard");
     } catch (err) {
       const status = err?.response?.status;
@@ -170,7 +164,6 @@ const Login = () => {
       return;
     }
 
-    // Validación básica de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(resetEmail)) {
       setResetEmailError("Ingrese un correo electrónico válido");
@@ -183,7 +176,7 @@ const Login = () => {
       setSuccessMessage(response.message || "Se ha enviado un enlace de recuperación a tu correo electrónico");
       setResetEmail("");
       
-      // En 3 segundos, volver al login
+      // En 5 segundos, volver al login
       setTimeout(() => {
         handleBackToLogin();
       }, 5000);
@@ -230,7 +223,6 @@ const Login = () => {
 
     let hasError = false;
 
-    // Validar nueva contraseña
     if (!newPassword) {
       setNewPasswordError("La nueva contraseña es obligatoria");
       hasError = true;
@@ -242,7 +234,6 @@ const Login = () => {
       }
     }
 
-    // Validar confirmación
     if (!confirmPassword) {
       setConfirmPasswordError("Debe confirmar la contraseña");
       hasError = true;
@@ -258,11 +249,9 @@ const Login = () => {
       const response = await confirmPasswordReset(resetToken, newPassword, confirmPassword);
       setSuccessMessage(response.message || "Contraseña actualizada con éxito");
       
-      // Limpiar campos
       setNewPassword("");
       setConfirmPassword("");
       
-      // En 2 segundos, volver al login
       setTimeout(() => {
         handleBackToLogin();
       }, 2000);
@@ -292,7 +281,7 @@ const Login = () => {
   };
 
   return (
-    <div className="login-container">
+    <div className={`login-container ${view !== 'login' ? 'recover-mode' : ''}`}>
       <div className="login-form">
         <h2>
           {view === 'login' && 'Iniciar sesión'}
@@ -300,10 +289,9 @@ const Login = () => {
           {view === 'confirm-reset' && 'Nueva Contraseña'}
         </h2>
 
-        {/* ============ VISTA: LOGIN ============ */}
+        {/* VISTA: LOGIN */}
         {view === 'login' && (
           <>
-            {/* Usuario */}
             <div className="form-group">
               <label htmlFor="username">Usuario</label>
               <input
@@ -324,7 +312,6 @@ const Login = () => {
               {emailError && <p id="username-error" className="field-error">{emailError}</p>}
             </div>
 
-            {/* Contraseña */}
             <div className="form-group">
               <label htmlFor="password">Contraseña</label>
               <div className={`password-wrapper ${passwordError ? 'has-error' : ''}`}>
@@ -352,8 +339,8 @@ const Login = () => {
                 >
                   {showPassword ? (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                         aria-hidden="true">
+                          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                          aria-hidden="true">
                       <path d="M3 3l18 18" />
                       <path d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58" />
                       <path d="M16.68 16.68C15.23 17.52 13.67 18 12 18c-5 0-9-4.5-10-6 0 0 1.6-2.34 4.28-4.03" />
@@ -361,8 +348,8 @@ const Login = () => {
                     </svg>
                   ) : (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                         aria-hidden="true">
+                          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                          aria-hidden="true">
                       <ellipse cx="12" cy="12" rx="9" ry="6" />
                       <circle cx="12" cy="12" r="2.5" />
                     </svg>
@@ -372,7 +359,6 @@ const Login = () => {
               {passwordError && <p id="password-error" className="field-error">{passwordError}</p>}
             </div>
 
-            {/* Link recuperar contraseña */}
             <p className="forgot-password" onClick={handlePasswordReset}>
               ¿Olvidaste tu contraseña?
             </p>
@@ -387,21 +373,19 @@ const Login = () => {
           </>
         )}
 
-        {/* ============ VISTA: SOLICITAR RECUPERACIÓN ============ */}
+        {/* VISTA: SOLICITAR RECUPERACIÓN */}
         {view === 'request-reset' && (
           <>
             {successMessage ? (
               <div className="success-message-box">
-                <p style={{ color: '#2ecc71', fontSize: '0.95rem', textAlign: 'center', marginBottom: '20px' }}>
-                  ✓ {successMessage}
-                </p>
-                <p style={{ color: '#666', fontSize: '0.85rem', textAlign: 'center' }}>
+                <p>✓ {successMessage}</p>
+                <p className="success-subtext">
                   Revisa tu bandeja de entrada y sigue las instrucciones.
                 </p>
               </div>
             ) : (
               <>
-                <p style={{ color: '#666', fontSize: '0.9rem', textAlign: 'center', marginBottom: '20px', maxWidth: '350px' }}>
+                <p className="reset-instructions">
                   Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
                 </p>
 
@@ -439,27 +423,24 @@ const Login = () => {
           </>
         )}
 
-        {/* ============ VISTA: CONFIRMAR NUEVA CONTRASEÑA ============ */}
+        {/* VISTA: CONFIRMAR NUEVA CONTRASEÑA */}
         {view === 'confirm-reset' && (
           <>
             {successMessage ? (
               <div className="success-message-box">
-                <p style={{ color: '#2ecc71', fontSize: '1.1rem', textAlign: 'center', marginBottom: '10px' }}>
-                  ✓ {successMessage}
-                </p>
-                <p style={{ color: '#666', fontSize: '0.85rem', textAlign: 'center' }}>
+                <p>✓ {successMessage}</p>
+                <p className="success-subtext">
                   Redirigiendo al inicio de sesión...
                 </p>
               </div>
             ) : (
               <>
                 {maskedEmail && (
-                  <p style={{ color: '#666', fontSize: '0.9rem', textAlign: 'center', marginBottom: '20px' }}>
+                  <p className="reset-instructions">
                     Recuperando contraseña para: <strong>{maskedEmail}</strong>
                   </p>
                 )}
 
-                {/* Nueva Contraseña */}
                 <div className="form-group">
                   <label htmlFor="new-password">Nueva Contraseña</label>
                   <div className={`password-wrapper ${newPasswordError ? 'has-error' : ''}`}>
@@ -498,12 +479,11 @@ const Login = () => {
                     </button>
                   </div>
                   {newPasswordError && <p className="field-error">{newPasswordError}</p>}
-                  <p style={{ color: '#999', fontSize: '0.75rem', marginTop: '4px' }}>
+                  <p className="password-hint">
                     8-16 caracteres, debe incluir números, letras y caracteres especiales
                   </p>
                 </div>
 
-                {/* Confirmar Contraseña */}
                 <div className="form-group">
                   <label htmlFor="confirm-password">Confirmar Contraseña</label>
                   <div className={`password-wrapper ${confirmPasswordError ? 'has-error' : ''}`}>
