@@ -19,7 +19,16 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import PhoneMissedIcon from "@mui/icons-material/PhoneMissed";
 import { getKpiOverview } from "@/core/api/Kpis";
+import { callsService } from "@/core/api/Calls";
 import { useTheme } from "@mui/material/styles";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from "@mui/material";
 
 const toLocalDateString = (date) => {
   const y = date.getFullYear();
@@ -43,6 +52,7 @@ export default function AgenteDashboard() {
     metaVentas: 0,
     tasaConversion: 0,
   });
+  const [ultimasLlamadas, setUltimasLlamadas] = React.useState([]);
 
   const load = React.useCallback(async () => {
     try {
@@ -68,6 +78,20 @@ export default function AgenteDashboard() {
           : 0;
 
       setKpi({ llamadas, ventas, metaVentas, tasaConversion: tasaConvPct });
+
+      // Cargar últimas 5 llamadas
+      try {
+        const historialData = await callsService.getHistory({
+          fecha_desde: range.from,
+          fecha_hasta: range.to,
+          page: 1,
+          page_size: 5,
+        });
+        setUltimasLlamadas(historialData.results || []);
+      } catch (e) {
+        console.error("Error al cargar historial de llamadas:", e);
+        setUltimasLlamadas([]);
+      }
     } catch (e) {
       console.error(e);
       setError(e);
@@ -407,31 +431,199 @@ export default function AgenteDashboard() {
                 >
                   Últimas llamadas realizadas
                 </Typography>
-                <Paper
-                  sx={{
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.06)"
-                      : "#f4f7fb",
-                    border: isDark
-                      ? "2px dashed rgba(255,255,255,0.20)"
-                      : "2px dashed #cfd7e6",
-                    borderRadius: 3,
-                    p: 4,
-                    textAlign: "center",
-                  }}
-                >
-                  <Typography
-                    variant="body1"
+                {ultimasLlamadas.length === 0 ? (
+                  <Paper
                     sx={{
-                      color: isDark
-                        ? "rgba(255,255,255,0.85)"
-                        : "rgba(12,21,90,0.7)",
-                      fontWeight: 500,
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.06)"
+                        : "#f4f7fb",
+                      border: isDark
+                        ? "2px dashed rgba(255,255,255,0.20)"
+                        : "2px dashed #cfd7e6",
+                      borderRadius: 3,
+                      p: 4,
+                      textAlign: "center",
                     }}
                   >
-                    Sin llamadas recientes
-                  </Typography>
-                </Paper>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: isDark
+                          ? "rgba(255,255,255,0.85)"
+                          : "rgba(12,21,90,0.7)",
+                        fontWeight: 500,
+                      }}
+                    >
+                      Sin llamadas recientes
+                    </Typography>
+                  </Paper>
+                ) : (
+                  <TableContainer
+                    sx={{
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.03)"
+                        : "rgba(12,21,90,0.02)",
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Table>
+                      <TableHead>
+                        <TableRow
+                          sx={{
+                            backgroundColor: isDark
+                              ? "rgba(255,255,255,0.08)"
+                              : "rgba(12,21,90,0.08)",
+                          }}
+                        >
+                          <TableCell
+                            sx={{
+                              fontWeight: 700,
+                              color: "text.primary",
+                              fontSize: "0.875rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            Hora
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              fontWeight: 700,
+                              color: "text.primary",
+                              fontSize: "0.875rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            Teléfono
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              fontWeight: 700,
+                              color: "text.primary",
+                              fontSize: "0.875rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            Cliente
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              fontWeight: 700,
+                              color: "text.primary",
+                              fontSize: "0.875rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            Estado
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              fontWeight: 700,
+                              color: "text.primary",
+                              fontSize: "0.875rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            Duración
+                          </TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {ultimasLlamadas.map((llamada, index) => (
+                          <TableRow
+                            key={index}
+                            sx={{
+                              "&:hover": {
+                                backgroundColor: isDark
+                                  ? "rgba(255,255,255,0.08)"
+                                  : "rgba(12,21,90,0.04)",
+                              },
+                            }}
+                          >
+                            <TableCell
+                              sx={{
+                                color: "text.secondary",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              {llamada.fecha_hora_inicio
+                                ? new Date(
+                                    llamada.fecha_hora_inicio
+                                  ).toLocaleTimeString("es-ES", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })
+                                : "-"}
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                color: "text.secondary",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              {llamada.telefono_destino || "-"}
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                color: "text.secondary",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              {llamada.cliente?.nombre ||
+                                llamada.cliente_nombre ||
+                                "-"}
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                fontSize: "0.875rem",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              {statusIcon(
+                                llamada.fue_contestada === true
+                                  ? "Contestado"
+                                  : llamada.fue_contestada === false
+                                  ? "Fallida"
+                                  : "No contestada"
+                              )}
+                              <span
+                                style={{
+                                  color: isDark
+                                    ? "rgba(255,255,255,0.7)"
+                                    : "rgba(12,21,90,0.7)",
+                                }}
+                              >
+                                {llamada.fue_contestada === true
+                                  ? "Contestada"
+                                  : llamada.fue_contestada === false
+                                  ? "Fallida"
+                                  : "No contestada"}
+                              </span>
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                color: "text.secondary",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              {llamada.duracion_segundos
+                                ? `${Math.floor(llamada.duracion_segundos / 60)}:${String(
+                                    llamada.duracion_segundos % 60
+                                  ).padStart(2, "0")}`
+                                : "-"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
               </CardContent>
             </Card>
           </>

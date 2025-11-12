@@ -14,6 +14,7 @@ import {
   Chip
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { useNavigate } from "react-router-dom";
 
 
 const formatearFechaHora = (fechaHoraISO) => {
@@ -55,6 +56,7 @@ export default function TablaLlamadasBackoffice({
   onPageChange,
 }) {
   const theme = useTheme();
+  const navigate = useNavigate();
   const getAuditoriaChip = (estado) => {
     if (estado === "AUDITADA")
       return (
@@ -183,7 +185,9 @@ export default function TablaLlamadasBackoffice({
                 llamadas.map((row, index) => (
                   <TableRow
                     key={row.id}
+                    onClick={() => navigate(`/auditoria-llamadas/${row.id}`)}
                     sx={{
+                      cursor: "pointer",
                       "&:hover": {
                         backgroundColor:
                           theme.palette.mode === "light"

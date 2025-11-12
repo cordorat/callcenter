@@ -46,6 +46,8 @@ export const ENDPOINTS = {
   
   // KPIs Jefe de Campaña
   KPIS_CAMPANA_OVERVIEW: `${BASE_URL}/kpis/campana/overview/`, // GET KPIs de campaña
+  KPIS_JEFE_EQUIPOS_LIST: `${BASE_URL}/kpis/jefe-campana/equipos/`, // GET lista de equipos
+  KPIS_JEFE_EQUIPO_DETALLE: (equipoId) => `${BASE_URL}/kpis/jefe-campana/equipos/${equipoId}/detalle/`, // GET KPIs de equipo
   
   // --- CAMPAIGNS / BASES DE DATOS ---
   CAMPAIGNS_UPLOAD: `${BASE_URL}/campaigns/cargar-base-datos/`,    // POST multipart file + campana_id

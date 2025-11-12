@@ -38,6 +38,7 @@ const KpisRouter = () => {
 };
 import CoordinadorCallHistoryAgents from '@/pages/Historial/CoordinadorCallHistoryAgents';
 import BackofficeCallsList from '@/pages/Backoffice/BackofficeCallsList';
+import CallDetailPage from '@/pages/Backoffice/CallDetailPage';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -102,6 +103,15 @@ const AppRoutes = () => {
           element={
             <PrivateRoute>
               <BackofficeCallsList />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/auditoria-llamadas/:llamadaId"
+          element={
+            <PrivateRoute>
+              <CallDetailPage />
             </PrivateRoute>
           }
         />
