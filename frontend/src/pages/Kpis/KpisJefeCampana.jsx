@@ -1,9 +1,10 @@
 // PATH: src/pages/Kpis/KpisJefeCampana.jsx
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
-import { getCampanaKpiOverview } from "@/core/api/kpis";
+import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle } from "@/core/api/kpis";
 import { historialJefeService } from "@/core/api/historialJefeCampana";
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useTheme } from '@mui/material/styles';
 
 import "./Kpis.css";
@@ -19,6 +20,17 @@ import {
     InputLabel,
     Chip,
     Stack,
+    Tabs,
+    Tab,
+    Box,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TablePagination,
+    IconButton,
 } from "@mui/material";
 
 // Función helper para convertir Date a formato YYYY-MM-DD en zona horaria local
@@ -71,6 +83,9 @@ export default function KpisJefeCampana() {
     const theme = useTheme();
     const isDark = theme.palette.mode === 'dark';
 
+    // Estado de pestañas
+    const [tabValue, setTabValue] = React.useState(0); // 0 = Campaña, 1 = Equipos
+
     // Estado de campañas
     const [campanas, setCampanas] = React.useState([]);
     const [campanaSeleccionada, setCampanaSeleccionada] = React.useState("");
@@ -81,11 +96,23 @@ export default function KpisJefeCampana() {
     const [from, setFrom] = React.useState(todayRange().from);
     const [to, setTo] = React.useState(todayRange().to);
 
-    // Estado de datos
+    // Estado de datos de campaña
     const [data, setData] = React.useState(null);
     const [loading, setLoading] = React.useState(false);
     const [errMsg, setErrMsg] = React.useState("");
     const [updatedAt, setUpdatedAt] = React.useState(null);
+
+    // Estado de equipos
+    const [equipos, setEquipos] = React.useState([]);
+    const [loadingEquipos, setLoadingEquipos] = React.useState(false);
+    const [page, setPage] = React.useState(0);
+    const [rowsPerPage, setRowsPerPage] = React.useState(10);
+    const [totalEquipos, setTotalEquipos] = React.useState(0);
+    
+    // Estado de detalle de equipo
+    const [equipoSeleccionado, setEquipoSeleccionado] = React.useState(null);
+    const [dataEquipo, setDataEquipo] = React.useState(null);
+    const [loadingEquipoDetalle, setLoadingEquipoDetalle] = React.useState(false);
 
     // Cargar campañas al montar
     React.useEffect(() => {
@@ -156,9 +183,100 @@ export default function KpisJefeCampana() {
     // Cargar datos cuando cambien las fechas o campaña seleccionada
     React.useEffect(() => {
         if (!loadingCampanas && (campanaSeleccionada || campanas.length === 1)) {
-            fetchData();
+            if (tabValue === 0) {
+                fetchData();
+            } else if (tabValue === 1) {
+                fetchEquipos();
+            }
         }
-    }, [from, to, campanaSeleccionada, loadingCampanas]);
+    }, [from, to, campanaSeleccionada, loadingCampanas, tabValue]);
+
+    // Fetch lista de equipos
+    const fetchEquipos = async () => {
+        if (campanas.length > 1 && !campanaSeleccionada) {
+            return;
+        }
+
+        setLoadingEquipos(true);
+        setErrMsg("");
+        try {
+            const params = {
+                page: page + 1, // Backend usa 1-indexed
+                page_size: rowsPerPage,
+            };
+
+            if (campanaSeleccionada) {
+                params.campana_id = campanaSeleccionada;
+            }
+
+            const resp = await getEquiposJefeCampana(params);
+            setEquipos(resp.results || []);
+            setTotalEquipos(resp.count || 0);
+        } catch (e) {
+            console.error(e);
+            setErrMsg("No se pudieron cargar los equipos. Intenta nuevamente.");
+        } finally {
+            setLoadingEquipos(false);
+        }
+    };
+
+    // Fetch KPIs de equipo específico
+    const fetchEquipoDetalle = async (equipo) => {
+        setEquipoSeleccionado(equipo);
+        setLoadingEquipoDetalle(true);
+        setErrMsg("");
+        try {
+            const params = {
+                fecha_desde: from,
+                fecha_hasta: to,
+            };
+
+            const resp = await getEquipoKpiDetalle(equipo.equipo_id, params);
+            setDataEquipo(resp || null);
+            setUpdatedAt(resp?.fecha_consulta || new Date().toISOString());
+        } catch (e) {
+            console.error(e);
+            setErrMsg("No se pudieron cargar los KPIs del equipo. Intenta nuevamente.");
+        } finally {
+            setLoadingEquipoDetalle(false);
+        }
+    };
+
+    // Volver a la lista de equipos
+    const handleVolverALista = () => {
+        setEquipoSeleccionado(null);
+        setDataEquipo(null);
+    };
+
+    // Cambiar pestaña
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+        setErrMsg("");
+        
+        // Resetear estado de equipo seleccionado al cambiar de pestaña
+        if (newValue === 0) {
+            setEquipoSeleccionado(null);
+            setDataEquipo(null);
+        }
+    };
+
+    // Manejar cambio de página en tabla de equipos
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    // Manejar cambio de filas por página
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    // Recargar equipos cuando cambia la paginación
+    React.useEffect(() => {
+        if (tabValue === 1 && !equipoSeleccionado && (campanaSeleccionada || campanas.length === 1)) {
+            fetchEquipos();
+        }
+    }, [page, rowsPerPage]);
 
     // Renderizar selector de campaña
     const renderSelectorCampana = () => {
@@ -240,7 +358,7 @@ export default function KpisJefeCampana() {
         );
     };
 
-    // Extraer datos
+    // Extraer datos de campaña
     const llamadasActivas = Number(data?.llamadas_activas || 0);
     const agentesDisponibles = Number(data?.agentes_disponibles || 0);
     const tiempoPromedioLlamada = Number(data?.tiempo_promedio_llamada || 0);
@@ -248,6 +366,173 @@ export default function KpisJefeCampana() {
     const ventasRealizadas = Number(data?.ventas_realizadas || 0);
     const tasaConversion = Number(data?.tasa_conversion || 0);
     const totalAgentes = Number(data?.total_agentes || 0);
+
+    // Extraer datos de equipo
+    const equipoLlamadasActivas = Number(dataEquipo?.llamadas_activas || 0);
+    const equipoAgentesDisponibles = Number(dataEquipo?.agentes_disponibles || 0);
+    const equipoTiempoPromedioLlamada = Number(dataEquipo?.tiempo_promedio_llamada || 0);
+    const equipoLlamadasDelDia = Number(dataEquipo?.llamadas_del_dia || 0);
+    const equipoVentasRealizadas = Number(dataEquipo?.ventas_realizadas || 0);
+    const equipoTasaConversion = Number(dataEquipo?.tasa_conversion || 0);
+    const equipoTotalAgentes = Number(dataEquipo?.total_agentes || 0);
+
+    // Renderizar tabla de equipos
+    const renderTablaEquipos = () => {
+        if (loadingEquipos) {
+            return (
+                <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+                    <CircularProgress />
+                    <Typography sx={{ mt: 2 }}>Cargando equipos...</Typography>
+                </Paper>
+            );
+        }
+
+        if (equipos.length === 0) {
+            return (
+                <Alert severity="info">
+                    No hay equipos asignados a esta campaña.
+                </Alert>
+            );
+        }
+
+        return (
+            <Paper elevation={2} sx={{ width: '100%', overflow: 'hidden' }}>
+                <TableContainer>
+                    <Table>
+                        <TableHead>
+                            <TableRow sx={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
+                                <TableCell><strong>Equipo</strong></TableCell>
+                                <TableCell><strong>Coordinador</strong></TableCell>
+                                <TableCell align="center"><strong>Agentes</strong></TableCell>
+                                <TableCell><strong>Campaña</strong></TableCell>
+                                <TableCell align="center"><strong>Acciones</strong></TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {equipos.map((equipo) => (
+                                <TableRow
+                                    key={equipo.equipo_id}
+                                    hover
+                                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                >
+                                    <TableCell>{equipo.nombre}</TableCell>
+                                    <TableCell>{equipo.coordinador_nombre || 'Sin coordinador'}</TableCell>
+                                    <TableCell align="center">
+                                        <Chip
+                                            label={equipo.total_agentes}
+                                            size="small"
+                                            color={equipo.total_agentes > 0 ? 'primary' : 'default'}
+                                        />
+                                    </TableCell>
+                                    <TableCell>{equipo.campana_nombre}</TableCell>
+                                    <TableCell align="center">
+                                        <button
+                                            className="btn"
+                                            onClick={() => fetchEquipoDetalle(equipo)}
+                                            style={{ padding: '6px 16px', fontSize: '0.875rem' }}
+                                        >
+                                            Ver KPIs
+                                        </button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+                <TablePagination
+                    rowsPerPageOptions={[5, 10, 25, 50]}
+                    component="div"
+                    count={totalEquipos}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    labelRowsPerPage="Equipos por página:"
+                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+                />
+            </Paper>
+        );
+    };
+
+    // Renderizar KPIs de equipo
+    const renderKpisEquipo = () => {
+        if (!equipoSeleccionado) return null;
+
+        return (
+            <>
+                {/* Botón para volver */}
+                <Paper elevation={2} sx={{ p: 2, mb: 2, width: 'fit-content' }}>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                        <IconButton onClick={handleVolverALista} size="small">
+                            <ArrowBackIcon />
+                        </IconButton>
+                        <Stack>
+                            <Typography variant="h6" fontWeight={700}>
+                                {equipoSeleccionado.nombre}
+                            </Typography>
+                            {equipoSeleccionado.coordinador_nombre && (
+                                <Typography variant="body2" color="text.secondary">
+                                    Coordinador: {equipoSeleccionado.coordinador_nombre}
+                                </Typography>
+                            )}
+                        </Stack>
+                    </Stack>
+                </Paper>
+
+                {loadingEquipoDetalle ? (
+                    <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+                        <CircularProgress />
+                        <Typography sx={{ mt: 2 }}>Cargando KPIs del equipo...</Typography>
+                    </Paper>
+                ) : (
+                    <div className="kpi-grid">
+                        <div className="kpi-card">
+                            <div className="kpi-label">Llamadas activas</div>
+                            <div className="kpi-value-row">
+                                <div className="kpi-value">{equipoLlamadasActivas}</div>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card">
+                            <div className="kpi-label">Agentes disponibles</div>
+                            <div className="kpi-value-row">
+                                <div className="kpi-value">{equipoAgentesDisponibles}</div>
+                                <span className="kpi-chip">de {equipoTotalAgentes}</span>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card">
+                            <div className="kpi-label">Tiempo promedio de llamada</div>
+                            <div className="kpi-value-row">
+                                <div className="kpi-value">{fmtSecs(equipoTiempoPromedioLlamada)}</div>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card">
+                            <div className="kpi-label">Llamadas del período</div>
+                            <div className="kpi-value-row">
+                                <div className="kpi-value">{equipoLlamadasDelDia}</div>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card">
+                            <div className="kpi-label">Ventas realizadas</div>
+                            <div className="kpi-value-row">
+                                <div className="kpi-value">{equipoVentasRealizadas}</div>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card kpi-highlight">
+                            <div className="kpi-label">Tasa de conversión</div>
+                            <div className="kpi-value-row">
+                                <div className="kpi-value">{equipoTasaConversion.toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    };
 
     return (
         <MainLayout title="KPIs de Campaña">
@@ -271,15 +556,30 @@ export default function KpisJefeCampana() {
             >
                 {/* Header */}
                 <div className="kpi-header">
-                    <h2>KPIs de Campaña</h2>
+                    <h2>KPIs - Jefe de Campaña</h2>
                     <div className="kpi-actions">
                         {updatedAt && (
                             <span className="update-badge">
                                 Última actualización: {new Date(updatedAt).toLocaleString()}
                             </span>
                         )}
-                        <button className="btn" onClick={fetchData} disabled={loading}>
-                            {loading ? <RefreshIcon fontSize="small" className="spinning" /> : <RefreshIcon fontSize="small" />}
+                        <button 
+                            className="btn" 
+                            onClick={() => {
+                                if (tabValue === 0) {
+                                    fetchData();
+                                } else if (equipoSeleccionado) {
+                                    fetchEquipoDetalle(equipoSeleccionado);
+                                } else {
+                                    fetchEquipos();
+                                }
+                            }} 
+                            disabled={loading || loadingEquipos || loadingEquipoDetalle}
+                        >
+                            {(loading || loadingEquipos || loadingEquipoDetalle) ? 
+                                <RefreshIcon fontSize="small" className="spinning" /> : 
+                                <RefreshIcon fontSize="small" />
+                            }
                         </button>
                     </div>
                 </div>
@@ -287,7 +587,21 @@ export default function KpisJefeCampana() {
                 {/* Selector de Campaña */}
                 {renderSelectorCampana()}
 
-                {/* Mostrar filtros y KPIs solo si hay campaña seleccionada */}
+                {/* Pestañas */}
+                {(campanaSeleccionada || campanas.length === 1) && (
+                    <Paper elevation={2} sx={{ mb: 2 }}>
+                        <Tabs 
+                            value={tabValue} 
+                            onChange={handleTabChange}
+                            sx={{ borderBottom: 1, borderColor: 'divider' }}
+                        >
+                            <Tab label="Campaña" />
+                            <Tab label="Equipos" />
+                        </Tabs>
+                    </Paper>
+                )}
+
+                {/* Mostrar filtros y contenido solo si hay campaña seleccionada */}
                 {(campanaSeleccionada || campanas.length === 1) && (
                     <>
                         {/* Filtros de fecha */}
@@ -351,8 +665,10 @@ export default function KpisJefeCampana() {
                             </div>
                         )}
 
-                        {/* KPIs principales */}
-                        <div className="kpi-grid">
+                        {/* Contenido según pestaña activa */}
+                        {tabValue === 0 && (
+                            /* KPIs de Campaña */
+                            <div className="kpi-grid">
                             <div className="kpi-card">
                                 <div className="kpi-label">Llamadas activas</div>
                                 <div className="kpi-value-row">
@@ -395,7 +711,15 @@ export default function KpisJefeCampana() {
                                     <div className="kpi-value">{tasaConversion.toFixed(1)}%</div>
                                 </div>
                             </div>
-                        </div>
+                            </div>
+                        )}
+
+                        {tabValue === 1 && (
+                            /* Vista de Equipos */
+                            <>
+                                {equipoSeleccionado ? renderKpisEquipo() : renderTablaEquipos()}
+                            </>
+                        )}
                     </>
                 )}
             </div>

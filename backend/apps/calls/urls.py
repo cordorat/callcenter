@@ -17,6 +17,7 @@ router.register(r'campanas', CampanaViewSet, basename='campana')
 router.register(r'llamadas', LlamadaViewSet, basename='llamada')
 router.register(r'formularios', FormularioVentaViewSet, basename='formulario')
 router.register(r'ventas', VentaViewSet, basename='venta')
+router.register(r'historial-jefecampana', HistorialJefeCampanaViewSet, basename='historial-jefecampana')
 
 urlpatterns = [
     path('', include(router.urls)),

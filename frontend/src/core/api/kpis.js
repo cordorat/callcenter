@@ -60,3 +60,22 @@ export async function getCampanaKpiOverview({ campana_id, fecha_desde, fecha_has
   const { data } = await apiClient.get(ENDPOINTS.KPIS_CAMPANA_OVERVIEW, { params });
   return data;
 }
+
+// KPIs para Jefe de Campaña - Lista de equipos
+export async function getEquiposJefeCampana({ campana_id, page = 1, page_size = 10 }) {
+  const params = { page, page_size };
+  if (campana_id) params.campana_id = campana_id;
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_EQUIPOS_LIST, { params });
+  return data;
+}
+
+// KPIs para Jefe de Campaña - Detalle de equipo
+export async function getEquipoKpiDetalle(equipoId, { fecha_desde, fecha_hasta }) {
+  const params = {};
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_EQUIPO_DETALLE(equipoId), { params });
+  return data;
+}
