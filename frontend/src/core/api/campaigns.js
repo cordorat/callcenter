@@ -79,6 +79,60 @@ export const getActiveCampaigns = async () => {
 };
 
 /**
+ * Obtener campañas del jefe de campaña autenticado con equipos y agentes
+ * @returns {Promise<Object>} { success, count, campanas }
+ */
+export const getMisCampanasJefe = async () => {
+  try {
+    const response = await apiClient.get('/campaigns/equipos/jefe-campana/mis-campanas/');
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al obtener mis campañas:', error);
+    throw error;
+  }
+};
+
+/**
+ * Listar bases de datos con filtro opcional por campaña
+ * @param {number|null} campanaId - ID de la campaña para filtrar (opcional)
+ * @param {number} page - Número de página (default: 1)
+ * @returns {Promise<Object>} { count, total_pages, current_page, page_size, results, filtered_by_campana }
+ */
+export const listarBasesDatos = async (campanaId = null, page = 1) => {
+  try {
+    const params = { page };
+    if (campanaId) {
+      params.campana_id = campanaId;
+    }
+    const response = await apiClient.get('/campaigns/listar-bases-datos/', { params });
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al listar bases de datos:', error);
+    throw error;
+  }
+};
+
+/**
+ * Asignar coordinador a un equipo
+ * @param {number} equipoId - ID del equipo
+ * @param {string} agenteId - documento_id del agente
+ * @param {boolean} confirmar - true para confirmar el reemplazo si ya hay coordinador
+ * @returns {Promise<Object>} { success, requiere_confirmacion, coordinador_anterior, nuevo_coordinador, message }
+ */
+export const asignarCoordinador = async (equipoId, agenteId, confirmar = false) => {
+  try {
+    const response = await apiClient.post(
+      `/campaigns/equipos/${equipoId}/asignar-coordinador/`,
+      { agente_id: agenteId, confirmar }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al asignar coordinador:', error);
+    throw error;
+  }
+};
+
+/**
  * Actualizar meta de ventas de una campaña
  * @param {number} campaignId - ID de la campaña
  * @param {number} objetivo_ventas - Nueva meta de ventas
@@ -105,6 +159,21 @@ export const programarIteracionBase = async (baseId, payload) => {
     return response.data;
   } catch (error) {
     console.error('[campaigns.js] Error al programar/iniciar iteración:', error);
+    throw error;
+  }
+};
+
+/**
+ * Eliminar una base de datos cargada
+ * @param {number} baseId - ID de la base de datos a eliminar
+ * @returns {Promise<Object>} { success, message, registros_eliminados }
+ */
+export const eliminarBaseDatos = async (baseId) => {
+  try {
+    const response = await apiClient.delete(`/campaigns/base-datos/${baseId}/eliminar/`);
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al eliminar base de datos:', error);
     throw error;
   }
 };

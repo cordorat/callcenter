@@ -15,10 +15,11 @@ from .models import Cliente, BaseDatosCargada, Equipo, EquipoAgenteDetalle, Camp
 from .serializers import (
     BaseDatosCargadaSerializer, ClienteSerializer, ClienteUpdateSerializer,
     EquipoSerializer, EquipoCreateSerializer, EquipoUpdateSerializer,
-    AgenteSimpleSerializer, CampanaSerializer, CampanaCreateSerializer,CampanaListSerializer, JefeCampanaSearchSerializer, ProductoSerializer
+    AgenteSimpleSerializer, CampanaSerializer, CampanaCreateSerializer,CampanaListSerializer, JefeCampanaSearchSerializer, ProductoSerializer, CampanaJefeSerializer,
+    AsignarCoordinadorSerializer, EquipoConAgentesSerializer
 )
 from apps.users.models import User, Centro
-from common.estados_helper import get_estado_id
+from common.estados_helper import get_estado_id, get_estado
 from django.core.paginator import Paginator
 from apps.users.permissions import IsJefeCentro
 
@@ -141,17 +142,82 @@ class CargarBaseDatosView(APIView):
         )
 @api_view(['GET'])
 def listar_bases_datos(request):
+    """
+    Lista bases de datos con filtro opcional por campaña.
+    Aplica filtros de seguridad según el rol del usuario:
+    - JEFE_CAMPANA: Solo ve bases de sus campañas asignadas
+    - JEFE_CENTRO: Ve bases de campañas de sus centros
+    - ADMIN: Ve todas las bases
+    
+    Query params:
+    - campana_id: Filtrar bases de datos de una campaña específica
+    - page: Número de página (default: 1)
+    
+    Ejemplo: GET /api/campaigns/listar-bases-datos/?campana_id=1
+    """
+    user = request.user
     bases = BaseDatosCargada.objects.all()
+    
+    # Filtro de seguridad por rol
+    rol_jefe_campana_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
+    rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+    
+    if user.rol_id == rol_jefe_campana_id:
+        # Jefe de campaña solo ve bases de sus campañas
+        campanas_jefe = Campana.objects.filter(jefe_campana=user).values_list('id', flat=True)
+        bases = bases.filter(campana_id__in=campanas_jefe)
+    
+    elif user.rol_id == rol_jefe_centro_id:
+        # Jefe de centro ve bases de campañas de sus centros
+        centros = Centro.objects.filter(jefe_centro=user)
+        campanas_centro = Campana.objects.filter(centro__in=centros).values_list('id', flat=True)
+        bases = bases.filter(campana_id__in=campanas_centro)
+    
+    elif not user.is_admin():
+        # Otros roles sin acceso (solo admin puede ver todo)
+        return Response({
+            "error": "No tiene permisos para listar bases de datos"
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    # Filtro adicional opcional por campaña específica
+    campana_id = request.query_params.get('campana_id')
+    if campana_id:
+        try:
+            campana_id = int(campana_id)
+            # Validar que el usuario tenga acceso a esta campaña
+            if user.rol_id == rol_jefe_campana_id:
+                if not Campana.objects.filter(id=campana_id, jefe_campana=user).exists():
+                    return Response({
+                        "error": "No tiene permisos para acceder a esta campaña"
+                    }, status=status.HTTP_403_FORBIDDEN)
+            elif user.rol_id == rol_jefe_centro_id:
+                centros = Centro.objects.filter(jefe_centro=user)
+                if not Campana.objects.filter(id=campana_id, centro__in=centros).exists():
+                    return Response({
+                        "error": "No tiene permisos para acceder a esta campaña"
+                    }, status=status.HTTP_403_FORBIDDEN)
+            
+            bases = bases.filter(campana_id=campana_id)
+        except (ValueError, TypeError):
+            return Response({
+                "error": "El parámetro campana_id debe ser un número entero válido"
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Ordenar por fecha de carga descendente (más recientes primero)
+    bases = bases.order_by('-fecha_carga')
+    
     paginator = Paginator(bases, 20)
     page = request.query_params.get("page", 1)
     page_obj = paginator.get_page(page)
     serializer = BaseDatosCargadaSerializer(page_obj.object_list, many=True)
+    
     return Response({
         "count": paginator.count,
         "total_pages": paginator.num_pages,
         "current_page": page_obj.number,
         "page_size": paginator.per_page,
-        "results": serializer.data
+        "results": serializer.data,
+        "filtered_by_campana": campana_id is not None
     }, status=status.HTTP_200_OK)
 @api_view(['GET'])
 def detalle_base_datos(request, pk):
@@ -194,6 +260,59 @@ def cargar_bd_registros(request, pk):
         "page_size": paginator.per_page,
         "results": serializer.data
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+def eliminar_base_datos(request, pk):
+    """
+    DELETE /api/campaigns/base-datos/<pk>/eliminar/
+    
+    Elimina una base de datos cargada junto con todos sus registros de clientes asociados.
+    Solo usuarios administradores o jefes de campaña pueden eliminar bases.
+    """
+    try:
+        base = BaseDatosCargada.objects.get(pk=pk)
+        
+        # Verificar permisos: solo admin o jefe de campaña de esa campaña
+        user = request.user
+        if not user.is_admin():
+            # Si es jefe de campaña, verificar que sea de esa campaña
+            if hasattr(user, 'jefe_campana'):
+                campanas_jefe = user.jefe_campana.campanas.all()
+                if base.campana not in campanas_jefe:
+                    return Response(
+                        {"error": "No tienes permiso para eliminar esta base de datos."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            else:
+                return Response(
+                    {"error": "No tienes permiso para eliminar bases de datos."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Contar registros antes de eliminar
+        num_registros = Cliente.objects.filter(base_datos_id=pk).count()
+        nombre_bd = base.nombre_bd
+        
+        # Eliminar la base (los registros se eliminan en cascada por FK)
+        base.delete()
+        
+        return Response({
+            "success": True,
+            "message": f"Base de datos '{nombre_bd}' eliminada correctamente.",
+            "registros_eliminados": num_registros
+        }, status=status.HTTP_200_OK)
+        
+    except BaseDatosCargada.DoesNotExist:
+        return Response(
+            {"error": "Base de datos no encontrada."},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Error al eliminar la base de datos: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @api_view(['PUT'])
@@ -460,6 +579,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
         """
         Filtrar equipos según el rol del usuario:
         - Jefe de Centro: equipos cuyas campañas pertenecen a su centro (relación indirecta)
+        - Jefe de Campaña: equipos de sus campañas asignadas
         - Coordinador: equipos asignados directamente
         - Admin: todos los equipos
         - Otros roles: sin acceso
@@ -476,6 +596,15 @@ class EquipoViewSet(viewsets.ModelViewSet):
             # Relación indirecta: Equipo -> Campaña -> Centro
             return Equipo.objects.filter(
                 campana__centro__in=centros,
+                is_active=True
+            ).select_related('campana', 'coordinador').prefetch_related('agentes_detalle')
+        
+        # Si es jefe de campaña, mostrar equipos de sus campañas
+        rol_jefe_campana_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
+        if user.rol_id == rol_jefe_campana_id:
+            # Filtrar equipos por campañas donde es jefe
+            return Equipo.objects.filter(
+                campana__jefe_campana=user,
                 is_active=True
             ).select_related('campana', 'coordinador').prefetch_related('agentes_detalle')
         
@@ -795,6 +924,175 @@ class EquipoViewSet(viewsets.ModelViewSet):
             'total_equipos': equipos.count(),
             'equipos': equipos_data,
             'nota': 'Los equipos se filtran por campañas que pertenecen a este centro'
+        }, status=status.HTTP_200_OK)
+        
+    @action(detail=False, methods=['get'], url_path='jefe-campana/mis-campanas')
+    def mis_campanas_jefe(self, request):
+        """
+        Endpoint para que el Jefe de Campaña obtenga sus campañas con equipos y agentes.
+        
+        GET /api/campaigns/equipos/jefe-campana/mis-campanas/
+        
+        Criterios:
+        - 1.1: El jefe debe estar autenticado
+        - 2.1: Mostrar lista de campañas asignadas al jefe
+        - 2.3: Cada campaña muestra sus equipos
+        - 2.3: Cada equipo muestra sus agentes
+        
+        Returns:
+            {
+                "success": true,
+                "campanas": [...]
+            }
+        """
+        user = request.user
+        
+        # Verificar que el usuario sea jefe de campaña
+        rol_jefe_campana_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
+        if user.rol_id != rol_jefe_campana_id and not user.is_admin():
+            return Response({
+                'success': False,
+                'message': 'Solo los jefes de campaña pueden acceder a esta información'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Obtener campañas del jefe autenticado
+        campanas = Campana.objects.filter(
+            jefe_campana=user
+        ).select_related('centro').prefetch_related('equipos')
+        
+        if not campanas.exists():
+            return Response({
+                'success': True,
+                'message': 'No tiene campañas asignadas',
+                'campanas': []
+            }, status=status.HTTP_200_OK)
+        
+        # Serializar campañas con equipos y agentes
+        serializer = CampanaJefeSerializer(campanas, many=True)
+        
+        return Response({
+            'success': True,
+            'count': campanas.count(),
+            'campanas': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'], url_path='asignar-coordinador')
+    def asignar_coordinador(self, request, pk=None):
+        """
+        Endpoint para asignar (o cambiar) el coordinador de un equipo.
+        
+        POST /api/campaigns/equipos/{equipo_id}/asignar-coordinador/
+        Body: { "agente_id": "123456789" }
+        
+        Criterios:
+        - 3.1: Si ya hay coordinador, debe retornar su información
+        - 3.2: Si no hay coordinador, asignar directamente
+        - Cambiar rol del agente a COORDINADOR
+        - Si había un coordinador anterior, cambiar su rol a AGENTE
+        
+        Returns:
+            {
+                "success": true,
+                "coordinador_anterior": {...} | null,
+                "nuevo_coordinador": {...},
+                "requiere_confirmacion": true | false,
+                "message": "..."
+            }
+        """
+        equipo = self.get_object()
+        
+        # Verificar que el usuario sea jefe de campaña y tenga permiso sobre esta campaña
+        user = request.user
+        rol_jefe_campana_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
+        
+        # Solo el jefe de la campaña del equipo puede asignar coordinador
+        if user.rol_id == rol_jefe_campana_id:
+            if equipo.campana.jefe_campana != user:
+                return Response({
+                    'success': False,
+                    'message': 'No tiene permisos sobre esta campaña'
+                }, status=status.HTTP_403_FORBIDDEN)
+        elif not user.is_admin():
+            return Response({
+                'success': False,
+                'message': 'Solo los jefes de campaña pueden asignar coordinadores'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Validar datos de entrada
+        serializer = AsignarCoordinadorSerializer(
+            data=request.data,
+            context={'equipo': equipo}
+        )
+        
+        if not serializer.is_valid():
+            return Response({
+                'success': False,
+                'message': 'Error de validación',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Obtener el agente a asignar
+        agente = serializer.agente
+        
+        # Verificar si ya existe un coordinador
+        coordinador_anterior = equipo.coordinador
+        coordinador_anterior_info = None
+        requiere_confirmacion = False
+        
+        if coordinador_anterior:
+            requiere_confirmacion = True
+            coordinador_anterior_info = {
+                'documento_id': coordinador_anterior.documento_id,
+                'full_name': coordinador_anterior.full_name,
+                'email': coordinador_anterior.email
+            }
+            
+            # Criterio 3.1: Si ya hay coordinador, retornar info para confirmación
+            # El frontend debe enviar un parámetro 'confirmar=true' para proceder
+            confirmar = request.data.get('confirmar', False)
+            
+            if not confirmar:
+                return Response({
+                    'success': True,
+                    'requiere_confirmacion': True,
+                    'coordinador_anterior': coordinador_anterior_info,
+                    'nuevo_coordinador': {
+                        'documento_id': agente.documento_id,
+                        'full_name': agente.full_name,
+                        'email': agente.email
+                    },
+                    'message': f'Ya existe un coordinador en este equipo ({coordinador_anterior.full_name}), ¿desea reemplazarlo?'
+                }, status=status.HTTP_200_OK)
+        
+        # Proceder con el cambio de coordinador
+        
+        # 1. Si había coordinador anterior, cambiar su rol a AGENTE
+        if coordinador_anterior:
+            rol_agente = get_estado('ROL_USUARIO', 'AGENTE')
+            coordinador_anterior.rol = rol_agente
+            coordinador_anterior.save()
+        
+        # 2. Cambiar rol del nuevo agente a COORDINADOR
+        rol_coordinador = get_estado('ROL_USUARIO', 'COORDINADOR')
+        agente.rol = rol_coordinador
+        agente.save()
+        
+        # 3. Actualizar el campo coordinador del equipo
+        equipo.coordinador = agente
+        equipo.save()
+        
+        # Preparar respuesta
+        return Response({
+            'success': True,
+            'requiere_confirmacion': False,
+            'coordinador_anterior': coordinador_anterior_info,
+            'nuevo_coordinador': {
+                'documento_id': agente.documento_id,
+                'full_name': agente.full_name,
+                'email': agente.email,
+                'rol_nombre': 'COORDINADOR'
+            },
+            'message': f'{agente.full_name} ha sido asignado como coordinador del equipo "{equipo.nombre}"'
         }, status=status.HTTP_200_OK)
 
 class ProductoViewSet(viewsets.ModelViewSet):

@@ -21,6 +21,9 @@ urlpatterns = [
     # Endpoint para iteración de bases de datos
     path('base-datos/<int:pk>/programar-iteracion/', views.programar_iteracion_bd, name='programar-iteracion-bd'),
     
+    # Endpoint para eliminar bases de datos
+    path('base-datos/<int:pk>/eliminar/', views.eliminar_base_datos, name='eliminar-base-datos'),
+    
     # Incluir rutas del router
     path('', include(router.urls)),
 ]
