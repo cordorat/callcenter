@@ -184,3 +184,41 @@ export const eliminarBaseDatos = async (baseId) => {
     throw error;
   }
 };
+
+/**
+ * Listar bases de datos de una campaña específica
+ * @param {number} campanaId - ID de la campaña
+ * @returns {Promise<Object>} { count, campana, bases_datos }
+ */
+export const getBasesDatosPorCampana = async (campanaId) => {
+  try {
+    const response = await apiClient.get('/campaigns/bases-datos/por-campana/', {
+      params: { campana_id: campanaId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al obtener bases de datos por campaña:', error);
+    throw error;
+  }
+};
+
+/**
+ * Listar clientes de una base de datos específica
+ * @param {number} baseDatosId - ID de la base de datos
+ * @param {Object} params - Parámetros opcionales: { search, telefono, page, page_size }
+ * @returns {Promise<Object>} { count, total_pages, current_page, page_size, base_datos, results }
+ */
+export const getClientesPorBaseDatos = async (baseDatosId, params = {}) => {
+  try {
+    const response = await apiClient.get('/calls/clientes/por-base-datos/', {
+      params: {
+        base_datos_id: baseDatosId,
+        ...params
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('[campaigns.js] Error al obtener clientes por base de datos:', error);
+    throw error;
+  }
+};

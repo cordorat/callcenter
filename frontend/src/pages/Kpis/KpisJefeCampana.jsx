@@ -77,6 +77,22 @@ const fmtSecs = (s) => {
     return `${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")} min`;
 };
 
+// Función helper para formatear el label del estado
+const formatEstadoLabel = (estado) => {
+    switch (estado) {
+        case 'ACTIVA':
+            return 'Activa';
+        case 'NO_ACTIVA':
+            return 'No Activa';
+        case 'PAUSADA':
+            return 'Pausada';
+        case 'FINALIZADA':
+            return 'Finalizada';
+        default:
+            return estado;
+    }
+};
+
 export default function KpisJefeCampana() {
     const theme = useTheme();
     const isDark = theme.palette.mode === 'dark';
@@ -301,12 +317,12 @@ export default function KpisJefeCampana() {
             return (
                 <Paper elevation={2} sx={{ p: 2, width: 'fit-content' }}>
                     <Stack direction="row" spacing={2} alignItems="center">
-                        <Typography variant="h6" fontWeight={700}>
+                        <Typography variant="h6" sx={{ fontWeight: 700, flex: 1 }}>
                             {campana.nombre}
                         </Typography>
                         {campana.estado && (
                             <Chip
-                                label={campana.estado}
+                                label={formatEstadoLabel(campana.estado)}
                                 size="small"
                                 color={campana.estado === 'ACTIVA' ? 'success' : campana.estado === 'PAUSADA' ? 'warning' : 'default'}
                                 sx={{ fontWeight: 600 }}
@@ -337,7 +353,7 @@ export default function KpisJefeCampana() {
                                     <Typography sx={{ flex: 1 }}>{camp.nombre}</Typography>
                                     {camp.estado && (
                                         <Chip
-                                            label={camp.estado}
+                                            label={formatEstadoLabel(camp.estado)}
                                             size="small"
                                             color={camp.estado === 'ACTIVA' ? 'success' : camp.estado === 'PAUSADA' ? 'warning' : 'default'}
                                             sx={{

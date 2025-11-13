@@ -152,6 +152,12 @@ class User(AbstractUser):
             return False
         return self.rol.valor == 'JEFE_CENTRO'
     
+    def is_jefe_campana(self):
+        """Verifica si el usuario tiene rol de JEFE_CAMPANA."""
+        if not self.rol:
+            return False
+        return self.rol.valor == 'JEFE_CAMPANA'
+    
     def get_role_display(self):
         """Devuelve el valor del rol para mostrar."""
         if self.rol:

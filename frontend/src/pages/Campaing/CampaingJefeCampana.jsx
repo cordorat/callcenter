@@ -2,7 +2,7 @@
 //Pantalla para gestionar campañas
 
 import * as React from "react";
-import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Paper, InputLabel, TextField } from '@mui/material';
+import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Paper, InputLabel, TextField, Chip, Typography } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { useTheme } from '@mui/material/styles';
 import MainLayout from '@/core/components/layout/MainLayout';
@@ -41,6 +41,56 @@ export default function CampaingJefeCampana() {
   const [currentTab, setCurrentTab] = useState("database"); // "database" | "teams"
   const [selectedFile, setSelectedFile] = useState(null);
   const [from, setFrom] = React.useState(todayRange().from);
+  
+  // Función helper para obtener el color del chip según el estado
+  const getEstadoChipProps = (estado) => {
+    switch (estado) {
+      case 'ACTIVA':
+        return {
+          color: 'success',
+          label: 'Activa',
+          sx: {
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            height: '24px',
+          }
+        };
+      case 'NO_ACTIVA':
+        return {
+          color: 'warning',
+          label: 'No Activa',
+          sx: {
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            height: '24px',
+            backgroundColor: '#f57c00',
+            color: 'white',
+          }
+        };
+      case 'FINALIZADA':
+        return {
+          color: 'error',
+          label: 'Finalizada',
+          sx: {
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            height: '24px',
+            backgroundColor: '#757575',
+            color: 'white',
+          }
+        };
+      default:
+        return {
+          color: 'default',
+          label: estado || 'Sin estado',
+          sx: {
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            height: '24px',
+          }
+        };
+    }
+  };
   
   // Estados para campañas
   const [campaigns, setCampaigns] = useState([]);
@@ -301,11 +351,22 @@ export default function CampaingJefeCampana() {
                   <MenuItem value="">
                     <em style={{ fontStyle: 'normal' }}>-- Selecciona una campaña --</em>
                   </MenuItem>
-                  {campaigns.map((campaign) => (
-                    <MenuItem key={campaign.id} value={campaign.id}>
-                      {campaign.nombre}
-                    </MenuItem>
-                  ))}
+                  {campaigns.map((campaign) => {
+                    const chipProps = getEstadoChipProps(campaign.estado_nombre);
+                    return (
+                      <MenuItem key={campaign.id} value={campaign.id}>
+                        <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                          <Typography sx={{ flex: 1 }}>{campaign.nombre}</Typography>
+                          <Chip
+                            label={chipProps.label}
+                            color={chipProps.color}
+                            size="small"
+                            sx={chipProps.sx}
+                          />
+                        </Box>
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
             </Paper>

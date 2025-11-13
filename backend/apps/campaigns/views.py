@@ -958,7 +958,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
         # Obtener campañas del jefe autenticado
         campanas = Campana.objects.filter(
             jefe_campana=user
-        ).select_related('centro').prefetch_related('equipos')
+        ).select_related('centro', 'estado').prefetch_related('equipos')
         
         if not campanas.exists():
             return Response({
@@ -1513,3 +1513,136 @@ class CampanaViewSet(viewsets.ModelViewSet):
             'message': 'Objetivo de ventas actualizado correctamente',
             'objetivo_ventas': campana.objetivo_ventas
         }, status=status.HTTP_200_OK)
+
+
+class BaseDatosCargadaViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para gestión de bases de datos cargadas.
+    Solo lectura - las bases de datos se crean mediante CargarBaseDatosView.
+    
+    list: Listar todas las bases de datos
+    retrieve: Obtener una base de datos específica
+    por_campana: Listar bases de datos de una campaña específica
+    """
+    queryset = BaseDatosCargada.objects.all()
+    serializer_class = BaseDatosCargadaSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """
+        Filtra bases de datos según el rol del usuario.
+        - Admin: ve todas las bases
+        - Jefe de Campaña: solo ve bases de sus campañas
+        - Otros roles: sin acceso
+        """
+        user = self.request.user
+        
+        if user.is_admin():
+            return BaseDatosCargada.objects.all().select_related('campana').order_by('-fecha_carga')
+        elif user.is_jefe_campana():
+            # Jefe de campaña solo ve bases de sus campañas
+            return BaseDatosCargada.objects.filter(
+                campana__jefe_campana=user
+            ).select_related('campana').order_by('-fecha_carga')
+        else:
+            # Otros roles no tienen acceso
+            return BaseDatosCargada.objects.none()
+    
+    @action(detail=False, methods=['get'], url_path='por-campana')
+    def por_campana(self, request):
+        """
+        Lista las bases de datos de una campaña específica.
+        
+        URL: GET /api/campaigns/bases-datos/por-campana/?campana_id={id}
+        
+        Query Parameters:
+        - campana_id: ID de la campaña (requerido)
+        
+        Response:
+        {
+            "count": 3,
+            "campana": {
+                "id": 5,
+                "nombre": "Campaña Navidad"
+            },
+            "bases_datos": [
+                {
+                    "id": 1,
+                    "nombre_bd": "Base Clientes Q4 2025",
+                    "fecha_carga": "2025-11-01T10:00:00Z",
+                    "iteracion_activa": false,
+                    "fecha_hora_inicio_iteracion": null,
+                    "total_clientes": 150
+                },
+                ...
+            ]
+        }
+        """
+        campana_id = request.query_params.get('campana_id')
+        if not campana_id:
+            return Response(
+                {'error': 'El parámetro campana_id es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            campana_id = int(campana_id)
+        except ValueError:
+            return Response(
+                {'error': 'El parámetro campana_id debe ser un número entero'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Obtener la campaña
+        try:
+            campana = Campana.objects.get(id=campana_id)
+        except Campana.DoesNotExist:
+            return Response(
+                {'error': 'Campaña no encontrada'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Verificar permisos: Jefe de Campaña solo puede ver sus campañas
+        user = request.user
+        if not user.is_admin():
+            if user.is_jefe_campana():
+                if campana.jefe_campana != user:
+                    return Response(
+                        {'error': 'No tiene permisos para ver bases de datos de esta campaña'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            else:
+                # Otros roles no tienen acceso
+                return Response(
+                    {'error': 'No tiene permisos para ver bases de datos'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Filtrar bases de datos por campaña
+        bases_datos = BaseDatosCargada.objects.filter(
+            campana_id=campana_id
+        ).order_by('-fecha_carga')
+        
+        # Preparar respuesta con información de cada base
+        bases_datos_list = []
+        for base in bases_datos:
+            # Contar clientes de esta base
+            total_clientes = base.clientes.count()
+            
+            bases_datos_list.append({
+                'id': base.id,
+                'nombre_bd': base.nombre_bd,
+                'fecha_carga': base.fecha_carga,
+                'iteracion_activa': base.iteracion_activa,
+                'fecha_hora_inicio_iteracion': base.fecha_hora_inicio_iteracion,
+                'total_clientes': total_clientes
+            })
+        
+        return Response({
+            'count': len(bases_datos_list),
+            'campana': {
+                'id': campana.id,
+                'nombre': campana.nombre
+            },
+            'bases_datos': bases_datos_list
+        })

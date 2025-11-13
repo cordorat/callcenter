@@ -10,6 +10,8 @@ import apiClient from '@/core/api/apiClient';
 import { ENDPOINTS } from '@/core/api/endpoints';
 import { listarBasesDatos, eliminarBaseDatos } from '@/core/api/campaigns';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import ClientesBaseDatosModal from './ClientesBaseDatosModal';
 
 export default function Campaing({ selectedFile = null, onClearFile = null, onSelectBase = null, selectedBaseId = null, selectedCampaign = null }) {
   const theme = useTheme();
@@ -30,6 +32,10 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [baseToDelete, setBaseToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  
+  // Estados para el modal de clientes
+  const [clientesModalOpen, setClientesModalOpen] = useState(false);
+  const [selectedBaseForClientes, setSelectedBaseForClientes] = useState(null);
   
   // Verificar si el usuario es administrador
   const isAdmin = user?.role === 'ADMIN';
@@ -182,6 +188,18 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setBaseToDelete(null);
+  };
+
+  // Handlers para ver clientes
+  const handleViewClientes = (event, base) => {
+    event.stopPropagation(); // Evitar que se seleccione la fila
+    setSelectedBaseForClientes(base);
+    setClientesModalOpen(true);
+  };
+
+  const handleCloseClientesModal = () => {
+    setClientesModalOpen(false);
+    setSelectedBaseForClientes(null);
   };
 
   return (
@@ -432,33 +450,43 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
                             : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
                       >
-                        {isAdmin ? (
-                          <Tooltip title="Eliminar base de datos" arrow placement="left">
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                          {/* Botón para ver clientes */}
+                          <Tooltip title="Ver clientes" arrow placement="left">
                             <IconButton
-                              onClick={(e) => handleDeleteClick(e, b)}
+                              onClick={(e) => handleViewClientes(e, b)}
                               size="small"
                               sx={{
-                                color: '#d32f2f',
+                                color: theme.palette.primary.main,
                                 '&:hover': {
-                                  backgroundColor: 'rgba(211, 47, 47, 0.08)',
+                                  backgroundColor: theme.palette.mode === 'light'
+                                    ? 'rgba(12, 21, 90, 0.08)'
+                                    : 'rgba(47, 118, 230, 0.08)',
                                 }
                               }}
                             >
-                              <DeleteOutlineIcon />
+                              <VisibilityIcon />
                             </IconButton>
                           </Tooltip>
-                        ) : (
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: theme.palette.text.disabled,
-                              fontSize: '0.8rem',
-                              fontStyle: 'italic'
-                            }}
-                          >
-                            -
-                          </Typography>
-                        )}
+                          
+                          {/* Botón para eliminar (solo admin) */}
+                          {isAdmin && (
+                            <Tooltip title="Eliminar base de datos" arrow placement="right">
+                              <IconButton
+                                onClick={(e) => handleDeleteClick(e, b)}
+                                size="small"
+                                sx={{
+                                  color: '#d32f2f',
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(211, 47, 47, 0.08)',
+                                  }
+                                }}
+                              >
+                                <DeleteOutlineIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))
@@ -570,6 +598,14 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Modal para ver clientes de la base de datos */}
+      <ClientesBaseDatosModal
+        open={clientesModalOpen}
+        onClose={handleCloseClientesModal}
+        baseDatosId={selectedBaseForClientes?.id}
+        baseDatosNombre={selectedBaseForClientes?.nombre_bd}
+      />
     </Box>
   );
 }

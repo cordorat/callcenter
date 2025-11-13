@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import CargarBaseDatosView, ClienteViewSet, EquipoViewSet
+from .views import CargarBaseDatosView, ClienteViewSet, EquipoViewSet, BaseDatosCargadaViewSet
 
 app_name = 'campaigns'
 
@@ -11,6 +11,7 @@ router.register(r'clientes', ClienteViewSet, basename='cliente')
 router.register(r'equipos', EquipoViewSet, basename='equipo')
 router.register(r'productos', views.ProductoViewSet, basename='producto')
 router.register(r'campanas', views.CampanaViewSet, basename='campana')
+router.register(r'bases-datos', BaseDatosCargadaViewSet, basename='base-datos')
 
 urlpatterns = [
     # Incluir rutas del router PRIMERO

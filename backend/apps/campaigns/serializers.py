@@ -975,12 +975,13 @@ class CampanaJefeSerializer(serializers.ModelSerializer):
     """
     equipos = serializers.SerializerMethodField()
     cantidad_equipos = serializers.SerializerMethodField()
+    estado_nombre = serializers.CharField(source='estado.valor', read_only=True)
     
     class Meta:
         model = Campana
         fields = [
             'id', 'nombre', 'descripcion', 'fecha_inicio', 'fecha_fin',
-            'objetivo_ventas', 'equipos', 'cantidad_equipos'
+            'objetivo_ventas', 'estado_nombre', 'equipos', 'cantidad_equipos'
         ]
     
     def get_equipos(self, obj):
