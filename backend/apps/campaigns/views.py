@@ -1321,6 +1321,17 @@ class CampanaViewSet(viewsets.ModelViewSet):
     queryset = Campana.objects.all()
     permission_classes = [IsAuthenticated, IsJefeCentro]
     
+    def get_permissions(self):
+        """
+        Permisos personalizados según la acción.
+        - actualizar_objetivo_ventas: Solo requiere autenticación (la validación se hace en el método)
+        - Resto de acciones: Requiere IsJefeCentro
+        """
+        if self.action == 'actualizar_objetivo_ventas':
+            # Solo autenticación requerida, el permiso específico se valida en el método
+            return [IsAuthenticated()]
+        return super().get_permissions()
+    
     def get_serializer_class(self):
         """
         Retorna el serializer apropiado según la acción.
@@ -1343,6 +1354,7 @@ class CampanaViewSet(viewsets.ModelViewSet):
         Filtra las campañas según el rol del usuario.
         - Admin: Ve todas las campañas
         - Jefe de Centro: Solo campañas de sus centros a cargo
+        - Jefe de Campaña: Solo sus campañas asignadas
         
         Returns:
             QuerySet filtrado
@@ -1363,6 +1375,11 @@ class CampanaViewSet(viewsets.ModelViewSet):
             centros = Centro.objects.filter(jefe_centro=user)
             # Filtrar campañas que pertenecen a esos centros
             return Campana.objects.filter(centro__in=centros)
+        
+        # Jefe de Campaña solo ve sus campañas asignadas
+        jefe_campana_role_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
+        if user.rol_id == jefe_campana_role_id:
+            return Campana.objects.filter(jefe_campana=user)
         
         # Otros roles no tienen acceso a campañas
         return Campana.objects.none()
@@ -1435,3 +1452,64 @@ class CampanaViewSet(viewsets.ModelViewSet):
         
         serializer = JefeCampanaSearchSerializer(jefes, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['patch'], url_path='actualizar-objetivo')
+    def actualizar_objetivo_ventas(self, request, pk=None):
+        """
+        Endpoint para actualizar solo el objetivo de ventas de una campaña.
+        Solo el jefe de la campaña o un admin pueden actualizar.
+        
+        URL: PATCH /api/campaigns/{id}/actualizar-objetivo/
+        
+        Body:
+            {
+                "objetivo_ventas": 100
+            }
+            
+        Returns:
+            {
+                "success": true,
+                "message": "Objetivo de ventas actualizado correctamente",
+                "objetivo_ventas": 100
+            }
+        """
+        campana = self.get_object()
+        user = request.user
+        
+        # Verificar permisos: solo el jefe de campaña o admin
+        admin_role_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        if campana.jefe_campana != user and user.rol_id != admin_role_id:
+            return Response({
+                'success': False,
+                'message': 'No tienes permiso para actualizar esta campaña'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Validar que se envió objetivo_ventas
+        objetivo_ventas = request.data.get('objetivo_ventas')
+        
+        if objetivo_ventas is None:
+            return Response({
+                'success': False,
+                'message': 'Debe proporcionar el campo objetivo_ventas'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar que sea un número entero positivo
+        try:
+            objetivo_ventas = int(objetivo_ventas)
+            if objetivo_ventas < 0:
+                raise ValueError('Debe ser positivo')
+        except (ValueError, TypeError):
+            return Response({
+                'success': False,
+                'message': 'El objetivo de ventas debe ser un número entero positivo'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Actualizar
+        campana.objetivo_ventas = objetivo_ventas
+        campana.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Objetivo de ventas actualizado correctamente',
+            'objetivo_ventas': campana.objetivo_ventas
+        }, status=status.HTTP_200_OK)

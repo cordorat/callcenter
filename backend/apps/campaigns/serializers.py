@@ -980,7 +980,7 @@ class CampanaJefeSerializer(serializers.ModelSerializer):
         model = Campana
         fields = [
             'id', 'nombre', 'descripcion', 'fecha_inicio', 'fecha_fin',
-            'equipos', 'cantidad_equipos'
+            'objetivo_ventas', 'equipos', 'cantidad_equipos'
         ]
     
     def get_equipos(self, obj):

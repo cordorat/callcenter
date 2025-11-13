@@ -10,8 +10,12 @@ router = DefaultRouter()
 router.register(r'clientes', ClienteViewSet, basename='cliente')
 router.register(r'equipos', EquipoViewSet, basename='equipo')
 router.register(r'productos', views.ProductoViewSet, basename='producto')
-router.register(r'', views.CampanaViewSet, basename='campana')
+router.register(r'campanas', views.CampanaViewSet, basename='campana')
+
 urlpatterns = [
+    # Incluir rutas del router PRIMERO
+    path('', include(router.urls)),
+    
     # Endpoints existentes de bases de datos
     path('cargar-base-datos/', CargarBaseDatosView.as_view(), name='cargar-base-datos'),
     path('listar-bases-datos/', views.listar_bases_datos, name='listar-bases-datos'),
@@ -23,7 +27,4 @@ urlpatterns = [
     
     # Endpoint para eliminar bases de datos
     path('base-datos/<int:pk>/eliminar/', views.eliminar_base_datos, name='eliminar-base-datos'),
-    
-    # Incluir rutas del router
-    path('', include(router.urls)),
 ]

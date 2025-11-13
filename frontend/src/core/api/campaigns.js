@@ -136,14 +136,21 @@ export const asignarCoordinador = async (equipoId, agenteId, confirmar = false) 
  * Actualizar meta de ventas de una campaña
  * @param {number} campaignId - ID de la campaña
  * @param {number} objetivo_ventas - Nueva meta de ventas
+ * @returns {Promise<Object>} { success, message, objetivo_ventas }
  */
 export const updateSalesGoal = async (campaignId, objetivo_ventas) => {
   try {
-    // Por ahora retornamos éxito simulado hasta que exista el endpoint PATCH
-    console.log(`Actualizando meta de campaña ${campaignId} a ${objetivo_ventas}`);
-    return { success: true, objetivo_ventas };
+    console.log('[campaigns.js] Actualizando meta - campaignId:', campaignId, 'objetivo_ventas:', objetivo_ventas);
+    console.log('[campaigns.js] URL:', `/campaigns/campanas/${campaignId}/actualizar-objetivo/`);
+    const response = await apiClient.patch(
+      `/campaigns/campanas/${campaignId}/actualizar-objetivo/`,
+      { objetivo_ventas }
+    );
+    return response.data;
   } catch (error) {
     console.error('[campaigns.js] Error al actualizar meta de ventas:', error);
+    console.error('[campaigns.js] Error response:', error.response?.data);
+    console.error('[campaigns.js] Error status:', error.response?.status);
     throw error;
   }
 };

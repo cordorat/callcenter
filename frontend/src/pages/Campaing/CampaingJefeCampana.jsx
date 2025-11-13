@@ -2,15 +2,13 @@
 //Pantalla para gestionar campañas
 
 import * as React from "react";
-import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Paper, InputLabel } from '@mui/material';
+import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Paper, InputLabel, TextField } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { useTheme } from '@mui/material/styles';
 import MainLayout from '@/core/components/layout/MainLayout';
 import UploadButton from "@/components/campaing/UploadButton";
 import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
 import EditIcon from '@mui/icons-material/Edit';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
 
 // Importar los componentes de cada pestaña
 import CampaingBD from '@/components/campaing/CampaingBD';
@@ -58,7 +56,7 @@ export default function CampaingJefeCampana() {
   
   // Estados para meta de ventas
   const [salesGoal, setSalesGoal] = useState('');
-  const [isEditingSalesGoal, setIsEditingSalesGoal] = useState(false);
+  const [openSalesGoalModal, setOpenSalesGoalModal] = useState(false);
   const [tempSalesGoal, setTempSalesGoal] = useState('');
   const [savingSalesGoal, setSavingSalesGoal] = useState(false);
 
@@ -84,6 +82,7 @@ export default function CampaingJefeCampana() {
     try {
       const response = await getMisCampanasJefe();
       console.log('Response mis campañas:', response); // Debug
+      console.log('Campañas recibidas:', response.campanas); // Debug detallado
       setCampaigns(response.campanas || []);
       
       // NO seleccionar automáticamente ninguna campaña
@@ -100,30 +99,51 @@ export default function CampaingJefeCampana() {
     }
   };
 
-  const handleEditSalesGoal = () => {
-    setTempSalesGoal(salesGoal);
-    setIsEditingSalesGoal(true);
+  const handleOpenSalesGoalModal = () => {
+    setTempSalesGoal(salesGoal || '');
+    setOpenSalesGoalModal(true);
+  };
+
+  const handleCloseSalesGoalModal = () => {
+    setOpenSalesGoalModal(false);
+    setTempSalesGoal('');
   };
 
   const handleSaveSalesGoal = async () => {
+    if (!tempSalesGoal || tempSalesGoal <= 0) {
+      setSnackbar({
+        open: true,
+        message: 'Por favor ingresa un objetivo válido',
+        severity: 'warning'
+      });
+      return;
+    }
+
     setSavingSalesGoal(true);
     try {
       await updateSalesGoal(parseInt(selectedCampaign), parseInt(tempSalesGoal));
       setSalesGoal(tempSalesGoal);
-      setIsEditingSalesGoal(false);
+      setOpenSalesGoalModal(false);
       
       // Actualizar lista de campañas
       await loadCampaigns();
+      
+      setSnackbar({
+        open: true,
+        message: 'Se ha guardado la nueva meta correctamente',
+        severity: 'success'
+      });
     } catch (error) {
       console.error('Error al actualizar meta de ventas:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al guardar la meta de ventas',
+        severity: 'error'
+      });
     } finally {
       setSavingSalesGoal(false);
+      setTempSalesGoal('');
     }
-  };
-
-  const handleCancelEditSalesGoal = () => {
-    setTempSalesGoal('');
-    setIsEditingSalesGoal(false);
   };
 
   // Convierte string tipo 'YYYY-MM-DDTHH:mm' a ISO con zona horaria local
@@ -297,63 +317,29 @@ export default function CampaingJefeCampana() {
                 <span className="input-prefix">Meta:</span>
                 <input
                   type="number"
-                  value={isEditingSalesGoal ? tempSalesGoal : salesGoal}
-                  onChange={(e) => setTempSalesGoal(e.target.value)}
-                  readOnly={!isEditingSalesGoal}
+                  value={salesGoal}
+                  readOnly
                   disabled={!selectedCampaign}
                   placeholder="0"
                   className="sales-goal-input"
                 />
                 
-                {!isEditingSalesGoal ? (
-                  <IconButton
-                    size="small"
-                    onClick={handleEditSalesGoal}
-                    disabled={!selectedCampaign}
-                    sx={{
-                      color: theme.palette.primary.main,
-                      padding: '4px',
-                      '&:hover': {
-                        backgroundColor: theme.palette.mode === 'light' 
-                          ? 'rgba(12, 21, 90, 0.08)' 
-                          : 'rgba(255,255,255,0.08)',
-                      }
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                ) : (
-                  <>
-                    <IconButton
-                      size="small"
-                      onClick={handleSaveSalesGoal}
-                      disabled={savingSalesGoal}
-                      sx={{
-                        color: '#4caf50',
-                        padding: '4px',
-                        '&:hover': {
-                          backgroundColor: 'rgba(76, 175, 80, 0.08)',
-                        }
-                      }}
-                    >
-                      <CheckIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={handleCancelEditSalesGoal}
-                      disabled={savingSalesGoal}
-                      sx={{
-                        color: '#f44336',
-                        padding: '4px',
-                        '&:hover': {
-                          backgroundColor: 'rgba(244, 67, 54, 0.08)',
-                        }
-                      }}
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </>
-                )}
+                <IconButton
+                  size="small"
+                  onClick={handleOpenSalesGoalModal}
+                  disabled={!selectedCampaign}
+                  sx={{
+                    color: theme.palette.primary.main,
+                    padding: '4px',
+                    '&:hover': {
+                      backgroundColor: theme.palette.mode === 'light' 
+                        ? 'rgba(12, 21, 90, 0.08)' 
+                        : 'rgba(255,255,255,0.08)',
+                    }
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
               </div>
             </div>
             )}
@@ -487,6 +473,107 @@ export default function CampaingJefeCampana() {
         </div>
         )}
       </div>
+
+      {/* Modal para cambiar objetivo de ventas */}
+      <Dialog
+        open={openSalesGoalModal}
+        onClose={handleCloseSalesGoalModal}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            padding: '8px',
+            backgroundColor: theme.palette.background.paper,
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontSize: '1.25rem',
+            fontWeight: 700,
+            color: theme.palette.text.primary,
+            paddingBottom: '8px',
+          }}
+        >
+          ¿Cuál es el nuevo objetivo de venta de la campaña?
+        </DialogTitle>
+        
+        <DialogContent sx={{ paddingTop: '16px !important' }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Nuevo objetivo de ventas"
+            type="number"
+            fullWidth
+            variant="outlined"
+            value={tempSalesGoal}
+            onChange={(e) => setTempSalesGoal(e.target.value)}
+            disabled={savingSalesGoal}
+            inputProps={{ min: 0 }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '10px',
+                '&:hover fieldset': {
+                  borderColor: theme.palette.primary.main,
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: theme.palette.primary.main,
+                }
+              }
+            }}
+          />
+        </DialogContent>
+
+        <DialogActions sx={{ padding: '16px 24px', gap: '12px' }}>
+          <Button
+            onClick={handleCloseSalesGoalModal}
+            disabled={savingSalesGoal}
+            sx={{
+              color: theme.palette.text.secondary,
+              fontWeight: 600,
+              borderRadius: '8px',
+              padding: '8px 20px',
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              '&:hover': {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(12, 21, 90, 0.05)',
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSaveSalesGoal}
+            disabled={savingSalesGoal}
+            variant="contained"
+            sx={{
+              backgroundColor: theme.palette.primary.main,
+              color: 'white',
+              fontWeight: 600,
+              borderRadius: '8px',
+              padding: '8px 24px',
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              boxShadow: isDark 
+                ? '0 2px 8px rgba(0, 0, 0, 0.5)' 
+                : '0 2px 8px rgba(12, 21, 90, 0.2)',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.dark,
+                boxShadow: isDark 
+                  ? '0 4px 12px rgba(0, 0, 0, 0.7)' 
+                  : '0 4px 12px rgba(12, 21, 90, 0.3)',
+              },
+              '&:disabled': {
+                backgroundColor: theme.palette.action.disabledBackground,
+                color: theme.palette.action.disabled,
+              }
+            }}
+          >
+            {savingSalesGoal ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Modal para programar iteración */}
       <Dialog
