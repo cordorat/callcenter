@@ -139,7 +139,7 @@ export default function SaleInfoSection({ cliente, llamada_id, campana_id, onVen
         Información de la Venta
       </Typography>
 
-      <Grid container spacing={2.5} alignItems="center">
+      <Grid container spacing={2.5} alignItems="flex-start">
         {/* ✅ SELECT corregido para manejar producto como objeto */}
         <Grid item xs={12} md={5}>
           <FormControl fullWidth sx={{ fontSize: "1.2rem", minWidth: "250px" }}>
@@ -189,6 +189,22 @@ export default function SaleInfoSection({ cliente, llamada_id, campana_id, onVen
             name="monto"
             value={venta.monto}
             onChange={handleChange}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "light"
+                    ? "#EBF5FE"
+                    : "rgba(255, 255, 255, 0.05)",
+                borderRadius: "10px",
+                "& fieldset": {
+                  borderColor: (theme) =>
+                    theme.palette.mode === "light"
+                      ? "rgba(12, 21, 90, 0.15)"
+                      : "rgba(255, 255, 255, 0.15)",
+                  borderWidth: "1.5px",
+                },
+              },
+            }}
           />
         </Grid>
 
@@ -198,9 +214,44 @@ export default function SaleInfoSection({ cliente, llamada_id, campana_id, onVen
             label="Observaciones"
             name="observaciones"
             multiline
-            rows={3}
+            rows={2}
             value={venta.observaciones}
             onChange={handleChange}
+            sx={{
+              width: "250px",
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "light"
+                    ? "#EBF5FE"
+                    : "rgba(255, 255, 255, 0.05)",
+                borderRadius: "10px",
+                "& fieldset": {
+                  borderColor: (theme) =>
+                    theme.palette.mode === "light"
+                      ? "rgba(12, 21, 90, 0.15)"
+                      : "rgba(255, 255, 255, 0.15)",
+                  borderWidth: "1.5px",
+                },
+                "&:hover fieldset": {
+                  borderColor: (theme) =>
+                    theme.palette.mode === "light"
+                      ? "rgba(12, 21, 90, 0.3)"
+                      : "rgba(255, 255, 255, 0.3)",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: (theme) => theme.palette.primary.main,
+                  borderWidth: "2px",
+                },
+              },
+              "& .MuiInputLabel-root": {
+                color: (theme) => theme.palette.text.secondary,
+                fontWeight: 500,
+                "&.Mui-focused": {
+                  color: (theme) => theme.palette.primary.main,
+                  fontWeight: 600,
+                },
+              },
+            }}
           />
         </Grid>
 
