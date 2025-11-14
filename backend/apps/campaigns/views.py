@@ -16,7 +16,7 @@ from .serializers import (
     BaseDatosCargadaSerializer, ClienteSerializer, ClienteUpdateSerializer,
     EquipoSerializer, EquipoCreateSerializer, EquipoUpdateSerializer,
     AgenteSimpleSerializer, CampanaSerializer, CampanaCreateSerializer,CampanaListSerializer, JefeCampanaSearchSerializer, ProductoSerializer, CampanaJefeSerializer,
-    AsignarCoordinadorSerializer, EquipoConAgentesSerializer
+    AsignarCoordinadorSerializer, EquipoConAgentesSerializer, CampanaUpdateSerializer
 )
 from apps.users.models import User, Centro
 from common.estados_helper import get_estado_id, get_estado
@@ -1346,7 +1346,10 @@ class CampanaViewSet(viewsets.ModelViewSet):
         elif self.action == 'create':
             # Para crear, usar versión con validaciones
             return CampanaCreateSerializer
-        # Para retrieve, update, partial_update
+        elif self.action in ['update', 'partial_update']:
+            # Para actualizar, usar serializer de actualización
+            return CampanaUpdateSerializer
+        # Para retrieve (detalle)
         return CampanaSerializer
     
     def get_queryset(self):
@@ -1413,6 +1416,50 @@ class CampanaViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED
         )
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Override del método update para personalizar la respuesta.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        # Respuesta personalizada
+        return Response(
+            {
+                'message': 'Campaña editada exitosamente',
+                'data': CampanaSerializer(serializer.instance).data
+            },
+            status=status.HTTP_200_OK
+        )
+    
+    def perform_update(self, serializer):
+        """Hook llamado al actualizar una campaña."""
+        serializer.save()
+    
+    def check_object_permissions(self, request, obj):
+        """
+        Verifica que el Jefe de Centro solo pueda editar campañas de su centro.
+        """
+        super().check_object_permissions(request, obj)
+        
+        # Admin puede editar todo
+        admin_role_id = get_estado_id('ROL_USUARIO', 'ADMIN')
+        if request.user.rol_id == admin_role_id:
+            return
+        
+        # Jefe de Centro solo puede editar campañas de sus centros
+        jefe_centro_role_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        if request.user.rol_id == jefe_centro_role_id:
+            centros_usuario = Centro.objects.filter(jefe_centro=request.user)
+            if obj.centro not in centros_usuario:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied(
+                    'No tiene permisos para editar campañas de otros centros'
+                )
     
     @action(detail=False, methods=['get'], url_path='buscar-jefes')
     def buscar_jefes(self, request):

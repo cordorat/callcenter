@@ -79,3 +79,16 @@ export async function getEquipoKpiDetalle(equipoId, { fecha_desde, fecha_hasta }
   const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_EQUIPO_DETALLE(equipoId), { params });
   return data;
 }
+
+// Exportar KPIs del coordinador a PDF
+export async function exportarCoordinadorKpisPDF({ fecha_desde, fecha_hasta }) {
+  const params = {};
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  
+  const response = await apiClient.get(ENDPOINTS.KPIS_COORDINADOR_EXPORTAR_PDF, { 
+    params,
+    responseType: 'blob' 
+  });
+  return response;
+}

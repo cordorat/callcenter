@@ -43,6 +43,7 @@ export const ENDPOINTS = {
   KPIS_AGENTE_DETALLE: (documentoId) => `${BASE_URL}/kpis/agentes/${documentoId}/detalle/`, // GET detalle de agente
   KPIS_EQUIPO_OVERVIEW: `${BASE_URL}/kpis/equipo/overview/`, // GET KPIs agregados del equipo
   KPIS_COORDINADOR_OVERVIEW: `${BASE_URL}/kpis/coordinador/overview/`, // GET KPIs del equipo del coordinador
+  KPIS_COORDINADOR_EXPORTAR_PDF: `${BASE_URL}/kpis/coordinador/exportar-pdf/`, // GET Exportar KPIs a PDF
   
   // KPIs Jefe de Campaña
   KPIS_CAMPANA_OVERVIEW: `${BASE_URL}/kpis/campana/overview/`, // GET KPIs de campaña
