@@ -114,7 +114,7 @@ export default function Settings() {
                     user?.role === "ADMIN" 
                       ? "Administrador" 
                       : user?.role === "COORDINADOR" 
-                      ? "Jefe de Campaña" 
+                      ? "Coordinador" 
                       : user?.role === "JEFE_CAMPANA"
                       ? "Jefe de Campaña"
                       : user?.role === "JEFE_CENTRO"
