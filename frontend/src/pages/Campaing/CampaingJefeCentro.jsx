@@ -1,3 +1,4 @@
+// PATH: src/pages/Campaing/CampaingJefeCentro.jsx
 import { useState } from 'react';
 import {
   Box,
@@ -10,47 +11,66 @@ import {
   Add as AddIcon,
   Campaign as CampaignIcon,
 } from '@mui/icons-material';
+
 import CreateProductModal from "@/components/campaing/CreateProductModal.jsx";
 import CreateCampaignModal from "@/components/campaing/CreateCampaignModal.jsx";
-import MainLayout from "@/core/components/layout/MainLayout";
 import CampaignsComponent from "@/components/campaing/Campaings.jsx";
+import EditCampaignModal from "@/components/campaing/EditCampaignModal.jsx";
+import MainLayout from "@/core/components/layout/MainLayout";
 
 /**
  * Página de gestión de campañas para Jefe de Centro
- * Permite:
- * - Ver listado de campañas del centro
- * - Crear nuevas campañas
- * - Crear nuevos productos
  */
 export default function CampaingJefeCentro() {
   const theme = useTheme();
-  
-  // Estados de modales
+
+  // Modales
   const [openProducto, setOpenProducto] = useState(false);
   const [openCampana, setOpenCampana] = useState(false);
-  
-  // Control de refresco
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [openEditCampana, setOpenEditCampana] = useState(false);
 
-  // Handlers de Producto
+  // Campaña seleccionada para editar
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+
+  // Trigger para recargar campañas
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refreshCampanas = () => setRefreshKey(prev => prev + 1);
+
+  // Producto
   const handleOpenProducto = () => setOpenProducto(true);
   const handleCloseProducto = () => {
     setOpenProducto(false);
-    // Refrescar campañas por si se usó un nuevo producto
     refreshCampanas();
   };
 
-  // Handlers de Campaña
+  // Crear campaña
   const handleOpenCampana = () => setOpenCampana(true);
   const handleCloseCampana = () => setOpenCampana(false);
-  
+
   const handleCampanaCreated = () => {
     setOpenCampana(false);
     refreshCampanas();
   };
 
-  // Refresco de tabla
-  const refreshCampanas = () => setRefreshKey(prev => prev + 1);
+  // Editar campaña
+  const handleOpenEditCampana = (campaign) => {
+    console.log('[CampaingJefeCentro] abrir edición campaña', campaign);
+    if (!campaign) return;
+    setSelectedCampaign(campaign);
+    setOpenEditCampana(true);
+  };
+
+  const handleCloseEditCampana = () => {
+    setOpenEditCampana(false);
+    setSelectedCampaign(null);
+  };
+
+  const handleCampanaUpdated = (updatedData) => {
+    console.log('[CampaingJefeCentro] campaña actualizada (visual)', updatedData);
+    setOpenEditCampana(false);
+    setSelectedCampaign(null);
+    refreshCampanas();
+  };
 
   return (
     <MainLayout title="Gestión de Campañas">
@@ -128,11 +148,11 @@ export default function CampaingJefeCentro() {
           </Box>
         </Paper>
 
-        {/* Tabla de campañas */}
+        {/* Tabla de campañas con botón Editar */}
         <CampaignsComponent
           refreshTrigger={refreshKey}
-          onEditTeam={() => {}} // Por ahora sin edición
-          showActions={false} // Sin acciones por ahora
+          onEditCampaign={handleOpenEditCampana}  // 👈 se conecta el botón Editar
+          showActions={true}                      // 👈 muestra columna Acciones
         />
 
         {/* Modal de crear producto */}
@@ -146,6 +166,14 @@ export default function CampaingJefeCentro() {
           open={openCampana}
           onClose={handleCloseCampana}
           onCampaignCreated={handleCampanaCreated}
+        />
+
+        {/* Modal de editar campaña */}
+        <EditCampaignModal
+          open={openEditCampana}
+          onClose={handleCloseEditCampana}
+          campaign={selectedCampaign}
+          onCampaignUpdated={handleCampanaUpdated}
         />
       </Box>
     </MainLayout>

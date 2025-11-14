@@ -516,6 +516,205 @@ class CampanaCreateSerializer(serializers.ModelSerializer):
         
         return campana
     
+class CampanaUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer para actualización de campañas por Jefe de Centro.
+    Incluye todas las validaciones de la historia de usuario de edición.
+    """
+    
+    # Campo para recibir lista de IDs de productos
+    productos_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=True,
+        help_text='Lista de IDs de productos a asociar (mínimo 1)'
+    )
+    
+    # Campos de lectura para mostrar información completa en la respuesta
+    jefe_campana_nombre = serializers.CharField(
+        source='jefe_campana.full_name', 
+        read_only=True
+    )
+    estado_nombre = serializers.CharField(
+        source='estado.valor', 
+        read_only=True
+    )
+    productos = serializers.SerializerMethodField(read_only=True)
+    
+    class Meta:
+        model = Campana
+        fields = [
+            'id',
+            'nombre',
+            'descripcion',
+            'fecha_inicio',
+            'fecha_fin',
+            'estado',
+            'estado_nombre',
+            'jefe_campana',
+            'jefe_campana_nombre',
+            'centro',
+            'objetivo_llamadas',
+            'objetivo_ventas',
+            'productos_ids',
+            'productos',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'centro', 'created_at', 'updated_at']
+    
+    def get_productos(self, obj):
+        """Obtiene los productos asociados a la campaña."""
+        productos_detalle = ProductoCampanaDetalle.objects.filter(
+            campana=obj
+        ).select_related('producto')
+        
+        return [
+            {
+                'id': detalle.producto.id,
+                'nombre': detalle.producto.nombre,
+                'precio': str(detalle.producto.precio),
+                'activo': detalle.producto.activo
+            }
+            for detalle in productos_detalle
+        ]
+    
+    def validate_nombre(self, value):
+        """
+        - Mínimo 5 caracteres, máximo 50
+        - Solo caracteres alfabéticos (espacios permitidos)
+        """
+        if len(value) < 5:
+            raise serializers.ValidationError(
+                'El nombre debe tener al menos 5 caracteres'
+            )
+        
+        if len(value) > 50:
+            raise serializers.ValidationError(
+                'El nombre no puede exceder 50 caracteres'
+            )
+        
+        # Permitir letras (incluyendo tildes y ñ), espacios
+        if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$', value):
+            raise serializers.ValidationError(
+                'El nombre solo puede contener caracteres alfabéticos'
+            )
+        
+        return value.strip()
+    
+    def validate_descripcion(self, value):
+        """
+        - Máximo 200 caracteres
+        - Debe ser tipo alfabético
+        """
+        if len(value) > 200:
+            raise serializers.ValidationError(
+                'La descripción no puede exceder 200 caracteres'
+            )
+        
+        # Permitir letras, espacios, puntos y comas
+        if value and not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.,]+$', value):
+            raise serializers.ValidationError(
+                'La descripción solo puede contener caracteres alfabéticos'
+            )
+        
+        return value.strip()
+    
+    def validate_jefe_campana(self, value):
+        """
+        - El usuario debe tener rol de JEFE_CAMPANA
+        - Debe estar activo
+        """
+        jefe_campana_role = get_estado('ROL_USUARIO', 'JEFE_CAMPANA')
+        
+        if value.rol != jefe_campana_role:
+            raise serializers.ValidationError(
+                'El usuario seleccionado no tiene rol de Jefe de Campaña'
+            )
+        
+        if not value.is_active:
+            raise serializers.ValidationError(
+                'El jefe de campaña seleccionado no está activo'
+            )
+        
+        return value
+    
+    def validate_productos_ids(self, value):
+        """
+        - Debe haber al menos 1 producto
+        - Todos los IDs deben existir y estar activos
+        """
+        if not value or len(value) == 0:
+            raise serializers.ValidationError(
+                'Debe seleccionar al menos un producto'
+            )
+        
+        productos = Producto.objects.filter(
+            id__in=value,
+            activo=True
+        )
+        
+        if productos.count() != len(value):
+            raise serializers.ValidationError(
+                'Uno o más productos seleccionados no existen o no están activos'
+            )
+        
+        return value
+    
+    def validate(self, attrs):
+        """
+        Validaciones cruzadas.
+        """
+        # Fecha fin debe ser posterior a fecha inicio
+        fecha_inicio = attrs.get('fecha_inicio')
+        fecha_fin = attrs.get('fecha_fin')
+        
+        if fecha_fin and fecha_inicio and fecha_fin <= fecha_inicio:
+            raise serializers.ValidationError({
+                'fecha_fin': 'La fecha de fin debe ser posterior a la fecha de inicio'
+            })
+        
+        # Verificar si ya existe otra campaña con el mismo nombre
+        nombre = attrs.get('nombre')
+        if nombre and self.instance:
+            campana_existente = Campana.objects.filter(
+                nombre=nombre
+            ).exclude(id=self.instance.id).exists()
+            
+            if campana_existente:
+                raise serializers.ValidationError({
+                    'nombre': 'La campaña ya existe'
+                })
+        
+        return attrs
+    
+    def update(self, instance, validated_data):
+        """
+        Método personalizado para actualizar campaña + productos asociados.
+        """
+        # Extraer productos_ids del diccionario
+        productos_ids = validated_data.pop('productos_ids', None)
+        
+        # Actualizar campos de la campaña
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Si se enviaron productos, actualizar la relación
+        if productos_ids is not None:
+            # Eliminar productos actuales
+            ProductoCampanaDetalle.objects.filter(campana=instance).delete()
+            
+            # Crear nuevas relaciones
+            for producto_id in productos_ids:
+                ProductoCampanaDetalle.objects.create(
+                    campana=instance,
+                    producto_id=producto_id
+                )
+        
+        return instance
+
+
 class CampanaListSerializer(serializers.ModelSerializer):
     """
     Serializer simplificado para listados de campañas.
