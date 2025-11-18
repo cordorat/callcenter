@@ -8,6 +8,7 @@ from apps.calls.models import IteracionCliente, Llamada
 from apps.users.models import User, EstadoAgenteActual
 from common.estados_helper import get_estado
 from common.twilio_client import TwilioClient
+from apps.users.helpers.estado_agente_service import cambiar_estado_agente_por_valor
 import logging
 
 logger = logging.getLogger(__name__)
@@ -212,7 +213,8 @@ class IteracionService:
     @staticmethod
     def cambiar_estado_agente(agente_id: str, nuevo_estado_valor: str) -> bool:
         """
-        Cambia el estado de un agente.
+        Cambia el estado de un agente usando el servicio centralizado.
+        Esta función ahora es un wrapper del servicio centralizado.
         
         Args:
             agente_id: Documento ID del agente
@@ -222,27 +224,14 @@ class IteracionService:
             bool indicando éxito
         """
         try:
-            nuevo_estado = get_estado('ESTADO_AGENTE', nuevo_estado_valor)
-            if not nuevo_estado:
-                logger.error(f"Estado {nuevo_estado_valor} no encontrado")
-                return False
-            
-            estado_actual, created = EstadoAgenteActual.objects.get_or_create(
-                agente_id=agente_id,
-                defaults={'estado_id': nuevo_estado}
+            success, message, _ = cambiar_estado_agente_por_valor(
+                agente_id, 
+                nuevo_estado_valor, 
+                usuario_cambio=None  # El sistema hace el cambio
             )
-            
-            if not created:
-                estado_anterior = estado_actual.estado_id.descripcion if estado_actual.estado_id else 'N/A'
-                estado_actual.estado_id = nuevo_estado
-                estado_actual.tiempo = timezone.now()  # Actualizar tiempo del estado
-                estado_actual.save()
-                logger.info(f"[CAMBIO ESTADO] Agente {agente_id}: {estado_anterior} -> {nuevo_estado_valor}")
-            else:
-                logger.info(f"[CAMBIO ESTADO] Agente {agente_id}: (nuevo) -> {nuevo_estado_valor}")
-            
-            return True
-            
+            if not success:
+                logger.warning(f"Cambio de estado no exitoso: {message}")
+            return success
         except Exception as e:
             logger.error(f"Error al cambiar estado de agente {agente_id}: {str(e)}")
             return False
