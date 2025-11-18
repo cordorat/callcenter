@@ -1091,3 +1091,153 @@ class ProductoSerializer(serializers.ModelSerializer):
         fields = ['nombre', 'descripcion', 'precio', 'activo', 'id']
         read_only_fields = []
         
+
+class AgenteEnEquipoSerializer(serializers.ModelSerializer):
+    """
+    Serializer para mostrar agentes dentro de un equipo.
+    Incluye información completa del agente.
+    """
+    full_name = serializers.CharField(read_only=True)
+    rol_nombre = serializers.CharField(source='rol.valor', read_only=True)
+    es_coordinador_equipo = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = [
+            'documento_id', 'first_name', 'last_name', 'full_name',
+            'email', 'rol_nombre', 'es_coordinador_equipo'
+        ]
+        read_only_fields = fields
+    
+    def get_es_coordinador_equipo(self, obj):
+        """
+        Indica si este agente es el coordinador del equipo actual.
+        Se obtiene del contexto del serializer.
+        """
+        equipo = self.context.get('equipo')
+        if equipo and equipo.coordinador:
+            return equipo.coordinador.documento_id == obj.documento_id
+        return False
+
+
+class EquipoConAgentesSerializer(serializers.ModelSerializer):
+    """
+    Serializer para mostrar equipos con su lista de agentes.
+    Usado en la vista del Jefe de Campaña.
+    """
+    coordinador_info = serializers.SerializerMethodField()
+    agentes = serializers.SerializerMethodField()
+    cantidad_agentes = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Equipo
+        fields = [
+            'equipo_id', 'nombre', 
+            'coordinador_info', 'agentes', 'cantidad_agentes'
+        ]
+    
+    def get_coordinador_info(self, obj):
+        """Retorna información del coordinador actual si existe."""
+        if obj.coordinador:
+            return {
+                'documento_id': obj.coordinador.documento_id,
+                'full_name': obj.coordinador.full_name,
+                'email': obj.coordinador.email
+            }
+        return None
+    
+    def get_agentes(self, obj):
+        """
+        Retorna lista de agentes del equipo.
+        Incluye información de si cada uno es coordinador.
+        """
+        # Obtener IDs de agentes desde la tabla intermedia
+        agentes_ids = obj.agentes_detalle.values_list('agente_id', flat=True)
+        # Obtener objetos User
+        agentes = User.objects.filter(documento_id__in=agentes_ids)
+        # Serializar pasando el equipo en el contexto
+        return AgenteEnEquipoSerializer(
+            agentes, 
+            many=True, 
+            context={'equipo': obj}
+        ).data
+    
+    def get_cantidad_agentes(self, obj):
+        """Retorna cantidad de agentes en el equipo."""
+        return obj.agentes_detalle.count()
+
+
+class CampanaJefeSerializer(serializers.ModelSerializer):
+    """
+    Serializer para mostrar campañas del jefe con sus equipos y agentes.
+    Usado en el módulo de Campaña del frontend.
+    """
+    equipos = serializers.SerializerMethodField()
+    cantidad_equipos = serializers.SerializerMethodField()
+    estado_nombre = serializers.CharField(source='estado.valor', read_only=True)
+    
+    class Meta:
+        model = Campana
+        fields = [
+            'id', 'nombre', 'descripcion', 'fecha_inicio', 'fecha_fin',
+            'objetivo_ventas', 'estado_nombre', 'equipos', 'cantidad_equipos'
+        ]
+    
+    def get_equipos(self, obj):
+        """Retorna equipos de la campaña con sus agentes."""
+        equipos = Equipo.objects.filter(
+            campana=obj,
+            is_active=True
+        ).select_related('coordinador').prefetch_related('agentes_detalle')
+        
+        return EquipoConAgentesSerializer(equipos, many=True).data
+    
+    def get_cantidad_equipos(self, obj):
+        """Retorna cantidad de equipos activos."""
+        return obj.equipos.filter(is_active=True).count()
+    
+class AsignarCoordinadorSerializer(serializers.Serializer):
+    """
+    Serializer para asignar coordinador a un equipo.
+    Valida que el agente exista y pertenezca al equipo.
+    """
+    agente_id = serializers.CharField(
+        required=True,
+        help_text='documento_id del agente a convertir en coordinador'
+    )
+    
+    def validate_agente_id(self, value):
+        """
+        Valida que el agente exista y esté activo.
+        """
+        try:
+            agente = User.objects.get(documento_id=value, is_active=True)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                f'No existe un agente activo con documento_id "{value}"'
+            )
+        
+        # Guardar el objeto agente para usarlo en validate()
+        self.agente = agente
+        return value
+    
+    def validate(self, attrs):
+        """
+        Validación cruzada: verificar que el agente pertenezca al equipo.
+        """
+        equipo = self.context.get('equipo')
+        if not equipo:
+            raise serializers.ValidationError('No se proporcionó el equipo')
+        
+        # Verificar que el agente pertenezca al equipo
+        pertenece_equipo = EquipoAgenteDetalle.objects.filter(
+            equipo_id=equipo,
+            agente_id=self.agente
+        ).exists()
+        
+        if not pertenece_equipo:
+            raise serializers.ValidationError({
+                'agente_id': f'El agente {self.agente.full_name} no pertenece al equipo "{equipo.nombre}"'
+            })
+        
+        return attrs

@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import CargarBaseDatosView, ClienteViewSet, EquipoViewSet
+from .views import CargarBaseDatosView, ClienteViewSet, EquipoViewSet, BaseDatosCargadaViewSet
 
 app_name = 'campaigns'
 
@@ -10,8 +10,13 @@ router = DefaultRouter()
 router.register(r'clientes', ClienteViewSet, basename='cliente')
 router.register(r'equipos', EquipoViewSet, basename='equipo')
 router.register(r'productos', views.ProductoViewSet, basename='producto')
-router.register(r'', views.CampanaViewSet, basename='campana')
+router.register(r'campanas', views.CampanaViewSet, basename='campana')
+router.register(r'bases-datos', BaseDatosCargadaViewSet, basename='base-datos')
+
 urlpatterns = [
+    # Incluir rutas del router PRIMERO
+    path('', include(router.urls)),
+    
     # Endpoints existentes de bases de datos
     path('cargar-base-datos/', CargarBaseDatosView.as_view(), name='cargar-base-datos'),
     path('listar-bases-datos/', views.listar_bases_datos, name='listar-bases-datos'),
@@ -21,6 +26,6 @@ urlpatterns = [
     # Endpoint para iteración de bases de datos
     path('base-datos/<int:pk>/programar-iteracion/', views.programar_iteracion_bd, name='programar-iteracion-bd'),
     
-    # Incluir rutas del router
-    path('', include(router.urls)),
+    # Endpoint para eliminar bases de datos
+    path('base-datos/<int:pk>/eliminar/', views.eliminar_base_datos, name='eliminar-base-datos'),
 ]
