@@ -270,9 +270,42 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
             }
         )
         
-        # Registrar el cambio en el historial (get_or_create para evitar duplicados)
         from datetime import date
-        detalle, detalle_created = EstadoAgenteDetalle.objects.get_or_create(
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Si NO es la primera vez (ya tenía un estado anterior)
+        if not created:
+            # Verificar si es un cambio real de estado
+            if estado_actual.estado_id.parametros_id != nuevo_estado.parametros_id:
+                # Calcular duración en el estado anterior
+                duracion_segundos = estado_actual.duracion_actual_segundos
+                estado_anterior = estado_actual.estado_id
+                
+                logger.info(f"[change_state] Agente: {agente.full_name}, Estado anterior: {estado_anterior.valor}, Duración: {duracion_segundos} seg")
+                
+                # Obtener o crear el registro del día para el estado ANTERIOR
+                detalle_anterior, _ = EstadoAgenteDetalle.objects.get_or_create(
+                    agente_id=agente,
+                    estado_id=estado_anterior,
+                    fecha=date.today(),
+                    defaults={'tiempo': '00:00:00', 'cambios': ''}
+                )
+                
+                logger.info(f"[change_state] Tiempo antes: {detalle_anterior.tiempo}")
+                
+                # Agregar el cambio al historial
+                cambio_texto = comentarios or f'Cambio por {request.user.full_name}'
+                detalle_anterior.agregar_cambio(cambio_texto)
+                
+                # Actualizar el tiempo acumulado
+                detalle_anterior.agregar_tiempo(duracion_segundos)
+                detalle_anterior.save()
+                
+                logger.info(f"[change_state] Tiempo después: {detalle_anterior.tiempo}")
+        
+        # Inicializar registro del NUEVO estado si no existe
+        detalle_nuevo, detalle_created = EstadoAgenteDetalle.objects.get_or_create(
             agente_id=agente,
             estado_id=nuevo_estado,
             fecha=date.today(),
@@ -282,14 +315,11 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
             }
         )
         
-        # Si ya existía el registro de hoy, agregar el cambio al historial
+        # Si ya existía el registro del nuevo estado, agregar el cambio al historial
         if not detalle_created:
             cambio_texto = comentarios or f'Cambio de estado por {request.user.full_name}'
-            if detalle.cambios:
-                detalle.cambios += f', {cambio_texto}'
-            else:
-                detalle.cambios = cambio_texto
-            detalle.save()
+            detalle_nuevo.agregar_cambio(cambio_texto)
+            detalle_nuevo.save()
         
         # Actualizar el estado actual
         estado_actual.estado_id = nuevo_estado

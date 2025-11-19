@@ -343,22 +343,38 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
             duracion_segundos: Tiempo que estuvo en ese estado
             usuario_cambio: Usuario que realizó el cambio (puede ser el mismo agente u otro)
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         fecha_actual = date.today()
+        
+        logger.info(f"[_actualizar_tiempo] Agente: {agente.full_name}, Estado: {estado_anterior.valor}, Duración: {duracion_segundos} seg")
         
         # Obtener o crear el registro del día para ese estado
         detalle, created = EstadoAgenteDetalle.objects.get_or_create(
             agente_id=agente,
             estado_id=estado_anterior,
             fecha=fecha_actual,
-            defaults={'tiempo': timedelta(seconds=0), 'cambios': ''}
+            defaults={'tiempo': '00:00:00', 'cambios': ''}
         )
+        
+        logger.info(f"[_actualizar_tiempo] Registro {'creado' if created else 'encontrado'}, tiempo antes: {detalle.tiempo}")
         
         # Agregar el cambio ANTES de actualizar el tiempo
         detalle.agregar_cambio(usuario_cambio.full_name)
         
         # Actualizar el tiempo acumulado
         detalle.agregar_tiempo(duracion_segundos)
+        
+        logger.info(f"[_actualizar_tiempo] Tiempo después de agregar: {detalle.tiempo}")
+        
         detalle.save()
+        
+        logger.info(f"[_actualizar_tiempo] Registro guardado")
+        
+        # Verificar que se guardó correctamente
+        detalle_verificado = EstadoAgenteDetalle.objects.get(pk=detalle.pk)
+        logger.info(f"[_actualizar_tiempo] Tiempo verificado en BD: {detalle_verificado.tiempo}")
     
     @action(detail=False, methods=['get'], url_path='mi-estado')
     def mi_estado(self, request):

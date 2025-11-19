@@ -151,8 +151,8 @@ export default function CampaingJefeCentro() {
         {/* Tabla de campañas con botón Editar */}
         <CampaignsComponent
           refreshTrigger={refreshKey}
-          onEditCampaign={handleOpenEditCampana}  // 👈 se conecta el botón Editar
-          showActions={true}                      // 👈 muestra columna Acciones
+          onEditCampaign={handleOpenEditCampana} 
+          showActions={true}                     
         />
 
         {/* Modal de crear producto */}

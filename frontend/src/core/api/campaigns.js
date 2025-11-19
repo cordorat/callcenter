@@ -11,7 +11,7 @@ import { ENDPOINTS } from './endpoints';
  */
 export const getCampaigns = async (params = {}) => {
   try {
-    const response = await apiClient.get('/campaigns/', { params });
+    const response = await apiClient.get('/campaigns/campanas/', { params });
     return response.data;
   } catch (error) {
     console.error('[campaigns.js] Error al obtener campañas:', error);
@@ -26,7 +26,7 @@ export const getCampaigns = async (params = {}) => {
  */
 export const createCampaign = async (data) => {
   try {
-    const response = await apiClient.post('/campaigns/', data);
+    const response = await apiClient.post('/campaigns/campanas/', data);
     return response.data;
   } catch (error) {
     console.error('[campaigns.js] Error al crear campaña:', error);
@@ -105,7 +105,7 @@ export const getProductosActivos = async () => {
 export const getActiveCampaigns = async () => {
   try {
     const response = await apiClient.get(
-      '/campaigns/equipos/campanas-activas/'
+      '/campaigns/campanas/equipos/campanas-activas/'
     );
     return response.data;
   } catch (error) {
@@ -199,7 +199,7 @@ export const updateSalesGoal = async (campaignId, objetivo_ventas) => {
 export const programarIteracionBase = async (baseId, payload) => {
   try {
     const response = await apiClient.put(
-      `/campaigns/base-datos/${baseId}/programar-iteracion/`,
+      `/campaigns/campanas/base-datos/${baseId}/programar-iteracion/`,
       payload
     );
     return response.data;
@@ -219,7 +219,7 @@ export const programarIteracionBase = async (baseId, payload) => {
  */
 export const eliminarBaseDatos = async (baseId) => {
   try {
-    const response = await apiClient.delete(`/campaigns/base-datos/${baseId}/eliminar/`);
+    const response = await apiClient.delete(`/campaigns/campanas/base-datos/${baseId}/eliminar/`);
     return response.data;
   } catch (error) {
     console.error('[campaigns.js] Error al eliminar base de datos:', error);
@@ -234,7 +234,7 @@ export const eliminarBaseDatos = async (baseId) => {
  */
 export const getCampaignDetail = async (campaignId) => {
   try {
-    const response = await apiClient.get(`/campaigns/${campaignId}/`);
+    const response = await apiClient.get(`/campaigns/campanas/${campaignId}/`);
     return response.data;
   } catch (error) {
     console.error(
@@ -271,7 +271,7 @@ export const getBasesDatosPorCampana = async (campanaId) => {
  */
 export const updateCampaign = async (campaignId, data) => {
   try {
-    const response = await apiClient.patch(`/campaigns/${campaignId}/`, data);
+    const response = await apiClient.patch(`/campaigns/campanas/${campaignId}/`, data);
     return response.data;
   } catch (error) {
     console.error(

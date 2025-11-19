@@ -1591,8 +1591,9 @@ class KPIViewSet(viewsets.ViewSet):
         estados_tiempo_promedio = {}
         
         # Primero, verificar qué estados existen en el período
+        # agente_id es la FK, así que filtramos directamente con los objetos User
         registros_estados = EstadoAgenteDetalle.objects.filter(
-            agente_id__documento_id__in=agentes_ids,
+            agente_id__in=agentes,
             fecha__range=(fecha_desde, fecha_hasta)
         ).select_related('estado_id')
         

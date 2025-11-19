@@ -22,7 +22,7 @@ import {
   getProductosActivos,
   updateCampaign,
   processCampaignError,
-  getCampaignDetail,          // ⬅️ importante para prellenar
+  getCampaignDetail,          
 } from "@/core/api/campaigns";
 
 const alphaRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+$/;
@@ -32,6 +32,7 @@ export default function EditCampaignModal({
   onClose,
   campaign,
   onCampaignUpdated,
+  maxWidth = "md", // Valores: "xs", "sm", "md", "lg", "xl"
 }) {
   const [formValues, setFormValues] = useState({
     jefeSeleccionado: null,
@@ -315,20 +316,18 @@ export default function EditCampaignModal({
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth={false}
+      maxWidth={maxWidth}
       fullWidth
       PaperProps={{
         sx: {
           borderRadius: 3,
-          width: "90vw",
-          maxWidth: "1400px",
         },
       }}
     >
-      <DialogTitle>Editar campaña</DialogTitle>
+      <DialogTitle sx={{ pb: 1 }}>Editar campaña</DialogTitle>
 
-      <DialogContent dividers>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <DialogContent dividers sx={{ py: 2 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {apiError && (
             <Typography color="error" variant="body2">
               {apiError}
@@ -339,17 +338,18 @@ export default function EditCampaignModal({
           <Paper
             variant="outlined"
             sx={{
-              p: 2.5,
+              p: 1.5,
               borderRadius: 2,
               display: "flex",
               flexDirection: "column",
-              gap: 2,
+              gap: 1,
             }}
           >
             <Typography
               variant="subtitle2"
               sx={{
-                fontWeight: 700,
+                fontWeight: 600,
+                fontSize: "0.8rem",
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
                 color: "text.secondary",
@@ -359,104 +359,96 @@ export default function EditCampaignModal({
             </Typography>
             <Divider />
 
-            <Grid container spacing={2.5} sx={{ mt: 0.5 }}>
-              {/* 2.1.1 Jefe de campaña — un poco más ancho */}
-              <Grid item xs={12} md={7}>
-                <Autocomplete
-                  fullWidth
-                  options={jefesOptions}
-                  value={formValues.jefeSeleccionado}
-                  onChange={handleChangeJefe}
-                  onInputChange={handleJefeInputChange}
-                  loading={jefesLoading}
-                  isOptionEqualToValue={(option, value) =>
-                    Boolean(option && value) && option.id === value.id
-                  }
-                  getOptionLabel={(option) =>
-                    option
-                      ? `${option.codigo ?? ""} - ${option.nombre ?? ""}`
-                      : ""
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Jefe de campaña"
-                      placeholder="Buscar por nombre o código"
-                      error={Boolean(errors.jefeSeleccionado)}
-                      helperText={errors.jefeSeleccionado}
-                    />
-                  )}
-                />
-              </Grid>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 3.51, mt: 1.5 }}>
+              {/* 2.1.1 Jefe de campaña */}
+              <Autocomplete
+                fullWidth
+                options={jefesOptions}
+                value={formValues.jefeSeleccionado}
+                onChange={handleChangeJefe}
+                onInputChange={handleJefeInputChange}
+                loading={jefesLoading}
+                isOptionEqualToValue={(option, value) =>
+                  Boolean(option && value) && option.id === value.id
+                }
+                getOptionLabel={(option) =>
+                  option
+                    ? `${option.codigo ?? ""} - ${option.nombre ?? ""}`
+                    : ""
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Jefe de campaña"
+                    placeholder="Buscar por nombre o código"
+                    error={Boolean(errors.jefeSeleccionado)}
+                    helperText={errors.jefeSeleccionado}
+                  />
+                )}
+              />
 
-              {/* 2.1.2 Nombre de la campaña (un poco más angosto) */}
-              <Grid item xs={12} md={5}>
-                <TextField
-                  label="Nombre de la campaña"
-                  fullWidth
-                  value={formValues.nombre}
-                  onChange={handleChangeField("nombre")}
-                  error={Boolean(errors.nombre)}
-                  helperText={
-                    errors.nombre || `${formValues.nombre.length}/50 caracteres`
-                  }
-                  inputProps={{ maxLength: 50 }}
-                />
-              </Grid>
+              {/* 2.1.2 Nombre de la campaña */}
+              <TextField
+                label="Nombre de la campaña"
+                fullWidth
+                value={formValues.nombre}
+                onChange={handleChangeField("nombre")}
+                error={Boolean(errors.nombre)}
+                helperText={
+                  errors.nombre || `${formValues.nombre.length}/50 caracteres`
+                }
+                inputProps={{ maxLength: 50 }}
+              />
 
               {/* 2.1.3 Descripción */}
-              <Grid item xs={12}>
-                <TextField
-                  label="Descripción"
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  value={formValues.descripcion}
-                  onChange={handleChangeField("descripcion")}
-                  error={Boolean(errors.descripcion)}
-                  helperText={
-                    errors.descripcion ||
-                    `${formValues.descripcion.length}/200 caracteres`
-                  }
-                  inputProps={{ maxLength: 200 }}
-                />
-              </Grid>
+              <TextField
+                label="Descripción"
+                fullWidth
+                multiline
+                minRows={2}
+                value={formValues.descripcion}
+                onChange={handleChangeField("descripcion")}
+                error={Boolean(errors.descripcion)}
+                helperText={
+                  errors.descripcion ||
+                  `${formValues.descripcion.length}/200 caracteres`
+                }
+                inputProps={{ maxLength: 200 }}
+                sx={{ mb: -1 }}
+              />
 
               {/* 2.1.4 Estado inicial - Switch (solo visual por ahora) */}
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formValues.estadoActiva}
-                      onChange={handleToggleEstado}
-                      color="primary"
-                    />
-                  }
-                  label={
-                    formValues.estadoActiva
-                      ? "Estado: Activa"
-                      : "Estado: Inactiva"
-                  }
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: -1 }}>
+                <Switch
+                  checked={formValues.estadoActiva}
+                  onChange={handleToggleEstado}
+                  color="primary"
                 />
-              </Grid>
-            </Grid>
+                <Typography>
+                  {formValues.estadoActiva
+                    ? "Estado: Activa"
+                    : "Estado: Inactiva"}
+                </Typography>
+              </Box>
+            </Box>
           </Paper>
 
           {/* SECCIÓN 2: Fechas de campaña */}
           <Paper
             variant="outlined"
             sx={{
-              p: 2.5,
+              p: 1.5,
               borderRadius: 2,
               display: "flex",
               flexDirection: "column",
-              gap: 2,
+              gap: 1,
             }}
           >
             <Typography
               variant="subtitle2"
               sx={{
-                fontWeight: 700,
+                fontWeight: 600,
+                fontSize: "0.8rem",
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
                 color: "text.secondary",
@@ -464,9 +456,9 @@ export default function EditCampaignModal({
             >
               Fechas de campaña
             </Typography>
-            <Divider />
+            <Divider sx={{ mb: 1.5 }} />
 
-            <Grid container spacing={2.5} sx={{ mt: 0.5 }}>
+            <Grid container spacing={1.5} sx={{ mt: 0 }}>
               <Grid item xs={12} md={6}>
                 <TextField
                   label="Fecha inicio"
@@ -499,17 +491,18 @@ export default function EditCampaignModal({
           <Paper
             variant="outlined"
             sx={{
-              p: 2.5,
+              p: 1.5,
               borderRadius: 2,
               display: "flex",
               flexDirection: "column",
-              gap: 2,
+              gap: 1,
             }}
           >
             <Typography
               variant="subtitle2"
               sx={{
-                fontWeight: 700,
+                fontWeight: 600,
+                fontSize: "0.8rem",
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
                 color: "text.secondary",
@@ -517,45 +510,36 @@ export default function EditCampaignModal({
             >
               Servicios o productos a vender
             </Typography>
-            <Divider />
+            <Divider sx={{ mb: 1.5 }} />
 
-            <Grid container spacing={2.5} sx={{ mt: 0.5 }}>
-              <Grid item xs={12} md={12}>
-                <Autocomplete
-                  multiple
-                  fullWidth
-                  options={productosOptions}
-                  loading={productosLoading}
-                  value={formValues.productosSeleccionados}
-                  onChange={handleChangeProductos}
-                  isOptionEqualToValue={(option, value) =>
-                    option.id === value.id
-                  }
-                  getOptionLabel={(option) =>
-                    option ? `${option.nombre}` : ""
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Servicios o productos a vender"
-                      placeholder="Selecciona uno o varios"
-                      error={Boolean(errors.productosSeleccionados)}
-                      helperText={errors.productosSeleccionados}
-                    />
-                  )}
+            <Autocomplete
+              multiple
+              fullWidth
+              options={productosOptions}
+              loading={productosLoading}
+              value={formValues.productosSeleccionados}
+              onChange={handleChangeProductos}
+              isOptionEqualToValue={(option, value) =>
+                option.id === value.id
+              }
+              getOptionLabel={(option) =>
+                option ? `${option.nombre}` : ""
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Servicios o productos a vender"
+                  placeholder="Selecciona uno o varios"
+                  error={Boolean(errors.productosSeleccionados)}
+                  helperText={errors.productosSeleccionados}
                 />
-              </Grid>
-            </Grid>
+              )}
+            />
           </Paper>
-
-          <Typography variant="caption" color="text.secondary">
-            * Ahora al abrir el modal, el jefe de campaña y los servicios
-            aparecerán preseleccionados según lo que tenga la campaña en BD.
-          </Typography>
         </Box>
       </DialogContent>
 
-      <DialogActions>
+      <DialogActions sx={{ px: 3, py: 1.5 }}>
         <Button onClick={onClose} color="inherit" disabled={saving}>
           Cancelar
         </Button>
