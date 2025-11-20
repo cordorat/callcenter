@@ -1,0 +1,156 @@
+### Variables
+@baseUrl = http://localhost:8000/api
+@adminToken = ADMIN_TOKEN_AQUI
+@jefeCampanaToken = JEFE_CAMPANA_TOKEN_AQUI
+
+### ============================================================
+### PRUEBAS: Listar Bases de Datos por Campaña
+### ============================================================
+
+### 1. Listar bases de datos de una campaña específica (Jefe de Campaña)
+# Endpoint: GET /api/campaigns/bases-datos/por-campana/
+# Parámetros: campana_id (requerido)
+GET {{baseUrl}}/campaigns/bases-datos/por-campana/?campana_id=1
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 2. Listar bases de datos de una campaña (Admin)
+GET {{baseUrl}}/campaigns/bases-datos/por-campana/?campana_id=1
+Authorization: Bearer {{adminToken}}
+
+### 3. Error: sin campana_id
+GET {{baseUrl}}/campaigns/bases-datos/por-campana/
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 4. Error: campana_id inválido
+GET {{baseUrl}}/campaigns/bases-datos/por-campana/?campana_id=abc
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 5. Error: campaña no encontrada
+GET {{baseUrl}}/campaigns/bases-datos/por-campana/?campana_id=9999
+Authorization: Bearer {{jefeCampanaToken}}
+
+### ============================================================
+### PRUEBAS: Listar Clientes por Base de Datos
+### ============================================================
+
+### 6. Listar clientes de una base de datos específica (Jefe de Campaña)
+# Endpoint: GET /api/calls/clientes/por-base-datos/
+# Parámetros:
+#   - base_datos_id (requerido)
+#   - search (opcional) - búsqueda por nombre
+#   - telefono (opcional) - búsqueda por teléfono
+#   - page (opcional, default: 1)
+#   - page_size (opcional, default: 20, max: 100)
+GET {{baseUrl}}/calls/clientes/por-base-datos/?base_datos_id=1
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 7. Listar clientes con paginación personalizada
+GET {{baseUrl}}/calls/clientes/por-base-datos/?base_datos_id=1&page=1&page_size=50
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 8. Listar clientes con búsqueda por nombre
+GET {{baseUrl}}/calls/clientes/por-base-datos/?base_datos_id=1&search=Juan
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 9. Listar clientes con búsqueda por teléfono
+GET {{baseUrl}}/calls/clientes/por-base-datos/?base_datos_id=1&telefono=300
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 10. Listar clientes combinando búsqueda y paginación
+GET {{baseUrl}}/calls/clientes/por-base-datos/?base_datos_id=1&search=Maria&page=1&page_size=10
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 11. Error: sin base_datos_id
+GET {{baseUrl}}/calls/clientes/por-base-datos/
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 12. Error: base_datos_id inválido
+GET {{baseUrl}}/calls/clientes/por-base-datos/?base_datos_id=abc
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 13. Error: base de datos no encontrada
+GET {{baseUrl}}/calls/clientes/por-base-datos/?base_datos_id=9999
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 14. Error: Jefe de Campaña intenta acceder a base de otra campaña
+GET {{baseUrl}}/calls/clientes/por-base-datos/?base_datos_id=999
+Authorization: Bearer {{jefeCampanaToken}}
+
+### ============================================================
+### PRUEBAS: Admin - Sin restricciones
+### ============================================================
+
+### 15. Admin lista cualquier base de datos
+GET {{baseUrl}}/calls/clientes/por-base-datos/?base_datos_id=1
+Authorization: Bearer {{adminToken}}
+
+### 16. Admin lista clientes de cualquier campaña
+GET {{baseUrl}}/campaigns/bases-datos/por-campana/?campana_id=1
+Authorization: Bearer {{adminToken}}
+
+### ============================================================
+### EJEMPLO DE RESPUESTA EXITOSA
+### ============================================================
+
+### Respuesta de GET /api/calls/clientes/por-base-datos/?base_datos_id=1
+# {
+#     "count": 150,
+#     "total_pages": 8,
+#     "current_page": 1,
+#     "page_size": 20,
+#     "base_datos": {
+#         "id": 1,
+#         "nombre": "Base Clientes Q4 2025",
+#         "campana_id": 5,
+#         "campana_nombre": "Campaña Navidad",
+#         "fecha_carga": "2025-11-01T10:00:00Z",
+#         "iteracion_activa": false,
+#         "fecha_hora_inicio_iteracion": null
+#     },
+#     "results": [
+#         {
+#             "cliente_id": 123,
+#             "campana": 5,
+#             "nombre": "Juan Pérez",
+#             "telefono": "+573001234567",
+#             "otros_datos": {
+#                 "documento_id": "123456789",
+#                 "email": "juan@example.com",
+#                 "direccion": "Calle 123"
+#             },
+#             "base_datos": 1,
+#             "documento_id": "123456789",
+#             "email": "juan@example.com",
+#             "direccion": "Calle 123",
+#             "observaciones": null
+#         },
+#         ...
+#     ]
+# }
+
+### Respuesta de GET /api/campaigns/bases-datos/por-campana/?campana_id=1
+# {
+#     "count": 3,
+#     "campana": {
+#         "id": 5,
+#         "nombre": "Campaña Navidad"
+#     },
+#     "bases_datos": [
+#         {
+#             "id": 1,
+#             "nombre_bd": "Base Clientes Q4 2025",
+#             "fecha_carga": "2025-11-01T10:00:00Z",
+#             "iteracion_activa": false,
+#             "fecha_hora_inicio_iteracion": null,
+#             "total_clientes": 150
+#         },
+#         {
+#             "id": 2,
+#             "nombre_bd": "Base Prospectos Noviembre",
+#             "fecha_carga": "2025-11-05T14:30:00Z",
+#             "iteracion_activa": true,
+#             "fecha_hora_inicio_iteracion": "2025-11-06T09:00:00Z",
+#             "total_clientes": 200
+#         }
+#     ]
+# }

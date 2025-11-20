@@ -8,7 +8,7 @@
 @agentToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMDk0MTEwLCJpYXQiOjE3NjAwNjUzMTAsImp0aSI6ImYwOGU5YWEwNzJmZDRhODFhNTNlNGY4N2ZjY2VjNjM0IiwidXNlcl9pZCI6Mn0.9PdfqN60ALXpylUaxb3vVo3qjCe_gaycYHySIbxtyiI
 @coordinadorToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNjU5OTAwLCJpYXQiOjE3NjI2MzExMDAsImp0aSI6IjQ5OTM4OTRlNDJhYjRmNDc4Y2VlMzUyNWJlYmVkYTAxIiwiZG9jdW1lbnRvX2lkIjoiMDk4NzU0MjM0NSJ9.Hhj7WWItZiGhvidYa5juCyANpzMR55unaKRMkJLKnDI
 @tokenJefeCentro = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNzY0ODg4LCJpYXQiOjE3NjI3MzYwODgsImp0aSI6IjkzMDRmMzRiZTNlMjQyYjA5ZTM2YjcyNTY2MDViOWRjIiwiZG9jdW1lbnRvX2lkIjoiMTAwMDAwMDAwMiJ9.AgtaEhf6pJILBYfqotOiGLcJahp4xUT65O6xPZBfwo0
-@jefeCampanaToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyOTQ2NjcxLCJpYXQiOjE3NjI5MTc4NzEsImp0aSI6IjRlZjNlYTQyZmIyODRiYmY4YWU4MjYzOWFiMTIzNzY5IiwiZG9jdW1lbnRvX2lkIjoiMTIzNDU2Nzg5MCJ9.5EpmMkQA1JlMYc6W0BchyUx0eihE_pieXqs5E6c5Txo
+@jefeCampanaToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYzMDI2NDMxLCJpYXQiOjE3NjI5OTc2MzEsImp0aSI6ImRiMWI2M2Q5N2VmNjQyM2FiMjFlZTcyNzAxOTEwOGQ1IiwiZG9jdW1lbnRvX2lkIjoiMTIzNDU2Nzg5MCJ9.M8fZtZfohhcFfkKuA0ZNrfxAWUiP3yo5auOOAiFyiPM
 
 ### ============================================
 ### 1. AUTENTICACIÓN
@@ -621,3 +621,41 @@ Authorization: Bearer {{jefeCampanaToken}}
 ### 6. Intentar acceder como agente (debe dar 403 Forbidden)
 GET {{baseUrl}}/kpis/jefe-campana/equipos/
 Authorization: Bearer {{agentToken}}
+
+
+
+
+### Variables
+
+
+### 1. Login como Jefe de Campaña
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+  "email": "jefe_campana1@callcenter.com",
+  "password": "jefe_campana123!"
+}
+
+### 2. Obtener mis campañas con equipos y agentes
+GET {{baseUrl}}/campaigns/equipos/jefe-campana/mis-campanas/
+Authorization: Bearer {{jefeCampanaToken}}
+
+### 3. Asignar coordinador (primera llamada - sin confirmación)
+POST {{baseUrl}}/campaigns/equipos/1/asignar-coordinador/
+Authorization: Bearer {{jefeCampanaToken}}
+Content-Type: application/json
+
+{
+  "agente_id": "12312312"
+}
+
+### 4. Asignar coordinador (con confirmación)
+POST {{baseUrl}}/campaigns/equipos/1/asignar-coordinador/
+Authorization: Bearer {{jefeCampanaToken}}
+Content-Type: application/json
+
+{
+  "agente_id": "12312312",
+  "confirmar": true
+}

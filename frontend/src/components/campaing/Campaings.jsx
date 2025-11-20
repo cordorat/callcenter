@@ -1,3 +1,4 @@
+// PATH: src/components/campaing/Campaings.jsx
 import { useState, useEffect } from 'react';
 import {
   Box,
@@ -26,7 +27,12 @@ import {
 } from '@mui/icons-material';
 import { getCampaigns } from '@/core/api/campaigns';
 
-export default function CampaignsComponent({ onEditTeam, showActions = false, refreshTrigger = 0 }) {
+export default function CampaignsComponent({
+  onEditTeam,          // compatibilidad antigua
+  onEditCampaign,      // nuevo prop
+  showActions = false,
+  refreshTrigger = 0,
+}) {
   const theme = useTheme();
   const [campanas, setCampanas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,11 +48,6 @@ export default function CampaignsComponent({ onEditTeam, showActions = false, re
       setError(null);
       const response = await getCampaigns();
 
-
-      // El backend puede retornar:
-      // 1. Array directamente: [campana1, campana2, ...]
-      // 2. Objeto con data: { success: true, data: [...] }
-      // 3. Objeto con results: { results: [...] } (paginado)
       let campanasData = [];
       
       if (Array.isArray(response)) {
@@ -71,9 +72,6 @@ export default function CampaignsComponent({ onEditTeam, showActions = false, re
     }
   };
 
-  /**
-   * Formatea fecha de DD/MM/YYYY
-   */
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
@@ -121,7 +119,7 @@ export default function CampaignsComponent({ onEditTeam, showActions = false, re
           boxShadow: theme.palette.mode === 'light' 
             ? '0 2px 8px rgba(0,0,0,0.08)' 
             : '0 2px 8px rgba(0,0,0,0.3)',
-          overflowX: 'hidden', // Deshabilita scroll horizontal
+          overflowX: 'hidden',
         }}
       >
         <Table>
@@ -328,11 +326,23 @@ export default function CampaignsComponent({ onEditTeam, showActions = false, re
                     <Tooltip title="Editar campaña" arrow placement="top">
                       <IconButton
                         size="small"
-                        onClick={() => onEditTeam && onEditTeam(campana)}
+                        onClick={() => {
+                          console.log('[Campaings] click editar', campana);
+                          if (onEditCampaign) {
+                            onEditCampaign(campana);
+                          } else if (onEditTeam) {
+                            onEditTeam(campana);
+                          }
+                        }}
                         sx={{
                           bgcolor: theme.palette.mode === 'light' 
                             ? 'rgba(66, 165, 245, 0.1)' 
                             : 'rgba(66, 165, 245, 0.2)',
+                          '&:href': {
+                            bgcolor: 'primary.main',
+                            color: 'white',
+                            transform: 'scale(1.1)',
+                          },
                           '&:hover': {
                             bgcolor: 'primary.main',
                             color: 'white',
