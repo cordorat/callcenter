@@ -36,13 +36,14 @@ export const createCampaign = async (data) => {
 
 /**
  * Buscar jefes de campaña en tiempo real
- * @param {string} query - Término de búsqueda (nombre o código)
+ * @param {string} query - Término de búsqueda (nombre o código). Si está vacío, devuelve todos.
  * @returns {Promise<Array>} Lista de jefes de campaña normalizada
  */
-export const searchJefesCampana = async (query) => {
+export const searchJefesCampana = async (query = '') => {
   try {
-    const response = await apiClient.get('/campaigns/buscar-jefes/', {
-      params: { q: query },
+    const params = query.trim() ? { q: query.trim() } : {};
+    const response = await apiClient.get('/campaigns/campanas/buscar-jefes/', {
+      params,
     });
 
     const data = response.data;

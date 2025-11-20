@@ -1467,37 +1467,37 @@ class CampanaViewSet(viewsets.ModelViewSet):
         Endpoint personalizado para búsqueda de jefes de campaña.
         Criterio 2.1.1: Campo de búsqueda en tiempo real por nombre o código.
         
-        URL: GET /api/campaigns/buscar-jefes/?q=texto
+        URL: GET /api/campaigns/campanas/buscar-jefes/?q=texto
         
         Query params:
-            q: Texto a buscar (nombre o código)
+            q: Texto a buscar (nombre o código). Si está vacío, devuelve todos los jefes activos.
             
         Returns:
             Lista de jefes que coinciden con la búsqueda
         """
         query = request.query_params.get('q', '').strip()
         
-        if not query:
-            return Response(
-                {'detail': 'Debe proporcionar un término de búsqueda'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
         # Obtener el ID del rol JEFE_CAMPANA
         jefe_campana_role_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
         
-        # Buscar usuarios con rol JEFE_CAMPANA que estén activos
-        # Q objects permiten OR en queries de Django
-        jefes = User.objects.filter(
+        # Base queryset: usuarios con rol JEFE_CAMPANA que estén activos
+        jefes_qs = User.objects.filter(
             rol_id=jefe_campana_role_id,
             is_active=True
-        ).filter(
-            Q(first_name__icontains=query) |  # Búsqueda por nombre
-            Q(last_name__icontains=query) |   # Búsqueda por apellido
-            Q(documento_id__icontains=query)  # Búsqueda por código
-        )[:10]  # Limitar a 10 resultados (performance)
+        )
         
-        serializer = JefeCampanaSearchSerializer(jefes, many=True)
+        # Si hay término de búsqueda, filtrar
+        if query:
+            jefes_qs = jefes_qs.filter(
+                Q(first_name__icontains=query) |  # Búsqueda por nombre
+                Q(last_name__icontains=query) |   # Búsqueda por apellido
+                Q(documento_id__icontains=query)  # Búsqueda por código
+            )[:10]  # Limitar a 10 resultados cuando hay búsqueda
+        else:
+            # Sin término de búsqueda, devolver todos los jefes (sin límite)
+            jefes_qs = jefes_qs[:50]  # Límite razonable para evitar sobrecarga
+        
+        serializer = JefeCampanaSearchSerializer(jefes_qs, many=True)
         return Response(serializer.data)
     
     @action(detail=True, methods=['patch'], url_path='actualizar-objetivo')

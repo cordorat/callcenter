@@ -51,10 +51,19 @@ export default function EditCampaignModal({
   // Estado para jefes
   const [jefesOptions, setJefesOptions] = useState([]);
   const [jefesLoading, setJefesLoading] = useState(false);
+  const [jefesLoaded, setJefesLoaded] = useState(false); // Track si ya cargamos jefes
 
   // Estado para productos
   const [productosOptions, setProductosOptions] = useState([]);
   const [productosLoading, setProductosLoading] = useState(false);
+
+  // 🔹 Resetear estados cuando se cierra el modal
+  useEffect(() => {
+    if (!open) {
+      // Resetear el flag de jefes cargados para que vuelva a cargar al abrir
+      setJefesLoaded(false);
+    }
+  }, [open]);
 
   // 🔹 1) Al abrir el modal, cargamos el DETALLE completo de la campaña
   useEffect(() => {
@@ -139,10 +148,6 @@ export default function EditCampaignModal({
     if (field === "nombre" || field === "descripcion") {
       const maxLength = field === "nombre" ? 50 : 200;
       value = value.slice(0, maxLength);
-
-      if (value !== "" && !alphaRegex.test(value)) {
-        return;
-      }
     }
 
     setFormValues((prev) => ({
@@ -158,15 +163,53 @@ export default function EditCampaignModal({
     }));
   };
 
+  // 🔹 Cargar todos los jefes al abrir el dropdown
+  const loadAllJefes = async () => {
+    if (jefesLoaded) return; // No recargar si ya se cargaron
+    
+    try {
+      setJefesLoading(true);
+      // Llamar sin parámetro para obtener TODOS los jefes
+      const data = await searchJefesCampana('');
+      const results = Array.isArray(data) ? data : [];
+      
+      // Agregar el jefe actual si no está en los resultados
+      const actual = formValues.jefeSeleccionado;
+      if (actual && !results.some(j => j.id === actual.id)) {
+        setJefesOptions([actual, ...results]);
+      } else {
+        setJefesOptions(results);
+      }
+      
+      setJefesLoaded(true);
+    } catch (e) {
+      console.error("[EditCampaignModal] Error cargando jefes:", e);
+    } finally {
+      setJefesLoading(false);
+    }
+  };
+
   // 🔹 Búsqueda en tiempo real de jefes
-  const handleJefeInputChange = async (_, value) => {
-    if (!value || value.trim().length < 2) {
-      // Si se borra el texto, dejamos solo el jefe actual (si existe)
-      setJefesOptions((prev) => {
-        const actual = formValues.jefeSeleccionado;
-        if (!actual) return [];
-        return [actual];
-      });
+  const handleJefeInputChange = async (_, value, reason) => {
+    // Si se borró el texto (clear o user cleared input), recargar todos los jefes
+    if (!value || value.trim().length === 0) {
+      if (reason === 'clear' || reason === 'input') {
+        try {
+          setJefesLoading(true);
+          const data = await searchJefesCampana('');
+          const results = Array.isArray(data) ? data : [];
+          setJefesOptions(results);
+        } catch (e) {
+          console.error("[EditCampaignModal] Error recargando jefes:", e);
+        } finally {
+          setJefesLoading(false);
+        }
+      }
+      return;
+    }
+
+    // Si hay menos de 2 caracteres, no buscar aún
+    if (value.trim().length < 2) {
       return;
     }
 
@@ -208,19 +251,12 @@ export default function EditCampaignModal({
       newErrors.nombre = "El nombre debe tener al menos 5 caracteres.";
     } else if (nombre.length > 50) {
       newErrors.nombre = "El nombre no puede superar los 50 caracteres.";
-    } else if (!alphaRegex.test(nombre)) {
-      newErrors.nombre = "El nombre solo puede contener letras y espacios.";
     }
 
     const descripcion = formValues.descripcion?.trim() || "";
-    if (descripcion) {
-      if (descripcion.length > 200) {
-        newErrors.descripcion =
-          "La descripción no puede superar los 200 caracteres.";
-      } else if (!alphaRegex.test(descripcion)) {
-        newErrors.descripcion =
-          "La descripción solo puede contener letras y espacios.";
-      }
+    if (descripcion && descripcion.length > 200) {
+      newErrors.descripcion =
+        "La descripción no puede superar los 200 caracteres.";
     }
 
     if (!formValues.fecha_inicio) {
@@ -238,13 +274,6 @@ export default function EditCampaignModal({
       }
     }
 
-    if (
-      !formValues.productosSeleccionados ||
-      formValues.productosSeleccionados.length === 0
-    ) {
-      newErrors.productosSeleccionados =
-        "Debes seleccionar al menos un servicio o producto.";
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -261,10 +290,16 @@ export default function EditCampaignModal({
       descripcion: formValues.descripcion.trim(),
       fecha_inicio: formValues.fecha_inicio,
       fecha_fin: formValues.fecha_fin,
-      // NO enviamos `estado` porque el backend espera un FK (ID), no "ACTIVA"/"INACTIVA"
       jefe_campana: formValues.jefeSeleccionado?.id ?? null,
-      productos_ids: formValues.productosSeleccionados.map((p) => p.id),
+      estado: formValues.estadoActiva ? 14 : 15, // 14 = ACTIVA, 15 = INACTIVA
     };
+
+    // Solo incluir productos_ids si hay productos seleccionados
+    if (formValues.productosSeleccionados && formValues.productosSeleccionados.length > 0) {
+      payload.productos_ids = formValues.productosSeleccionados.map((p) => p.id);
+    }
+
+    console.log('[EditCampaignModal] Payload a enviar:', payload);
 
     try {
       setSaving(true);
@@ -367,6 +402,7 @@ export default function EditCampaignModal({
                 value={formValues.jefeSeleccionado}
                 onChange={handleChangeJefe}
                 onInputChange={handleJefeInputChange}
+                onOpen={loadAllJefes} // Cargar todos los jefes al abrir el dropdown
                 loading={jefesLoading}
                 isOptionEqualToValue={(option, value) =>
                   Boolean(option && value) && option.id === value.id
@@ -427,7 +463,7 @@ export default function EditCampaignModal({
                 <Typography>
                   {formValues.estadoActiva
                     ? "Estado: Activa"
-                    : "Estado: Inactiva"}
+                    : "Estado: Finalizada"}
                 </Typography>
               </Box>
             </Box>
