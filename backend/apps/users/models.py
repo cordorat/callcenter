@@ -152,6 +152,12 @@ class User(AbstractUser):
             return False
         return self.rol.valor == 'JEFE_CENTRO'
     
+    def is_jefe_campana(self):
+        """Verifica si el usuario tiene rol de JEFE_CAMPANA."""
+        if not self.rol:
+            return False
+        return self.rol.valor == 'JEFE_CAMPANA'
+    
     def get_role_display(self):
         """Devuelve el valor del rol para mostrar."""
         if self.rol:
@@ -232,7 +238,7 @@ class EstadoAgenteDetalle(models.Model):
         db_column='estado_id',
         help_text='Estado del agente (ESTADO_AGENTE)'
     )
-    tiempo = models.CharField(max_length=8, default='00:00:00', help_text='Tiempo total acumulado en el dia HH:MM:SS')
+    tiempo = models.CharField(max_length=15, default='00:00:00', help_text='Tiempo total acumulado en el dia HH:MM:SS')
     fecha = models.DateField('Fecha', default=date.today)
     cambios = models.TextField('Cambios', blank=True, default='', help_text='Historial de cambios  "HH:MM:SS - nombre_usuario, ..."')
     

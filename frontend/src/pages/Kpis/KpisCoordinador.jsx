@@ -1,12 +1,14 @@
 // PATH: src/pages/Kpis/KpisCoordinador.jsx
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
-import { getCoordinadorKpiOverview } from "@/core/api/kpis";
+import { getCoordinadorKpiOverview, exportarCoordinadorKpisPDF } from "@/core/api/kpis";
 import { useNavigate } from "react-router-dom";
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PeopleIcon from '@mui/icons-material/People';
 import PersonIcon from '@mui/icons-material/Person';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useTheme } from '@mui/material/styles';
+import ButtonTooltip from "@/components/campaing/ButtonTooltip";
 
 import "./Kpis.css";
 
@@ -112,6 +114,9 @@ export default function KpisCoordinador() {
     const [errMsg, setErrMsg] = React.useState("");
     const [updatedAt, setUpdatedAt] = React.useState(null);
 
+    // Estado para exportación
+    const [exportando, setExportando] = React.useState(false);
+
     // Actualizar rango de fechas según modo
     React.useEffect(() => {
         let r = todayRange();
@@ -155,6 +160,34 @@ export default function KpisCoordinador() {
 
         return () => clearInterval(interval);
     }, [from, to]);
+
+    // Función para exportar KPIs a PDF
+    const handleExportarPDF = async () => {
+        setExportando(true);
+        try {
+            const response = await exportarCoordinadorKpisPDF({
+                fecha_desde: from,
+                fecha_hasta: to,
+            });
+
+            // Crear un blob y descargar el archivo
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `KPIs_Equipo_${from}_${to}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+        } catch (e) {
+            console.error(e);
+            setErrMsg("No se pudieron exportar los KPIs. Intenta nuevamente.");
+        } finally {
+            setExportando(false);
+        }
+    };
 
     // Extraer datos
     const llamadasActivas = Number(data?.llamadas_activas || 0);
@@ -238,6 +271,21 @@ export default function KpisCoordinador() {
                         <button className="btn" onClick={fetchData} disabled={loading}>
                             {loading ? <RefreshIcon fontSize="small" className="spinning" /> : <RefreshIcon fontSize="small" />}
                         </button>
+                        {!exportando ? (
+                            <ButtonTooltip
+                                title="Exportar KPI"
+                                icon={<PictureAsPdfIcon />}
+                                onClick={handleExportarPDF}
+                                color="error"
+                            />
+                        ) : (
+                            <ButtonTooltip
+                                title="Exportando..."
+                                icon={<CircularProgress size={24} sx={{ color: 'white' }} />}
+                                onClick={() => {}}
+                                color="error"
+                            />
+                        )}
                     </div>
                 </div>
 

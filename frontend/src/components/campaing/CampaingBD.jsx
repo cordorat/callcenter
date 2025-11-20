@@ -3,14 +3,19 @@
 
 import * as React from "react";
 import { useEffect, useState, useCallback } from "react";
-import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert, Button, Pagination } from '@mui/material';
+import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Pagination } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { useAuth } from '@/core/context/AuthContext';
 import apiClient from '@/core/api/apiClient';
 import { ENDPOINTS } from '@/core/api/endpoints';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { listarBasesDatos, eliminarBaseDatos } from '@/core/api/campaigns';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import ClientesBaseDatosModal from './ClientesBaseDatosModal';
 
-export default function Campaing({ selectedFile = null, onClearFile = null, onSelectBase = null, selectedBaseId = null }) {
+export default function Campaing({ selectedFile = null, onClearFile = null, onSelectBase = null, selectedBaseId = null, selectedCampaign = null }) {
   const theme = useTheme();
+  const { user } = useAuth();
   const [bases, setBases] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -22,40 +27,69 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 6; // cantidad de registros por página
+  
+  // Estados para el diálogo de confirmación de eliminación
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [baseToDelete, setBaseToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  
+  // Estados para el modal de clientes
+  const [clientesModalOpen, setClientesModalOpen] = useState(false);
+  const [selectedBaseForClientes, setSelectedBaseForClientes] = useState(null);
+  
+  // Verificar si el usuario es administrador
+  const isAdmin = user?.role === 'ADMIN';
 
   const fetchBases = useCallback(async (pageNumber = 1) => {
+    // No cargar si no hay campaña seleccionada
+    if (!selectedCampaign) {
+      setBases([]);
+      setTotalCount(0);
+      setTotalPages(1);
+      return;
+    }
+
     try {
       setLoading(true);
-      const { data } = await apiClient.get(ENDPOINTS.CAMPAIGNS_LIST, { 
-        params: { 
-          page: pageNumber,
-          page_size: pageSize 
-        } 
-      });
+      const data = await listarBasesDatos(parseInt(selectedCampaign), pageNumber);
       setBases(data.results || []);
       setTotalCount(data.count || 0);
-      setTotalPages(Math.ceil((data.count || 0) / pageSize));
+      setTotalPages(data.total_pages || 1);
     } catch (err) {
       console.error('Error fetching bases:', err);
       setError('No se pudieron obtener las bases de datos');
+      setSnackMessage('Error al cargar bases de datos');
+      setSnackSeverity('error');
+      setSnackOpen(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedCampaign]);
 
   useEffect(() => {
     fetchBases(page);
-  }, [page]);
+  }, [page, fetchBases]);
+
+  // Resetear página cuando cambia la campaña
+  useEffect(() => {
+    setPage(1);
+  }, [selectedCampaign]);
 
   const handlePageChange = (event, value) => {
     setPage(value);
   };
 
   const handleFileSelect = async (file) => {
-    const campanaId = 1;
+    if (!selectedCampaign) {
+      setSnackMessage('Selecciona una campaña primero');
+      setSnackSeverity('warning');
+      setSnackOpen(true);
+      return;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('campana_id', campanaId);
+    formData.append('campana_id', selectedCampaign);
 
     try {
       setUploading(true);
@@ -100,6 +134,72 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
     if (typeof onSelectBase === 'function') {
       onSelectBase(id);
     }
+  };
+
+  // Handlers para eliminación
+  const handleDeleteClick = (event, base) => {
+    event.stopPropagation(); // Evitar que se seleccione la fila
+    setBaseToDelete(base);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!baseToDelete) return;
+    
+    setDeleting(true);
+    try {
+      const response = await eliminarBaseDatos(baseToDelete.id);
+      
+      setSnackMessage(response.message || 'Base de datos eliminada correctamente');
+      setSnackSeverity('success');
+      setSnackOpen(true);
+      
+      // Si la base eliminada estaba seleccionada, limpiar selección
+      if (selectedId === baseToDelete.id) {
+        setInternalSelectedBaseId(null);
+        if (typeof onSelectBase === 'function') {
+          onSelectBase(null);
+        }
+      }
+      
+      // Recargar lista de bases
+      await fetchBases(page);
+      
+    } catch (error) {
+      console.error('Error al eliminar base:', error);
+      let errorMessage = 'Error al eliminar la base de datos';
+      
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      }
+      
+      setSnackMessage(errorMessage);
+      setSnackSeverity('error');
+      setSnackOpen(true);
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setBaseToDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setBaseToDelete(null);
+  };
+
+  // Handlers para ver clientes
+  const handleViewClientes = (event, base) => {
+    event.stopPropagation(); // Evitar que se seleccione la fila
+    setSelectedBaseForClientes(base);
+    setClientesModalOpen(true);
+  };
+
+  const handleCloseClientesModal = () => {
+    setClientesModalOpen(false);
+    setSelectedBaseForClientes(null);
   };
 
   return (
@@ -350,9 +450,43 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
                             : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
                       >
-                        <Button>
-                          <DeleteIcon />
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                          {/* Botón para ver clientes */}
+                          <Tooltip title="Ver clientes" arrow placement="left">
+                            <IconButton
+                              onClick={(e) => handleViewClientes(e, b)}
+                              size="small"
+                              sx={{
+                                color: theme.palette.primary.main,
+                                '&:hover': {
+                                  backgroundColor: theme.palette.mode === 'light'
+                                    ? 'rgba(12, 21, 90, 0.08)'
+                                    : 'rgba(47, 118, 230, 0.08)',
+                                }
+                              }}
+                            >
+                              <VisibilityIcon />
+                            </IconButton>
+                          </Tooltip>
+                          
+                          {/* Botón para eliminar (solo admin) */}
+                          {isAdmin && (
+                            <Tooltip title="Eliminar base de datos" arrow placement="right">
+                              <IconButton
+                                onClick={(e) => handleDeleteClick(e, b)}
+                                size="small"
+                                sx={{
+                                  color: '#d32f2f',
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(211, 47, 47, 0.08)',
+                                  }
+                                }}
+                              >
+                                <DeleteOutlineIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))
@@ -377,6 +511,101 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
             </Box>
         </Paper>
       )}
+
+      {/* Diálogo de confirmación para eliminar */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            padding: '8px',
+            backgroundColor: theme.palette.background.paper,
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontSize: '1.25rem',
+            fontWeight: 700,
+            color: theme.palette.text.primary,
+            paddingBottom: '8px',
+          }}
+        >
+          Confirmar Eliminación
+        </DialogTitle>
+        
+        <DialogContent sx={{ paddingTop: '16px !important' }}>
+          <Alert severity="warning" sx={{ mb: 2, borderRadius: '10px' }}>
+            Esta acción no se puede deshacer. Todos los registros de clientes asociados a esta base de datos serán eliminados permanentemente.
+          </Alert>
+          
+          <DialogContentText sx={{ color: theme.palette.text.primary, fontSize: '0.95rem' }}>
+            ¿Estás seguro de que deseas eliminar la base de datos <strong>"{baseToDelete?.nombre_bd}"</strong>?
+          </DialogContentText>
+        </DialogContent>
+
+        <DialogActions sx={{ padding: '16px 24px', gap: '12px' }}>
+          <Button
+            onClick={handleDeleteCancel}
+            disabled={deleting}
+            sx={{
+              color: theme.palette.text.secondary,
+              fontWeight: 600,
+              borderRadius: '8px',
+              padding: '8px 20px',
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              '&:hover': {
+                backgroundColor: theme.palette.mode === 'dark' 
+                  ? 'rgba(255, 255, 255, 0.08)' 
+                  : 'rgba(12, 21, 90, 0.05)',
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            disabled={deleting}
+            variant="contained"
+            sx={{
+              backgroundColor: '#d32f2f',
+              color: 'white',
+              fontWeight: 600,
+              borderRadius: '8px',
+              padding: '8px 24px',
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              boxShadow: theme.palette.mode === 'dark' 
+                ? '0 2px 8px rgba(0, 0, 0, 0.5)' 
+                : '0 2px 8px rgba(211, 47, 47, 0.3)',
+              '&:hover': {
+                backgroundColor: '#b71c1c',
+                boxShadow: theme.palette.mode === 'dark' 
+                  ? '0 4px 12px rgba(0, 0, 0, 0.7)' 
+                  : '0 4px 12px rgba(211, 47, 47, 0.4)',
+              },
+              '&:disabled': {
+                backgroundColor: theme.palette.action.disabledBackground,
+                color: theme.palette.action.disabled,
+              }
+            }}
+          >
+            {deleting ? 'Eliminando...' : 'Eliminar Base de Datos'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal para ver clientes de la base de datos */}
+      <ClientesBaseDatosModal
+        open={clientesModalOpen}
+        onClose={handleCloseClientesModal}
+        baseDatosId={selectedBaseForClientes?.id}
+        baseDatosNombre={selectedBaseForClientes?.nombre_bd}
+      />
     </Box>
   );
 }

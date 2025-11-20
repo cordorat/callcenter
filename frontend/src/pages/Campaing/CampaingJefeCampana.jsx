@@ -2,22 +2,20 @@
 //Pantalla para gestionar campañas
 
 import * as React from "react";
-import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Paper, InputLabel, TextField, Chip, Typography } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { useTheme } from '@mui/material/styles';
 import MainLayout from '@/core/components/layout/MainLayout';
 import UploadButton from "@/components/campaing/UploadButton";
 import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
 import EditIcon from '@mui/icons-material/Edit';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
 
 // Importar los componentes de cada pestaña
 import CampaingBD from '@/components/campaing/CampaingBD';
-import Teams from '@/components/campaing/Teams';
+import TeamsAccordion from '@/components/campaing/TeamsAccordion';
 
 // Importar API
-import { getActiveCampaigns, updateSalesGoal, programarIteracionBase } from '@/core/api/campaigns';
+import { getMisCampanasJefe, updateSalesGoal, programarIteracionBase } from '@/core/api/campaigns';
 
 // Importar estilos
 import "./Campaing.css";
@@ -44,6 +42,56 @@ export default function CampaingJefeCampana() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [from, setFrom] = React.useState(todayRange().from);
   
+  // Función helper para obtener el color del chip según el estado
+  const getEstadoChipProps = (estado) => {
+    switch (estado) {
+      case 'ACTIVA':
+        return {
+          color: 'success',
+          label: 'Activa',
+          sx: {
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            height: '24px',
+          }
+        };
+      case 'NO_ACTIVA':
+        return {
+          color: 'warning',
+          label: 'No Activa',
+          sx: {
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            height: '24px',
+            backgroundColor: '#f57c00',
+            color: 'white',
+          }
+        };
+      case 'FINALIZADA':
+        return {
+          color: 'error',
+          label: 'Finalizada',
+          sx: {
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            height: '24px',
+            backgroundColor: '#757575',
+            color: 'white',
+          }
+        };
+      default:
+        return {
+          color: 'default',
+          label: estado || 'Sin estado',
+          sx: {
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            height: '24px',
+          }
+        };
+    }
+  };
+  
   // Estados para campañas
   const [campaigns, setCampaigns] = useState([]);
   const [selectedCampaign, setSelectedCampaign] = useState('');
@@ -58,7 +106,7 @@ export default function CampaingJefeCampana() {
   
   // Estados para meta de ventas
   const [salesGoal, setSalesGoal] = useState('');
-  const [isEditingSalesGoal, setIsEditingSalesGoal] = useState(false);
+  const [openSalesGoalModal, setOpenSalesGoalModal] = useState(false);
   const [tempSalesGoal, setTempSalesGoal] = useState('');
   const [savingSalesGoal, setSavingSalesGoal] = useState(false);
 
@@ -74,10 +122,7 @@ export default function CampaingJefeCampana() {
   // Actualizar meta cuando cambia la campaña seleccionada
   useEffect(() => {
     if (selectedCampaign) {
-      const campaign = campaigns.find(c => {
-        const campaignId = c.campana_id || c.id;
-        return campaignId === parseInt(selectedCampaign);
-      });
+      const campaign = campaigns.find(c => c.id === parseInt(selectedCampaign));
       setSalesGoal(campaign?.objetivo_ventas || '');
     }
   }, [selectedCampaign, campaigns]);
@@ -85,50 +130,70 @@ export default function CampaingJefeCampana() {
   const loadCampaigns = async () => {
     setLoadingCampaigns(true);
     try {
-      const response = await getActiveCampaigns();
-      console.log('Response campañas:', response); // Debug
+      const response = await getMisCampanasJefe();
+      console.log('Response mis campañas:', response); // Debug
+      console.log('Campañas recibidas:', response.campanas); // Debug detallado
       setCampaigns(response.campanas || []);
       
-      // Seleccionar primera campaña por defecto
-      if (response.campanas && response.campanas.length > 0) {
-        const firstCampaign = response.campanas[0];
-        // Usar campana_id o id según lo que tenga el objeto
-        const campaignId = firstCampaign.campana_id || firstCampaign.id;
-        if (campaignId) {
-          setSelectedCampaign(campaignId.toString());
-        }
-      }
+      // NO seleccionar automáticamente ninguna campaña
+      // El usuario debe elegir manualmente
     } catch (error) {
       console.error('Error al cargar campañas:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al cargar las campañas',
+        severity: 'error'
+      });
     } finally {
       setLoadingCampaigns(false);
     }
   };
 
-  const handleEditSalesGoal = () => {
-    setTempSalesGoal(salesGoal);
-    setIsEditingSalesGoal(true);
+  const handleOpenSalesGoalModal = () => {
+    setTempSalesGoal(salesGoal || '');
+    setOpenSalesGoalModal(true);
+  };
+
+  const handleCloseSalesGoalModal = () => {
+    setOpenSalesGoalModal(false);
+    setTempSalesGoal('');
   };
 
   const handleSaveSalesGoal = async () => {
+    if (!tempSalesGoal || tempSalesGoal <= 0) {
+      setSnackbar({
+        open: true,
+        message: 'Por favor ingresa un objetivo válido',
+        severity: 'warning'
+      });
+      return;
+    }
+
     setSavingSalesGoal(true);
     try {
       await updateSalesGoal(parseInt(selectedCampaign), parseInt(tempSalesGoal));
       setSalesGoal(tempSalesGoal);
-      setIsEditingSalesGoal(false);
+      setOpenSalesGoalModal(false);
       
       // Actualizar lista de campañas
       await loadCampaigns();
+      
+      setSnackbar({
+        open: true,
+        message: 'Se ha guardado la nueva meta correctamente',
+        severity: 'success'
+      });
     } catch (error) {
       console.error('Error al actualizar meta de ventas:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al guardar la meta de ventas',
+        severity: 'error'
+      });
     } finally {
       setSavingSalesGoal(false);
+      setTempSalesGoal('');
     }
-  };
-
-  const handleCancelEditSalesGoal = () => {
-    setTempSalesGoal('');
-    setIsEditingSalesGoal(false);
   };
 
   // Convierte string tipo 'YYYY-MM-DDTHH:mm' a ISO con zona horaria local
@@ -273,112 +338,76 @@ export default function CampaingJefeCampana() {
           {/* Lado izquierdo: Selector de campaña y meta de ventas */}
           <div className="campaign-left-controls">
             {/* Selector de campaña */}
-            <FormControl sx={{ minWidth: 220 }}>
-              <Select
-                value={selectedCampaign}
-                onChange={(e) => setSelectedCampaign(e.target.value)}
-                disabled={loadingCampaigns}
-                displayEmpty
-                sx={{
-                  backgroundColor: 'background.paper',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  borderRadius: '8px',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.palette.mode === 'light' 
-                      ? 'rgba(12, 21, 90, 0.12)' 
-                      : 'rgba(255,255,255,0.1)',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.palette.primary.main,
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.palette.primary.main,
-                  },
-                }}
-              >
-                <MenuItem value="" disabled>
-                  <em>Seleccionar Campaña</em>
-                </MenuItem>
-                {campaigns.map((campaign) => {
-                  const campaignId = campaign.campana_id || campaign.id;
-                  return (
-                    <MenuItem key={campaignId} value={campaignId}>
-                      {campaign.nombre}
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
+            <Paper elevation={2} sx={{ p: 2, minWidth: 400 }}>
+              <FormControl fullWidth>
+                <InputLabel id="campana-select-label">Selecciona una campaña</InputLabel>
+                <Select
+                  labelId="campana-select-label"
+                  value={selectedCampaign}
+                  onChange={(e) => setSelectedCampaign(e.target.value)}
+                  disabled={loadingCampaigns}
+                  label="Selecciona una campaña"
+                >
+                  <MenuItem value="">
+                    <em style={{ fontStyle: 'normal' }}>-- Selecciona una campaña --</em>
+                  </MenuItem>
+                  {campaigns.map((campaign) => {
+                    const chipProps = getEstadoChipProps(campaign.estado_nombre);
+                    return (
+                      <MenuItem key={campaign.id} value={campaign.id}>
+                        <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                          <Typography sx={{ flex: 1 }}>{campaign.nombre}</Typography>
+                          <Chip
+                            label={chipProps.label}
+                            color={chipProps.color}
+                            size="small"
+                            sx={chipProps.sx}
+                          />
+                        </Box>
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
+            </Paper>
 
-            {/* Meta de ventas */}
+            {/* Meta de ventas - Solo visible si hay campaña seleccionada */}
+            {selectedCampaign && (
             <div className="sales-goal-control">
               <div className="sales-goal-input-wrapper">
                 <span className="input-prefix">Meta:</span>
                 <input
                   type="number"
-                  value={isEditingSalesGoal ? tempSalesGoal : salesGoal}
-                  onChange={(e) => setTempSalesGoal(e.target.value)}
-                  readOnly={!isEditingSalesGoal}
+                  value={salesGoal}
+                  readOnly
                   disabled={!selectedCampaign}
                   placeholder="0"
                   className="sales-goal-input"
                 />
                 
-                {!isEditingSalesGoal ? (
-                  <IconButton
-                    size="small"
-                    onClick={handleEditSalesGoal}
-                    disabled={!selectedCampaign}
-                    sx={{
-                      color: theme.palette.primary.main,
-                      padding: '4px',
-                      '&:hover': {
-                        backgroundColor: theme.palette.mode === 'light' 
-                          ? 'rgba(12, 21, 90, 0.08)' 
-                          : 'rgba(255,255,255,0.08)',
-                      }
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                ) : (
-                  <>
-                    <IconButton
-                      size="small"
-                      onClick={handleSaveSalesGoal}
-                      disabled={savingSalesGoal}
-                      sx={{
-                        color: '#4caf50',
-                        padding: '4px',
-                        '&:hover': {
-                          backgroundColor: 'rgba(76, 175, 80, 0.08)',
-                        }
-                      }}
-                    >
-                      <CheckIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={handleCancelEditSalesGoal}
-                      disabled={savingSalesGoal}
-                      sx={{
-                        color: '#f44336',
-                        padding: '4px',
-                        '&:hover': {
-                          backgroundColor: 'rgba(244, 67, 54, 0.08)',
-                        }
-                      }}
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </>
-                )}
+                <IconButton
+                  size="small"
+                  onClick={handleOpenSalesGoalModal}
+                  disabled={!selectedCampaign}
+                  sx={{
+                    color: theme.palette.primary.main,
+                    padding: '4px',
+                    '&:hover': {
+                      backgroundColor: theme.palette.mode === 'light' 
+                        ? 'rgba(12, 21, 90, 0.08)' 
+                        : 'rgba(255,255,255,0.08)',
+                    }
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
               </div>
             </div>
+            )}
           </div>
           
-          {/* Lado derecho: Botones de acción */}
+          {/* Lado derecho: Botones de acción - Solo visible si hay campaña seleccionada */}
+          {selectedCampaign && (
           <div className="campaign-actions">
             <Tooltip
               title="Iniciar iteración"
@@ -438,11 +467,31 @@ export default function CampaingJefeCampana() {
             </Tooltip>
             <UploadButton onFileSelect={(file) => setSelectedFile(file)} />
           </div>
+          )}
         </div>
 
-        {/* Pestañas segmentadas */}
-        <div className="campaign-filters">
-          <div className="campaign-segmented">
+        {/* Pestañas segmentadas - Solo visible si hay campaña seleccionada */}
+        {selectedCampaign && (
+        <div 
+          className="kpi-filters" 
+          style={{
+            '--text-primary': theme.palette.text.primary,
+            '--text-secondary': theme.palette.text.secondary,
+            '--background-paper': theme.palette.background.paper,
+            '--primary-main': theme.palette.primary.main,
+            '--primary-dark': isDark ? theme.palette.primary.dark : '#1a2b7a',
+            '--segmented-bg': isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F4F8',
+            '--segmented-border': isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(12, 21, 90, 0.12)',
+            '--segmented-hover': isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(12, 21, 90, 0.05)',
+            '--segmented-active-shadow': isDark 
+              ? '0 2px 4px rgba(0, 0, 0, 0.5)' 
+              : '0 2px 4px rgba(12, 21, 90, 0.2)',
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '20px',
+          }}
+        >
+          <div className="segmented">
             <button
               className={currentTab === "database" ? "active" : ""}
               onClick={() => setCurrentTab("database")}
@@ -457,8 +506,10 @@ export default function CampaingJefeCampana() {
             </button>
           </div>
         </div>
+        )}
 
-        {/* Contenido de las pestañas */}
+        {/* Contenido de las pestañas - Solo visible si hay campaña seleccionada */}
+        {selectedCampaign && (
         <div >
           {currentTab === "database" && (
             <div className="campaign-tab-panel">
@@ -467,17 +518,123 @@ export default function CampaingJefeCampana() {
                 onClearFile={() => setSelectedFile(null)}
                 onSelectBase={setSelectedBaseId}
                 selectedBaseId={selectedBaseId}
+                selectedCampaign={selectedCampaign}
               />
             </div>
           )}
 
           {currentTab === "teams" && (
             <div className="campaign-tab-panel">
-              <Teams />
+              <TeamsAccordion 
+                selectedCampaign={selectedCampaign}
+                campaigns={campaigns}
+              />
             </div>
           )}
         </div>
+        )}
       </div>
+
+      {/* Modal para cambiar objetivo de ventas */}
+      <Dialog
+        open={openSalesGoalModal}
+        onClose={handleCloseSalesGoalModal}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            padding: '8px',
+            backgroundColor: theme.palette.background.paper,
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontSize: '1.25rem',
+            fontWeight: 700,
+            color: theme.palette.text.primary,
+            paddingBottom: '8px',
+          }}
+        >
+          ¿Cuál es el nuevo objetivo de venta de la campaña?
+        </DialogTitle>
+        
+        <DialogContent sx={{ paddingTop: '16px !important' }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Nuevo objetivo de ventas"
+            type="number"
+            fullWidth
+            variant="outlined"
+            value={tempSalesGoal}
+            onChange={(e) => setTempSalesGoal(e.target.value)}
+            disabled={savingSalesGoal}
+            inputProps={{ min: 0 }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '10px',
+                '&:hover fieldset': {
+                  borderColor: theme.palette.primary.main,
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: theme.palette.primary.main,
+                }
+              }
+            }}
+          />
+        </DialogContent>
+
+        <DialogActions sx={{ padding: '16px 24px', gap: '12px' }}>
+          <Button
+            onClick={handleCloseSalesGoalModal}
+            disabled={savingSalesGoal}
+            sx={{
+              color: theme.palette.text.secondary,
+              fontWeight: 600,
+              borderRadius: '8px',
+              padding: '8px 20px',
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              '&:hover': {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(12, 21, 90, 0.05)',
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSaveSalesGoal}
+            disabled={savingSalesGoal}
+            variant="contained"
+            sx={{
+              backgroundColor: theme.palette.primary.main,
+              color: 'white',
+              fontWeight: 600,
+              borderRadius: '8px',
+              padding: '8px 24px',
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              boxShadow: isDark 
+                ? '0 2px 8px rgba(0, 0, 0, 0.5)' 
+                : '0 2px 8px rgba(12, 21, 90, 0.2)',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.dark,
+                boxShadow: isDark 
+                  ? '0 4px 12px rgba(0, 0, 0, 0.7)' 
+                  : '0 4px 12px rgba(12, 21, 90, 0.3)',
+              },
+              '&:disabled': {
+                backgroundColor: theme.palette.action.disabledBackground,
+                color: theme.palette.action.disabled,
+              }
+            }}
+          >
+            {savingSalesGoal ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Modal para programar iteración */}
       <Dialog
