@@ -103,3 +103,21 @@ export async function getJefeCentroCampanasKpi({ campana_id, fecha_desde, fecha_
   const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_CAMPANAS, { params });
   return data;
 }
+
+// KPIs para Jefe de Centro - Lista de equipos
+export async function getEquiposJefeCentro({ page = 1, page_size = 10 }) {
+  const params = { page, page_size };
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_EQUIPOS_LIST, { params });
+  return data;
+}
+
+// KPIs para Jefe de Centro - Detalle de equipo
+export async function getEquipoKpiDetalleJefeCentro(equipoId, { fecha_desde, fecha_hasta }) {
+  const params = {};
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_EQUIPO_DETALLE(equipoId), { params });
+  return data;
+}

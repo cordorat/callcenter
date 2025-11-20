@@ -2053,3 +2053,283 @@ class KPIViewSet(viewsets.ViewSet):
             "fecha_consulta": timezone.now(),
             "campanas": campanas_data
         })
+    
+    @action(detail=False, methods=['get'], url_path='jefe-centro/equipos', permission_classes=[IsJefeCentro])
+    def equipos_centro_list(self, request):
+        """
+        Endpoint para Jefe de Centro: Lista TODOS los equipos del centro (sin filtrar por campaña).
+        Solo accesible para Jefes de Centro y Admins.
+
+        GET /api/kpis/jefe-centro/equipos/?page=1&page_size=10
+
+        Query params:
+            page: Número de página (default: 1)
+            page_size: Registros por página (default: 10, máx: 50)
+
+        Response (lista paginada):
+            {
+                "count": 25,
+                "next": "http://.../api/kpis/jefe-centro/equipos/?page=2",
+                "previous": null,
+                "results": [
+                    {
+                        "equipo_id": 1,
+                        "nombre": "Equipo Alpha",
+                        "coordinador_id": "123456",
+                        "coordinador_nombre": "Juan Pérez",
+                        "total_agentes": 8,
+                        "campana_nombre": "Campaña Navidad"
+                    },
+                    ...
+                ]
+            }
+        """
+        jefe_centro = request.user
+
+        # Obtener el centro donde este jefe trabaja
+        centro = Centro.objects.filter(jefe_centro=jefe_centro).first()
+
+        if not centro:
+            return Response(
+                {"detail": "No tienes un centro asignado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Obtener TODOS los equipos del centro (sin filtrar por campaña)
+        equipos = Equipo.objects.filter(
+            campana__centro=centro,
+            is_active=True
+        ).select_related('coordinador', 'campana').prefetch_related('agentes_detalle')
+        
+        # Preparar datos para serializer
+        equipos_data = []
+        for equipo in equipos:
+            coordinador_nombre = None
+            coordinador_id = None
+            
+            if equipo.coordinador:
+                coordinador_nombre = equipo.coordinador.get_full_name()
+                coordinador_id = equipo.coordinador.documento_id
+            
+            equipos_data.append({
+                'equipo_id': equipo.equipo_id,
+                'nombre': equipo.nombre,
+                'coordinador_id': coordinador_id,
+                'coordinador_nombre': coordinador_nombre,
+                'total_agentes': equipo.agentes_detalle.count(),
+                'campana_nombre': equipo.campana.nombre if equipo.campana else 'Sin campaña'
+            })
+        
+        # Paginación (10 registros por defecto)
+        paginator = PageNumberPagination()
+        paginator.page_size = int(request.query_params.get('page_size', 10))
+        paginator.max_page_size = 50
+        
+        page = paginator.paginate_queryset(equipos_data, request)
+        
+        if page is not None:
+            return paginator.get_paginated_response(page)
+        
+        return Response(equipos_data)
+
+    @action(detail=False, methods=['get'], url_path='jefe-centro/equipos/(?P<equipo_id>[^/.]+)/detalle', permission_classes=[IsJefeCentro])
+    def equipo_centro_detalle_kpis(self, request, equipo_id=None):
+        """
+        Endpoint para Jefe de Centro: KPIs detallados de un equipo del centro.
+        Solo accesible para Jefes de Centro y Admins.
+
+        GET /api/kpis/jefe-centro/equipos/<equipo_id>/detalle/?fecha_desde=2025-11-01&fecha_hasta=2025-11-08
+
+        Query params:
+            fecha_desde: Fecha inicio (YYYY-MM-DD), opcional (default: hoy)
+            fecha_hasta: Fecha fin (YYYY-MM-DD), opcional (default: hoy)
+
+        Response:
+            {
+                "equipo_id": 1,
+                "equipo_nombre": "Equipo Alpha",
+                "campana_id": 5,
+                "campana_nombre": "Campaña Navidad",
+                "llamadas_activas": 3,
+                "agentes_disponibles": 5,
+                "tiempo_promedio_llamada": 180.5,
+                "llamadas_del_dia": 120,
+                "ventas_realizadas": 35,
+                "tasa_conversion": 29.17,
+                "total_agentes": 10,
+                "coordinador_nombre": "Juan Pérez",
+                "fecha_desde": "2025-11-08",
+                "fecha_hasta": "2025-11-08",
+                "fecha_consulta": "2025-11-08T15:30:00Z"
+            }
+        """
+        jefe_centro = request.user
+
+        # Obtener el centro donde este jefe trabaja
+        centro = Centro.objects.filter(jefe_centro=jefe_centro).first()
+
+        if not centro:
+            return Response(
+                {"detail": "No tienes un centro asignado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Obtener y validar equipo
+        equipo = get_object_or_404(Equipo, equipo_id=equipo_id, is_active=True)
+        
+        # Validar que el equipo pertenezca al centro del jefe
+        if not request.user.is_admin():
+            if not equipo.campana or equipo.campana.centro != centro:
+                return Response(
+                    {"detail": "No tienes permiso para ver KPIs de este equipo"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Parsear y validar fechas
+        fecha_desde_str = request.query_params.get('fecha_desde')
+        fecha_hasta_str = request.query_params.get('fecha_hasta')
+        
+        hoy = date.today()
+        
+        if not fecha_desde_str and not fecha_hasta_str:
+            fecha_desde = fecha_hasta = hoy
+        elif fecha_desde_str and fecha_hasta_str:
+            fecha_desde = parse_date(fecha_desde_str)
+            fecha_hasta = parse_date(fecha_hasta_str)
+            
+            if not fecha_desde or not fecha_hasta:
+                return Response(
+                    {"detail": "Fechas inválidas. Usa formato YYYY-MM-DD"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            return Response(
+                {"detail": "Debes enviar ambas fechas (fecha_desde y fecha_hasta) o ninguna"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validar que la fecha inicial no sea futura
+        if fecha_desde > hoy:
+            return Response(
+                {"detail": "La fecha inicial no puede ser futura"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validar rango de fechas
+        if fecha_desde > fecha_hasta:
+            return Response(
+                {"detail": "La fecha inicial no puede ser mayor a la fecha posterior"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Si fecha_hasta es futura, ajustarla a hoy
+        if fecha_hasta > hoy:
+            fecha_hasta = hoy
+        
+        # Obtener agentes del equipo
+        agentes_ids = list(equipo.agentes_detalle.values_list('agente_id', flat=True))
+        
+        if not agentes_ids:
+            # Si no hay agentes, retornar KPIs en 0
+            return Response({
+                "equipo_id": equipo.equipo_id,
+                "equipo_nombre": equipo.nombre,
+                "campana_id": equipo.campana.pk if equipo.campana else None,
+                "campana_nombre": equipo.campana.nombre if equipo.campana else "Sin campaña",
+                "llamadas_activas": 0,
+                "agentes_disponibles": 0,
+                "tiempo_promedio_llamada": 0,
+                "llamadas_del_dia": 0,
+                "ventas_realizadas": 0,
+                "tasa_conversion": 0,
+                "total_agentes": 0,
+                "coordinador_nombre": equipo.coordinador.get_full_name() if equipo.coordinador else None,
+                "fecha_desde": fecha_desde.isoformat(),
+                "fecha_hasta": fecha_hasta.isoformat(),
+                "fecha_consulta": timezone.now()
+            })
+        
+        # Obtener objetos de agentes
+        agentes = User.objects.filter(
+            documento_id__in=agentes_ids,
+            is_active=True
+        )
+        
+        total_agentes = agentes.count()
+        
+        # KPI 1: LLAMADAS ACTIVAS (Tiempo Real)
+        estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')
+        llamadas_activas = 0
+        
+        for agente in agentes:
+            try:
+                if hasattr(agente, 'estado_actual') and agente.estado_actual:
+                    if agente.estado_actual.estado_id == estado_en_llamada:
+                        llamadas_activas += 1
+            except:
+                pass
+        
+        # KPI 2: AGENTES DISPONIBLES (Tiempo Real)
+        estado_disponible = get_estado('ESTADO_AGENTE', 'DISPONIBLE')
+        agentes_disponibles = 0
+        
+        for agente in agentes:
+            try:
+                if hasattr(agente, 'estado_actual') and agente.estado_actual:
+                    if agente.estado_actual.estado_id == estado_disponible:
+                        agentes_disponibles += 1
+            except:
+                pass
+        
+        # Convertir fechas a datetime con timezone
+        tz = timezone.get_current_timezone()
+        inicio_periodo = datetime.combine(fecha_desde, time.min).replace(tzinfo=tz)
+        fin_periodo = datetime.combine(fecha_hasta, time.max).replace(tzinfo=tz)
+        
+        # Filtrar llamadas del período
+        llamadas_periodo = Llamada.objects.filter(
+            agente_id__in=agentes_ids,
+            fecha_hora_inicio__range=(inicio_periodo, fin_periodo)
+        )
+        
+        # KPI 4: LLAMADAS DEL DÍA/PERÍODO
+        llamadas_del_periodo = llamadas_periodo.count()
+        
+        # KPI 3: TIEMPO PROMEDIO DE LLAMADA
+        duracion_promedio = llamadas_periodo.filter(
+            fue_contestada=True,
+            duracion__isnull=False
+        ).aggregate(promedio=Avg('duracion'))['promedio'] or 0
+        
+        # KPI 5: VENTAS REALIZADAS
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        
+        if estado_no_venta_id:
+            ventas_periodo = llamadas_periodo.filter(
+                fue_contestada=True
+            ).exclude(estado_venta_id=estado_no_venta_id).count()
+        else:
+            ventas_periodo = 0
+        
+        # KPI 6: TASA DE CONVERSIÓN
+        llamadas_contestadas_periodo = llamadas_periodo.filter(fue_contestada=True).count()
+        tasa_conversion = (ventas_periodo / llamadas_contestadas_periodo * 100) if llamadas_contestadas_periodo > 0 else 0
+        
+        # Construir respuesta
+        return Response({
+            "equipo_id": equipo.equipo_id,
+            "equipo_nombre": equipo.nombre,
+            "campana_id": equipo.campana.pk if equipo.campana else None,
+            "campana_nombre": equipo.campana.nombre if equipo.campana else "Sin campaña",
+            "llamadas_activas": llamadas_activas,
+            "agentes_disponibles": agentes_disponibles,
+            "tiempo_promedio_llamada": round(duracion_promedio, 2),
+            "llamadas_del_dia": llamadas_del_periodo,
+            "ventas_realizadas": ventas_periodo,
+            "tasa_conversion": round(tasa_conversion, 2),
+            "total_agentes": total_agentes,
+            "coordinador_nombre": equipo.coordinador.get_full_name() if equipo.coordinador else None,
+            "fecha_desde": fecha_desde.isoformat(),
+            "fecha_hasta": fecha_hasta.isoformat(),
+            "fecha_consulta": timezone.now()
+        })

@@ -869,6 +869,64 @@ class EquipoViewSet(viewsets.ModelViewSet):
             'coordinadores': coordinadores_data
         }, status=status.HTTP_200_OK)
     
+    @action(detail=False, methods=['get'], url_path='campanas-activas')
+    def campanas_activas(self, request):
+        """
+        Obtiene lista de campañas activas disponibles para asignar a equipos.
+        
+        GET /api/campaigns/equipos/campanas-activas/
+        
+        Retorna:
+        - Lista de campañas activas filtradas según el rol del usuario
+        """
+        user = request.user
+        estado_activa = get_estado('ESTADO_CAMPANA', 'ACTIVA')
+        
+        # Filtrar campañas según el rol
+        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        rol_jefe_campana_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
+        
+        if user.rol_id == rol_jefe_centro_id:
+            # Jefe de centro: campañas de su centro
+            centros = Centro.objects.filter(jefe_centro=user)
+            campanas = Campana.objects.filter(
+                centro__in=centros,
+                estado=estado_activa
+            ).order_by('nombre')
+        elif user.rol_id == rol_jefe_campana_id:
+            # Jefe de campaña: solo sus campañas
+            campanas = Campana.objects.filter(
+                jefe_campana=user,
+                estado=estado_activa
+            ).order_by('nombre')
+        elif user.is_admin():
+            # Admin: todas las campañas activas
+            campanas = Campana.objects.filter(
+                estado=estado_activa
+            ).order_by('nombre')
+        else:
+            # Otros roles: sin acceso
+            return Response({
+                'success': False,
+                'message': 'No tienes permiso para ver campañas'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Serializar datos
+        campanas_data = [{
+            'id': campana.pk,
+            'nombre': campana.nombre,
+            'descripcion': campana.descripcion,
+            'fecha_inicio': campana.fecha_inicio,
+            'fecha_fin': campana.fecha_fin,
+            'centro_nombre': campana.centro.nombre if campana.centro else None
+        } for campana in campanas]
+        
+        return Response({
+            'success': True,
+            'count': len(campanas_data),
+            'campanas': campanas_data
+        }, status=status.HTTP_200_OK)
+    
     @action(detail=False, methods=['get'], url_path='mi-centro')
     def mi_centro(self, request):
         """
