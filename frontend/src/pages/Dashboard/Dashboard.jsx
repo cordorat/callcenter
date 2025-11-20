@@ -13,7 +13,7 @@ const DASHBOARD_BY_ROLE = {
   ADMIN: AdminDashboard,
   AGENTE: AgenteDashboard,
   JEFE_CENTRO: JefeCentroDashboard,
-  JEFE_CAMPAÑA: JefeCampañaDashboard,
+  JEFE_CAMPANA: JefeCampañaDashboard,
   COORDINADOR: CoordinadorDashboard,
   BACKOFFICE: BackOfficeDashboard,
 };
