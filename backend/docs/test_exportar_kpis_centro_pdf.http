@@ -1,0 +1,27 @@
+### Exportar KPIs de Centro a PDF - Jefe de Centro
+### Endpoint: GET /api/kpis/jefe-centro/exportar-pdf/
+
+### 1. Login como Jefe de Centro
+POST http://localhost:8000/api/authn/login/
+Content-Type: application/json
+
+{
+  "documento_id": "12345678",
+  "password": "password123"
+}
+
+### 2. Exportar KPIs con centro específico y rango de fechas
+GET http://localhost:8000/api/kpis/jefe-centro/exportar-pdf/?centro_id=1&fecha_desde=2025-10-01&fecha_hasta=2025-11-19
+Authorization: Bearer {{access_token}}
+
+### 3. Exportar KPIs sin especificar centro (usa el centro del jefe)
+GET http://localhost:8000/api/kpis/jefe-centro/exportar-pdf/?fecha_desde=2025-11-01&fecha_hasta=2025-11-19
+Authorization: Bearer {{access_token}}
+
+### 4. Exportar KPIs del día actual (sin fechas)
+GET http://localhost:8000/api/kpis/jefe-centro/exportar-pdf/?centro_id=1
+Authorization: Bearer {{access_token}}
+
+### 5. Exportar KPIs sin parámetros (centro del jefe, día actual)
+GET http://localhost:8000/api/kpis/jefe-centro/exportar-pdf/
+Authorization: Bearer {{access_token}}
