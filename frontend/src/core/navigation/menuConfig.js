@@ -80,9 +80,9 @@ export const menuItems = [
   },
   {
     label: 'Comisiones',
-    path: '/comisiones',
+    path: '/commissions',
     icon: AttachMoneyIcon,
-    roles: []
+    roles: ['AGENTE']
   },
   {
     label: 'Configuración',

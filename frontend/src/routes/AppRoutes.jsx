@@ -18,6 +18,8 @@ import AgentesPage from '../pages/Kpis/AgentesPage';
 import AgentDetailPage from '../pages/Kpis/AgentDetailPage';
 import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
 import ProfilePage from '@/pages/Profile/ProfilePage';
+import AgentCommissions from '../pages/commissions/AgentCommissions';
+
 
 // Componente que decide qué página de KPIs mostrar según el rol
 const KpisRouter = () => {
@@ -144,6 +146,16 @@ const AppRoutes = () => {
             </PrivateRoute>
           }
         />
+       {/* Ruta Comisiones - Agente ve sus comisiones personales */}
+        <Route
+          path="/commissions"
+          element={
+            <PrivateRoute>
+              <AgentCommissions />
+            </PrivateRoute>
+          }
+        />
+
 
         {/* Rutas de Campaña */}
         <Route path="/campana" element={
