@@ -680,3 +680,374 @@ Authorization: Bearer {{tokenJefeCentro}}
 ### 4. Ver una campaña específica
 GET http://localhost:8000/api/kpis/jefe-centro/campanas/?campana_id=1
 Authorization: Bearer {{tokenJefeCentro}}
+
+### ============================================
+### ACTUALIZACIÓN DE USUARIOS POR ADMINISTRADOR
+### HU: Yo como [Administrador] Requiero [Actualizar los datos de un Usuario] 
+### Para [Mantener su acceso según lo requerido por el call center.]
+### ============================================
+
+### 1. Actualización completa de usuario (todos los campos válidos)
+# Criterio 3.1: Al presionar "Guardar", si los campos son correctos, 
+# los cambios se actualizan en la base de datos y se mostrará el mensaje 
+# "Datos actualizados correctamente".
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan Carlos",
+  "last_name": "Pérez González",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### 2. Actualización con cambio de contraseña
+# Criterio 2.2: La contraseña deberá tener mínimo 8 caracteres, 
+# una minúscula, una mayúscula, un número y un caracter especial
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan Carlos",
+  "last_name": "Pérez González",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true,
+  "password": "NuevaPass123!"
+}
+
+### 3. Actualización cambiando rol a COORDINADOR
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan Carlos",
+  "last_name": "Pérez González",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "COORDINADOR",
+  "is_active": true
+}
+
+### 4. Desactivar usuario (cambiar estado)
+# Criterio 2.1: Estado es un campo editable
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan Carlos",
+  "last_name": "Pérez González",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": false
+}
+
+### ============================================
+### VALIDACIONES - Correo Electrónico
+### ============================================
+
+### 5. Error: Email sin dominio
+# Criterio 2.2: El correo debe contener el dominio
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juanperez",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### 6. Error: Email sin @
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juanperez.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### 7. Error: Email duplicado
+# Criterio 3.2: Si algún campo está mal diligenciado, se resaltará en rojo 
+# con un mensaje explicativo
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "admin@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### ============================================
+### VALIDACIONES - Teléfono
+### ============================================
+
+### 8. Error: Teléfono con menos de 10 dígitos
+# Criterio 2.2: El teléfono debe contener solo números y contener solo 10 caracteres
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "300123",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### 9. Error: Teléfono con más de 10 dígitos
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "30012345678999",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### 10. Error: Teléfono con caracteres no numéricos
+# Criterio 2.2: El teléfono debe contener solo números
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "300-123-456",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### 11. Error: Teléfono con letras
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "300ABC4567",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### ============================================
+### VALIDACIONES - Contraseña
+### ============================================
+
+### 12. Error: Contraseña sin mayúscula
+# Criterio 2.2: La contraseña deberá tener una mayúscula
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true,
+  "password": "password123!"
+}
+
+### 13. Error: Contraseña sin minúscula
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true,
+  "password": "PASSWORD123!"
+}
+
+### 14. Error: Contraseña sin número
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true,
+  "password": "Password!"
+}
+
+### 15. Error: Contraseña sin carácter especial
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true,
+  "password": "Password123"
+}
+
+### 16. Error: Contraseña muy corta (menos de 8 caracteres)
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true,
+  "password": "Pass1!"
+}
+
+### ============================================
+### VALIDACIONES - Campos Obligatorios
+### ============================================
+
+### 17. Error: Campo nombre vacío
+# Criterio 2.2: Todos son obligatorios
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### 18. Error: Campo apellido vacío
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### 19. Error: Campo email vacío
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### 20. Error: Campo teléfono vacío
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "",
+  "role": "AGENTE",
+  "is_active": true
+}
+
+### ============================================
+### VALIDACIONES - Rol
+### ============================================
+
+### 21. Error: Rol inválido
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "ROL_INEXISTENTE",
+  "is_active": true
+}
+
+### ============================================
+### PERMISOS
+### ============================================
+
+### 22. Error: Agente intenta actualizar otro usuario (debe dar 403 Forbidden)
+# Solo administradores pueden actualizar usuarios
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+Authorization: Bearer {{agentToken}}
+
+{
+  "first_name": "Nombre Modificado",
+  "last_name": "Apellido Modificado",
+  "email": "modificado@callcenter.com",
+  "phone": "3009876543",
+  "role": "ADMIN",
+  "is_active": true
+}
+
+### 23. Error: Sin token (debe dar 401 Unauthorized)
+PATCH {{baseUrl}}/users/1234567890/
+Content-Type: application/json
+
+{
+  "first_name": "Juan",
+  "last_name": "Pérez",
+  "email": "juan.perez@callcenter.com",
+  "phone": "3001234567",
+  "role": "AGENTE",
+  "is_active": true
+}
