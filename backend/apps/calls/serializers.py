@@ -184,6 +184,7 @@ class RegistrarVentaSerializer(serializers.Serializer):
         3. Guardar datos del formulario en FormularioVenta.campos_json
         4. Vincular la venta a la llamada
         5. Actualizar el estado de la llamada a "VENTA"
+        6. Crear comisión automáticamente para el agente
         
         Returns:
             Venta: Instancia de la venta creada
@@ -234,17 +235,35 @@ class RegistrarVentaSerializer(serializers.Serializer):
         
         llamada.save()
         
+        # Crear comisión automáticamente
+        campana = llamada.cliente.campana if llamada.cliente else None
+        if campana and llamada.agente and monto:
+            from decimal import Decimal
+            # Calcular comisión: monto * (porcentaje / 100)
+            porcentaje_comision = campana.comision_porcentaje or Decimal('10.00')
+            monto_comision = monto * (porcentaje_comision / Decimal('100'))
+            
+            # Crear registro de comisión
+            Comision.objects.create(
+                agente=llamada.agente,
+                venta=venta,
+                producto=producto,
+                cantidad=monto_comision
+            )
+        
         return venta
     
     def to_representation(self, instance):
         """
         Personaliza la respuesta para incluir información completa de la venta.
         Obtiene datos del agente y formulario desde la llamada asociada.
+        Incluye información de la comisión generada.
         """
         # Obtener la llamada asociada a esta venta
         llamada = instance.llamadas.first()
         agente_info = None
         formulario_data = {}
+        comision_info = None
         
         if llamada:
             # Información del agente
@@ -258,6 +277,19 @@ class RegistrarVentaSerializer(serializers.Serializer):
             formulario = llamada.formularios.first()
             if formulario:
                 formulario_data = formulario.campos_json
+        
+        # Obtener comisión asociada a esta venta
+        try:
+            comision = instance.comision
+            if comision:
+                comision_info = {
+                    'id': comision.comision_id,
+                    'cantidad': str(comision.cantidad),
+                    'porcentaje': str(comision.venta.campana_id.comision_porcentaje) if comision.venta.campana_id else '10.00',
+                    'fecha': comision.fecha.isoformat()
+                }
+        except Comision.DoesNotExist:
+            comision_info = None
         
         return {
             'venta_id': instance.venta_id,
@@ -274,7 +306,8 @@ class RegistrarVentaSerializer(serializers.Serializer):
                 'monto': str(instance.monto) if instance.monto else None,
                 'observaciones': formulario_data.get('observaciones', ''),
                 'agente': agente_info
-            }
+            },
+            'comision': comision_info
         }
 
 

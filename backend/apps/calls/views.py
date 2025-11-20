@@ -2001,13 +2001,14 @@ class ComisionViewSet(viewsets.ReadOnlyModelViewSet):
         ultima_actualizacion = ultima_comision.fecha if ultima_comision else None
         
         # Promedio de comisión
+        from decimal import Decimal
         promedio_comision = total_comisiones / cantidad_ventas if cantidad_ventas > 0 else 0
         
         # Meta mensual (valor fijo de ejemplo, puede ser configurable)
-        meta_mensual = 50000.00
+        meta_mensual = Decimal('50000.00')
         
         # Progreso hacia la meta
-        progreso_meta = (total_comisiones / meta_mensual * 100) if meta_mensual > 0 else 0
+        progreso_meta = (total_comisiones / meta_mensual * Decimal('100')) if meta_mensual > 0 else 0
         progreso_meta = min(progreso_meta, 100)  # Cap at 100%
         
         # Obtener período para el mensaje
@@ -2022,8 +2023,6 @@ class ComisionViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({
             'total_comisiones': float(total_comisiones),
             'cantidad_ventas': cantidad_ventas,
-            'meta_mensual': float(meta_mensual),
-            'progreso_meta': round(progreso_meta, 2),
             'ultima_actualizacion': ultima_actualizacion,
             'promedio_comision': round(float(promedio_comision), 2),
             'periodo': periodo,
