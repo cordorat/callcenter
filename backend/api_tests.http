@@ -7,7 +7,7 @@
 @adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMzA2MDQzLCJpYXQiOjE3NjAyNzcyNDMsImp0aSI6IjVmZjNlMjA5ZWNiZDRhZTI4MjUwMzRlNzg1YzQwN2ViIiwiZG9jdW1lbnRvX2lkIjoiIn0.4Rlhe7w0p2DWoMHRd2hmbfbO6BhkXbxc16-Bn5UPvqo
 @agentToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwMDk0MTEwLCJpYXQiOjE3NjAwNjUzMTAsImp0aSI6ImYwOGU5YWEwNzJmZDRhODFhNTNlNGY4N2ZjY2VjNjM0IiwidXNlcl9pZCI6Mn0.9PdfqN60ALXpylUaxb3vVo3qjCe_gaycYHySIbxtyiI
 @coordinadorToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNjU5OTAwLCJpYXQiOjE3NjI2MzExMDAsImp0aSI6IjQ5OTM4OTRlNDJhYjRmNDc4Y2VlMzUyNWJlYmVkYTAxIiwiZG9jdW1lbnRvX2lkIjoiMDk4NzU0MjM0NSJ9.Hhj7WWItZiGhvidYa5juCyANpzMR55unaKRMkJLKnDI
-@tokenJefeCentro = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNzY0ODg4LCJpYXQiOjE3NjI3MzYwODgsImp0aSI6IjkzMDRmMzRiZTNlMjQyYjA5ZTM2YjcyNTY2MDViOWRjIiwiZG9jdW1lbnRvX2lkIjoiMTAwMDAwMDAwMiJ9.AgtaEhf6pJILBYfqotOiGLcJahp4xUT65O6xPZBfwo0
+@tokenJefeCentro = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYzNjM4MzYwLCJpYXQiOjE3NjM2MDk1NjAsImp0aSI6IjNiODhlNjZhY2UxMTQ4ZjdhYzE2Y2Q2NjNkMTJjNTM4IiwiZG9jdW1lbnRvX2lkIjoiMTAwMDAwMDAwMSJ9.mlxVMNHegv3zYts9wVanH1SAZAxyJEcAUs62O-35lF4
 @jefeCampanaToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYzMDI2NDMxLCJpYXQiOjE3NjI5OTc2MzEsImp0aSI6ImRiMWI2M2Q5N2VmNjQyM2FiMjFlZTcyNzAxOTEwOGQ1IiwiZG9jdW1lbnRvX2lkIjoiMTIzNDU2Nzg5MCJ9.M8fZtZfohhcFfkKuA0ZNrfxAWUiP3yo5auOOAiFyiPM
 
 ### ============================================
@@ -659,3 +659,24 @@ Content-Type: application/json
   "agente_id": "12312312",
   "confirmar": true
 }
+
+### 1. Login como Jefe de Centro
+POST http://localhost:8000/api/auth/login/
+Content-Type: application/json
+
+{
+  "email": "jefe@callcenter.com",
+  "password": "jefe123!"
+}
+
+### 2. Ver todas las campañas activas (hoy)
+GET http://localhost:8000/api/kpis/jefe-centro/campanas/
+Authorization: Bearer {{tokenJefeCentro}}
+
+### 3. Ver campañas con rango de fechas
+GET http://localhost:8000/api/kpis/jefe-centro/campanas/?fecha_desde=2025-10-01&fecha_hasta=2025-11-19
+Authorization: Bearer {{tokenJefeCentro}}
+
+### 4. Ver una campaña específica
+GET http://localhost:8000/api/kpis/jefe-centro/campanas/?campana_id=1
+Authorization: Bearer {{tokenJefeCentro}}

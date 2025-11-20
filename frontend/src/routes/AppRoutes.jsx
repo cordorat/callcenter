@@ -7,6 +7,7 @@ import Calls from '../pages/Calls/Calls';
 import Kpis from '../pages/Kpis/Kpis';
 import KpisJefeCampana from '../pages/Kpis/KpisJefeCampana';
 import KpisCoordinador from '../pages/Kpis/KpisCoordinador';
+import KpisJefeCentro from '../pages/Kpis/KpisJefeCentro';
 import Campaing from '../pages/Campaing/Campaing';
 import Teams from '../pages/Teams/Teams';
 import PrivateRoute from './PrivateRoute';
@@ -22,6 +23,11 @@ import ProfilePage from '@/pages/Profile/ProfilePage';
 // Componente que decide qué página de KPIs mostrar según el rol
 const KpisRouter = () => {
   const { user } = useAuth();
+
+  // Si es Jefe de Centro, mostrar KPIs del centro
+  if (user?.role === 'JEFE_CENTRO') {
+    return <KpisJefeCentro />;
+  }
 
   // Si es Jefe de Campaña, mostrar KPIs de campaña
   if (user?.role === 'JEFE_CAMPANA') {

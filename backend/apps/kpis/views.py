@@ -13,8 +13,8 @@ from django.http import HttpResponse
 from io import BytesIO
 
 from apps.calls.models import Llamada
-from apps.users.models import User
-from apps.users.permissions import IsAdminOrCoordinador, IsAdmin, IsJefeCampana, IsCoordinador
+from apps.users.models import Centro, User
+from apps.users.permissions import IsAdminOrCoordinador, IsAdmin, IsJefeCampana, IsCoordinador, IsJefeCentro
 from apps.kpis.serializers import AgenteListSerializer, KPIAgenteDetailSerializer
 from common.estados_helper import get_estado_id, get_estado
 from apps.campaigns.models import Campana, Equipo
@@ -1902,3 +1902,154 @@ class KPIViewSet(viewsets.ViewSet):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         return response
+    
+
+    @action(detail=False, methods=['get'], url_path='jefe-centro/campanas', permission_classes=[IsJefeCentro])
+    def campanas_jefe_centro(self, request):
+        jefe_centro = request.user
+
+        # Obtener el centro donde este jefe trabaja
+        centro = Centro.objects.filter(jefe_centro=jefe_centro).first()
+
+        if not centro:
+            return Response(
+                {"detail": "No tienes un centro asignado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        fecha_desde_str = request.query_params.get('fecha_desde')
+        fecha_hasta_str = request.query_params.get('fecha_hasta')
+
+        hoy = date.today()
+
+        # Si no envía fechas, usar el día actual por defecto
+        if not fecha_desde_str and not fecha_hasta_str:
+            fecha_desde = fecha_hasta = hoy
+        elif fecha_desde_str and fecha_hasta_str:
+            fecha_desde = parse_date(fecha_desde_str)
+            fecha_hasta = parse_date(fecha_hasta_str)
+            
+            if not fecha_desde or not fecha_hasta:
+                return Response(
+                    {"detail": "Fechas inválidas. Usa formato YYYY-MM-DD"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            return Response(
+                {"detail": "Debes enviar ambas fechas o ninguna"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Validar que fecha_desde no sea futura
+        if fecha_desde > hoy:
+            return Response(
+                {"detail": "No se pueden elegir fechas futuras (fecha_desde)"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Si fecha_hasta es futura, ajustarla a hoy
+        if fecha_hasta > hoy:
+            fecha_hasta = hoy
+
+        # Validar rango de fechas
+        if fecha_desde > fecha_hasta:
+            return Response(
+                {"detail": "La fecha inicial no puede ser mayor a la fecha posterior"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        estado_activa = get_estado('ESTADO_CAMPANA', 'ACTIVA')
+
+        # Filtrar campañas activas del centro
+        campanas = Campana.objects.filter(
+            centro=centro,
+            estado=estado_activa
+        )
+
+        # Si se especifica una campaña, filtrar solo esa
+        campana_id = request.query_params.get('campana_id')
+        if campana_id:
+            campanas = campanas.filter(pk=campana_id)
+
+        if not campanas.exists():
+            return Response({
+                "mensaje": "No hay campañas activas en el momento",
+                "campanas": []
+            })
+            
+        tz = timezone.get_current_timezone()
+        inicio_periodo = datetime.combine(fecha_desde, time.min).replace(tzinfo=tz)
+        fin_periodo = datetime.combine(fecha_hasta, time.max).replace(tzinfo=tz)
+        
+        campanas_data = []
+
+        for campana in campanas:
+            # 8.1: Obtener agentes de la campaña
+            equipos_campana = Equipo.objects.filter(
+                campana=campana,
+                is_active=True
+            )
+            
+            agentes_ids = []
+            for equipo in equipos_campana:
+                ids_equipo = equipo.agentes_detalle.values_list('agente_id', flat=True)
+                agentes_ids.extend(ids_equipo)
+            
+            agentes_ids = list(set(agentes_ids))  # Eliminar duplicados
+            
+            # 8.2: KPI 1 - Llamadas Activas (tiempo real)
+            estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
+            llamadas_activas = Llamada.objects.filter(
+                agente_id__in=agentes_ids,
+                cliente__campana=campana,
+                estado_llamada=estado_en_curso
+            ).count()
+            
+            # 8.3: KPI 2 - Tiempo Promedio de Llamada
+            llamadas_periodo = Llamada.objects.filter(
+                agente_id__in=agentes_ids,
+                cliente__campana=campana,
+                fecha_hora_inicio__range=(inicio_periodo, fin_periodo)
+            )
+            
+            duracion_promedio = llamadas_periodo.filter(
+                fue_contestada=True,
+                duracion__isnull=False
+            ).aggregate(promedio=Avg('duracion'))['promedio'] or 0
+            
+            # 8.4: KPI 3 - Llamadas del Día/Período
+            llamadas_del_periodo = llamadas_periodo.count()
+            
+            # 8.5: KPI 4 y 5 - Ventas y Tasa de Conversión
+            estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+
+            if estado_no_venta_id:
+                ventas_periodo = llamadas_periodo.filter(
+                    fue_contestada=True
+                ).exclude(estado_venta_id=estado_no_venta_id).count()
+            else:
+                ventas_periodo = 0
+
+            llamadas_contestadas_periodo = llamadas_periodo.filter(fue_contestada=True).count()
+
+            tasa_conversion = (ventas_periodo / llamadas_contestadas_periodo * 100) if llamadas_contestadas_periodo > 0 else 0
+            
+            campanas_data.append({
+                "campana_id": campana.pk,
+                "campana_nombre": campana.nombre,
+                "llamadas_activas": llamadas_activas,
+                "tiempo_promedio_llamada": round(duracion_promedio, 2),
+                "llamadas_del_periodo": llamadas_del_periodo,
+                "ventas_realizadas": ventas_periodo,
+                "tasa_conversion": round(tasa_conversion, 2)
+            })
+
+        # Retornar respuesta completa
+        return Response({
+            "centro_id": centro.pk,
+            "centro_nombre": centro.nombre,
+            "total_campanas_activas": len(campanas_data),
+            "fecha_desde": fecha_desde.isoformat(),
+            "fecha_hasta": fecha_hasta.isoformat(),
+            "fecha_consulta": timezone.now(),
+            "campanas": campanas_data
+        })

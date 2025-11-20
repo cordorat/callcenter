@@ -20,5 +20,6 @@ urlpatterns = [
     path('coordinador/exportar-pdf/', KPIViewSet.as_view({'get': 'exportar_kpis_pdf'}), name='coordinador-exportar-pdf'),
     path('jefe-campana/equipos/', KPIViewSet.as_view({'get': 'equipos_campana_list'}), name='jefe-campana-equipos-list'),
     path('jefe-campana/equipos/<int:equipo_id>/detalle/', KPIViewSet.as_view({'get': 'equipo_detalle_kpis'}), name='jefe-campana-equipo-detalle'),
+    path('jefe-centro/campanas/', KPIViewSet.as_view({'get': 'campanas_jefe_centro'}), name='jefe-centro-campanas'),
 
 ]

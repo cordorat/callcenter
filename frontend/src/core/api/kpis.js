@@ -92,3 +92,14 @@ export async function exportarCoordinadorKpisPDF({ fecha_desde, fecha_hasta }) {
   });
   return response;
 }
+
+// KPIs para Jefe de Centro - Campañas del centro
+export async function getJefeCentroCampanasKpi({ campana_id, fecha_desde, fecha_hasta }) {
+  const params = {};
+  if (campana_id) params.campana_id = campana_id;
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_CAMPANAS, { params });
+  return data;
+}
