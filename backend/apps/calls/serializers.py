@@ -1164,4 +1164,3 @@ class ComisionSerializer(serializers.ModelSerializer):
         if obj.producto:
             return obj.producto.nombre
         return None
-        return notas
