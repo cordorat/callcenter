@@ -24,5 +24,6 @@ urlpatterns = [
     path('agente-dashboard/', KPIViewSet.as_view({'get': 'agente_dashboard'}), name='agente-dashboard'),
     # Endpoint para dashboard de jefe de centro
     path('jefe-centro/dashboard/', KPIViewSet.as_view({'get': 'jefe_centro_dashboard'}), name='jefe-centro-dashboard'),
-
+    path('jefe-campana/exportar-pdf/', KPIViewSet.as_view({'get': 'exportar_kpis_campana_pdf'}), name='jefe-campana-exportar-pdf'),
+    path('jefe-centro/exportar-pdf/', KPIViewSet.as_view({'get': 'exportar_kpis_centro_pdf'}), name='jefe-centro-exportar-pdf'),
 ]

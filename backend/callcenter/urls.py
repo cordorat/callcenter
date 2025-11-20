@@ -17,11 +17,17 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
     SpectacularSwaggerView
 )
+from apps.calls.views import ComisionViewSet
+
+# Router para comisiones a nivel raíz
+comisiones_router = DefaultRouter()
+comisiones_router.register(r'comisiones', ComisionViewSet, basename='comision')
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -39,4 +45,7 @@ urlpatterns = [
     path("api/integrations/", include('apps.integrations.urls')),
     path("api/webhooks/", include('webhooks.urls')),
     path("api/kpis/", include('apps.kpis.urls')),
+    
+    # Comisiones directamente en /api/comisiones/
+    path("api/", include(comisiones_router.urls)),
 ]

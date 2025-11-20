@@ -4,7 +4,7 @@ Serializadores para gestión de llamadas del call center.
 from rest_framework import serializers
 from django.utils import timezone
 from django.db import transaction
-from apps.calls.models import Llamada, IteracionCliente, Venta, FormularioVenta, ReporteLlamada
+from apps.calls.models import Llamada, IteracionCliente, Venta, FormularioVenta, ReporteLlamada, Comision
 from apps.campaigns.models import Cliente, Campana, Producto
 from apps.users.models import User, EstadoAgenteActual, EstadoAgenteDetalle, TiposParametros
 from common.estados_helper import EstadosHelper, get_estado, get_estado_id
@@ -185,6 +185,7 @@ class RegistrarVentaSerializer(serializers.Serializer):
         3. Guardar datos del formulario en FormularioVenta.campos_json
         4. Vincular la venta a la llamada
         5. Actualizar el estado de la llamada a "VENTA"
+        6. Crear comisión automáticamente para el agente
         
         Returns:
             Venta: Instancia de la venta creada
@@ -235,17 +236,35 @@ class RegistrarVentaSerializer(serializers.Serializer):
         
         llamada.save()
         
+        # Crear comisión automáticamente
+        campana = llamada.cliente.campana if llamada.cliente else None
+        if campana and llamada.agente and monto:
+            from decimal import Decimal
+            # Calcular comisión: monto * (porcentaje / 100)
+            porcentaje_comision = campana.comision_porcentaje or Decimal('10.00')
+            monto_comision = monto * (porcentaje_comision / Decimal('100'))
+            
+            # Crear registro de comisión
+            Comision.objects.create(
+                agente=llamada.agente,
+                venta=venta,
+                producto=producto,
+                cantidad=monto_comision
+            )
+        
         return venta
     
     def to_representation(self, instance):
         """
         Personaliza la respuesta para incluir información completa de la venta.
         Obtiene datos del agente y formulario desde la llamada asociada.
+        Incluye información de la comisión generada.
         """
         # Obtener la llamada asociada a esta venta
         llamada = instance.llamadas.first()
         agente_info = None
         formulario_data = {}
+        comision_info = None
         
         if llamada:
             # Información del agente
@@ -259,6 +278,19 @@ class RegistrarVentaSerializer(serializers.Serializer):
             formulario = llamada.formularios.first()
             if formulario:
                 formulario_data = formulario.campos_json
+        
+        # Obtener comisión asociada a esta venta
+        try:
+            comision = instance.comision
+            if comision:
+                comision_info = {
+                    'id': comision.comision_id,
+                    'cantidad': str(comision.cantidad),
+                    'porcentaje': str(comision.venta.campana_id.comision_porcentaje) if comision.venta.campana_id else '10.00',
+                    'fecha': comision.fecha.isoformat()
+                }
+        except Comision.DoesNotExist:
+            comision_info = None
         
         return {
             'venta_id': instance.venta_id,
@@ -275,7 +307,8 @@ class RegistrarVentaSerializer(serializers.Serializer):
                 'monto': str(instance.monto) if instance.monto else None,
                 'observaciones': formulario_data.get('observaciones', ''),
                 'agente': agente_info
-            }
+            },
+            'comision': comision_info
         }
 
 
@@ -1097,3 +1130,37 @@ class HistorialJefeCampanaSerializer(serializers.ModelSerializer):
                 })
         
         return notas
+
+
+class ComisionSerializer(serializers.ModelSerializer):
+    """
+    Serializer para comisiones de agentes.
+    """
+    agente_nombre = serializers.SerializerMethodField()
+    campana_nombre = serializers.SerializerMethodField()
+    producto_nombre = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Comision
+        fields = [
+            'comision_id', 'agente', 'agente_nombre', 'venta',
+            'producto', 'producto_nombre', 'cantidad', 'fecha',
+            'campana_nombre'
+        ]
+        read_only_fields = ['comision_id', 'fecha']
+    
+    def get_agente_nombre(self, obj):
+        """Obtiene el nombre completo del agente."""
+        return obj.agente.get_full_name() if obj.agente else None
+    
+    def get_campana_nombre(self, obj):
+        """Obtiene el nombre de la campaña desde la venta."""
+        if obj.venta and obj.venta.campana_id:
+            return obj.venta.campana_id.nombre
+        return None
+    
+    def get_producto_nombre(self, obj):
+        """Obtiene el nombre del producto."""
+        if obj.producto:
+            return obj.producto.nombre
+        return None

@@ -27,6 +27,56 @@ class Venta(models.Model):
     
     def __str__(self):
         return f"Venta {self.venta_id}"
+
+
+class Comision(models.Model):
+    """
+    Registro de comisiones generadas por ventas.
+    """
+    comision_id = models.AutoField(primary_key=True)
+    agente = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='comisiones',
+        help_text='Agente que realizó la venta'
+    )
+    venta = models.OneToOneField(
+        Venta,
+        on_delete=models.CASCADE,
+        related_name='comision',
+        help_text='Venta asociada a esta comisión'
+    )
+    producto = models.ForeignKey(
+        Producto,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='comisiones',
+        help_text='Producto vendido'
+    )
+    cantidad = models.DecimalField(
+        'Cantidad (Monto de Comisión)',
+        max_digits=10,
+        decimal_places=2,
+        help_text='Monto en pesos de la comisión'
+    )
+    fecha = models.DateTimeField(
+        'Fecha de Generación',
+        auto_now_add=True
+    )
+    
+    class Meta:
+        db_table = 'comision'
+        verbose_name = 'Comisión'
+        verbose_name_plural = 'Comisiones'
+        ordering = ['-fecha']
+        indexes = [
+            models.Index(fields=['agente', '-fecha']),
+        ]
+    
+    def __str__(self):
+        return f"Comisión {self.comision_id} - {self.agente.get_full_name()} - ${self.cantidad}"
+
     
 class Llamada(models.Model):
     """
