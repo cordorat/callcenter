@@ -25,6 +25,7 @@ from apps.users.states.serializers_estado import (
     EstadoAgenteSimpleSerializer
 )
 from common.estados_helper import get_estado_id, get_estado
+from apps.users.helpers.estado_agente_service import cambiar_estado_agente_por_valor
 
 
 class TiposParametrosViewSet(viewsets.ModelViewSet):
@@ -261,75 +262,30 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
         # Convertir el string a instancia de TiposParametros
         nuevo_estado = get_estado('ESTADO_AGENTE', nuevo_estado_valor)
         
-        # Obtener o crear estado actual
-        estado_desconectado = get_estado('ESTADO_AGENTE', 'DESCONECTADO')
-        estado_actual, created = EstadoAgenteActual.objects.get_or_create(
-            agente_id=agente,
-            defaults={
-                'estado_id': estado_desconectado
-            }
-        )
-        
-        from datetime import date
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        # Si NO es la primera vez (ya tenía un estado anterior)
-        if not created:
-            # Verificar si es un cambio real de estado
-            if estado_actual.estado_id.parametros_id != nuevo_estado.parametros_id:
-                # Calcular duración en el estado anterior
-                duracion_segundos = estado_actual.duracion_actual_segundos
-                estado_anterior = estado_actual.estado_id
-                
-                logger.info(f"[change_state] Agente: {agente.full_name}, Estado anterior: {estado_anterior.valor}, Duración: {duracion_segundos} seg")
-                
-                # Obtener o crear el registro del día para el estado ANTERIOR
-                detalle_anterior, _ = EstadoAgenteDetalle.objects.get_or_create(
-                    agente_id=agente,
-                    estado_id=estado_anterior,
-                    fecha=date.today(),
-                    defaults={'tiempo': '00:00:00', 'cambios': ''}
+        # Cambiar estado usando el servicio centralizado
+        try:
+            success, message, estado_actual = cambiar_estado_agente_por_valor(
+                agente,
+                nuevo_estado_valor,
+                usuario_cambio=request.user
+            )
+            
+            if not success:
+                return Response(
+                    {'detail': message},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
-                
-                logger.info(f"[change_state] Tiempo antes: {detalle_anterior.tiempo}")
-                
-                # Agregar el cambio al historial
-                cambio_texto = comentarios or f'Cambio por {request.user.full_name}'
-                detalle_anterior.agregar_cambio(cambio_texto)
-                
-                # Actualizar el tiempo acumulado
-                detalle_anterior.agregar_tiempo(duracion_segundos)
-                detalle_anterior.save()
-                
-                logger.info(f"[change_state] Tiempo después: {detalle_anterior.tiempo}")
-        
-        # Inicializar registro del NUEVO estado si no existe
-        detalle_nuevo, detalle_created = EstadoAgenteDetalle.objects.get_or_create(
-            agente_id=agente,
-            estado_id=nuevo_estado,
-            fecha=date.today(),
-            defaults={
-                'tiempo': '00:00:00',
-                'cambios': comentarios or f'Cambio de estado por {request.user.full_name}'
-            }
-        )
-        
-        # Si ya existía el registro del nuevo estado, agregar el cambio al historial
-        if not detalle_created:
-            cambio_texto = comentarios or f'Cambio de estado por {request.user.full_name}'
-            detalle_nuevo.agregar_cambio(cambio_texto)
-            detalle_nuevo.save()
-        
-        # Actualizar el estado actual
-        estado_actual.estado_id = nuevo_estado
-        estado_actual.tiempo = timezone.now()
-        estado_actual.save()
-        
-        # Retornar el nuevo estado
-        from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
-        response_serializer = EstadoAgenteActualSerializer(estado_actual)
-        return Response(response_serializer.data, status=status.HTTP_200_OK)
+            
+            # Retornar el nuevo estado
+            from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
+            response_serializer = EstadoAgenteActualSerializer(estado_actual)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+            
+        except ValueError as e:
+            return Response(
+                {'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     @action(detail=False, methods=['get'])
     def disponibles(self, request):
@@ -382,5 +338,4 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
         from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
         serializer = EstadoAgenteActualSerializer(estados, many=True)
         return Response(serializer.data)
-
 

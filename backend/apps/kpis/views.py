@@ -959,18 +959,16 @@ class KPIViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validar que no sean fechas futuras (Criterio 3.5)
+        # Validar que fecha_desde no sea futura
         if fecha_desde > hoy:
             return Response(
                 {"detail": "No se pueden elegir fechas futuras (fecha_desde)"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Si fecha_hasta es futura, ajustarla a hoy
         if fecha_hasta > hoy:
-            return Response(
-                {"detail": "No se pueden elegir fechas futuras (fecha_hasta)"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            fecha_hasta = hoy
 
         # Validar rango de fechas (Criterio 3.4)
         if fecha_desde > fecha_hasta:
@@ -1363,10 +1361,10 @@ class KPIViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Validar que no sean fechas futuras
-        if fecha_desde > hoy or fecha_hasta > hoy:
+        # Validar que la fecha inicial no sea futura
+        if fecha_desde > hoy:
             return Response(
-                {"detail": "No se pueden elegir fechas futuras"},
+                {"detail": "La fecha inicial no puede ser futura"},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -1376,6 +1374,10 @@ class KPIViewSet(viewsets.ViewSet):
                 {"detail": "La fecha inicial no puede ser mayor a la fecha posterior"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Si fecha_hasta es futura, ajustarla a hoy para los cálculos
+        if fecha_hasta > hoy:
+            fecha_hasta = hoy
         
         # ===========================
         # 3. OBTENER AGENTES DEL EQUIPO
@@ -1546,11 +1548,16 @@ class KPIViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if fecha_desde > hoy or fecha_hasta > hoy:
+        # Validar que fecha_desde no sea futura
+        if fecha_desde > hoy:
             return Response(
-                {"detail": "No se pueden elegir fechas futuras"},
+                {"detail": "No se pueden elegir fechas futuras (fecha_desde)"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Si fecha_hasta es futura, ajustarla a hoy
+        if fecha_hasta > hoy:
+            fecha_hasta = hoy
 
         if fecha_desde > fecha_hasta:
             return Response(
