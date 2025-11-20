@@ -44,6 +44,7 @@ class ClienteViewSet(viewsets.ModelViewSet):
     create: Crear nuevo cliente
     update: Actualizar cliente
     destroy: Eliminar cliente (solo admin)
+    por_base_datos: Listar clientes de una base de datos específica
     """
     queryset = Cliente.objects.all()
     serializer_class = ClienteSerializer
@@ -81,6 +82,155 @@ class ClienteViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(documento_id__icontains=documento)
         
         return queryset.order_by('-created_at')
+    
+    @action(detail=False, methods=['get'], url_path='por-base-datos')
+    def por_base_datos(self, request):
+        """
+        Lista los clientes pertenecientes a una base de datos específica.
+        Accesible por Jefes de Campaña para ver clientes de sus bases de datos.
+        
+        URL: GET /api/calls/clientes/por-base-datos/?base_datos_id={id}
+        
+        Query Parameters:
+        - base_datos_id: ID de la base de datos (requerido)
+        - search: Búsqueda por nombre (opcional)
+        - telefono: Búsqueda por teléfono (opcional)
+        - page: Número de página (default: 1)
+        - page_size: Tamaño de página (default: 20, max: 100)
+        
+        Response:
+        {
+            "count": 150,
+            "total_pages": 8,
+            "current_page": 1,
+            "page_size": 20,
+            "base_datos": {
+                "id": 1,
+                "nombre": "Base Clientes Q4 2025",
+                "campana_id": 5,
+                "campana_nombre": "Campaña Navidad",
+                "fecha_carga": "2025-11-01T10:00:00Z"
+            },
+            "results": [
+                {
+                    "cliente_id": 123,
+                    "nombre": "Juan Pérez",
+                    "telefono": "+573001234567",
+                    "otros_datos": {...}
+                },
+                ...
+            ]
+        }
+        """
+        # Validar que se proporcione base_datos_id
+        base_datos_id = request.query_params.get('base_datos_id')
+        if not base_datos_id:
+            return Response(
+                {'error': 'El parámetro base_datos_id es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            base_datos_id = int(base_datos_id)
+        except ValueError:
+            return Response(
+                {'error': 'El parámetro base_datos_id debe ser un número entero'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Obtener la base de datos
+        from apps.campaigns.models import BaseDatosCargada
+        try:
+            base_datos = BaseDatosCargada.objects.select_related('campana').get(id=base_datos_id)
+        except BaseDatosCargada.DoesNotExist:
+            return Response(
+                {'error': 'Base de datos no encontrada'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Verificar permisos: Jefe de Campaña solo puede ver bases de sus campañas
+        user = request.user
+        if not user.is_admin():
+            # Si es Jefe de Campaña, verificar que la base pertenezca a su campaña
+            if user.is_jefe_campana():
+                if base_datos.campana.jefe_campana != user:
+                    return Response(
+                        {'error': 'No tiene permisos para ver clientes de esta base de datos'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            else:
+                # Otros roles no tienen acceso
+                return Response(
+                    {'error': 'No tiene permisos para ver clientes de bases de datos'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Filtrar clientes por base_datos_id
+        queryset = Cliente.objects.filter(base_datos_id=base_datos_id)
+        
+        # Aplicar filtros opcionales
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(nombre__icontains=search)
+        
+        telefono = request.query_params.get('telefono')
+        if telefono:
+            queryset = queryset.filter(telefono__icontains=telefono)
+        
+        # Ordenar por ID (más recientes primero)
+        queryset = queryset.order_by('-cliente_id')
+        
+        # Contar total de clientes
+        total_count = queryset.count()
+        
+        # Paginación
+        page_size = request.query_params.get('page_size', 20)
+        try:
+            page_size = int(page_size)
+            if page_size < 1:
+                page_size = 20
+            elif page_size > 100:
+                page_size = 100
+        except ValueError:
+            page_size = 20
+        
+        page = request.query_params.get('page', 1)
+        try:
+            page = int(page)
+            if page < 1:
+                page = 1
+        except ValueError:
+            page = 1
+        
+        # Calcular offset
+        start = (page - 1) * page_size
+        end = start + page_size
+        
+        # Obtener página de resultados
+        clientes_pagina = queryset[start:end]
+        
+        # Serializar resultados
+        serializer = ClienteSerializer(clientes_pagina, many=True)
+        
+        # Calcular páginas totales
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 0
+        
+        return Response({
+            'count': total_count,
+            'total_pages': total_pages,
+            'current_page': page,
+            'page_size': page_size,
+            'base_datos': {
+                'id': base_datos.id,
+                'nombre': base_datos.nombre_bd,
+                'campana_id': base_datos.campana.id if base_datos.campana else None,
+                'campana_nombre': base_datos.campana.nombre if base_datos.campana else None,
+                'fecha_carga': base_datos.fecha_carga,
+                'iteracion_activa': base_datos.iteracion_activa,
+                'fecha_hora_inicio_iteracion': base_datos.fecha_hora_inicio_iteracion
+            },
+            'results': serializer.data
+        })
 
 
 class CampanaViewSet(viewsets.ModelViewSet):

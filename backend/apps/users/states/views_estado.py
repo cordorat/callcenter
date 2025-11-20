@@ -25,6 +25,7 @@ from apps.users.states.serializers_estado import (
     EstadoAgenteSimpleSerializer
 )
 from common.estados_helper import get_estado_id, get_estado
+from apps.users.helpers.estado_agente_service import cambiar_estado_agente_por_valor
 
 
 class TiposParametrosViewSet(viewsets.ModelViewSet):
@@ -261,45 +262,30 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
         # Convertir el string a instancia de TiposParametros
         nuevo_estado = get_estado('ESTADO_AGENTE', nuevo_estado_valor)
         
-        # Obtener o crear estado actual
-        estado_desconectado = get_estado('ESTADO_AGENTE', 'DESCONECTADO')
-        estado_actual, created = EstadoAgenteActual.objects.get_or_create(
-            agente_id=agente,
-            defaults={
-                'estado_id': estado_desconectado
-            }
-        )
-        
-        # Registrar el cambio en el historial (get_or_create para evitar duplicados)
-        from datetime import date
-        detalle, detalle_created = EstadoAgenteDetalle.objects.get_or_create(
-            agente_id=agente,
-            estado_id=nuevo_estado,
-            fecha=date.today(),
-            defaults={
-                'tiempo': '00:00:00',
-                'cambios': comentarios or f'Cambio de estado por {request.user.full_name}'
-            }
-        )
-        
-        # Si ya existía el registro de hoy, agregar el cambio al historial
-        if not detalle_created:
-            cambio_texto = comentarios or f'Cambio de estado por {request.user.full_name}'
-            if detalle.cambios:
-                detalle.cambios += f', {cambio_texto}'
-            else:
-                detalle.cambios = cambio_texto
-            detalle.save()
-        
-        # Actualizar el estado actual
-        estado_actual.estado_id = nuevo_estado
-        estado_actual.tiempo = timezone.now()
-        estado_actual.save()
-        
-        # Retornar el nuevo estado
-        from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
-        response_serializer = EstadoAgenteActualSerializer(estado_actual)
-        return Response(response_serializer.data, status=status.HTTP_200_OK)
+        # Cambiar estado usando el servicio centralizado
+        try:
+            success, message, estado_actual = cambiar_estado_agente_por_valor(
+                agente,
+                nuevo_estado_valor,
+                usuario_cambio=request.user
+            )
+            
+            if not success:
+                return Response(
+                    {'detail': message},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Retornar el nuevo estado
+            from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
+            response_serializer = EstadoAgenteActualSerializer(estado_actual)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+            
+        except ValueError as e:
+            return Response(
+                {'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     @action(detail=False, methods=['get'])
     def disponibles(self, request):
@@ -352,5 +338,4 @@ class EstadoAgenteViewSet(viewsets.ReadOnlyModelViewSet):
         from apps.users.states.serializers_estado import EstadoAgenteActualSerializer
         serializer = EstadoAgenteActualSerializer(estados, many=True)
         return Response(serializer.data)
-
 

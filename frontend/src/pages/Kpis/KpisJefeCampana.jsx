@@ -20,8 +20,6 @@ import {
     InputLabel,
     Chip,
     Stack,
-    Tabs,
-    Tab,
     Box,
     Table,
     TableBody,
@@ -77,6 +75,22 @@ const fmtSecs = (s) => {
     const m = Math.floor(n / 60);
     const ss = n % 60;
     return `${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")} min`;
+};
+
+// Función helper para formatear el label del estado
+const formatEstadoLabel = (estado) => {
+    switch (estado) {
+        case 'ACTIVA':
+            return 'Activa';
+        case 'NO_ACTIVA':
+            return 'No Activa';
+        case 'PAUSADA':
+            return 'Pausada';
+        case 'FINALIZADA':
+            return 'Finalizada';
+        default:
+            return estado;
+    }
 };
 
 export default function KpisJefeCampana() {
@@ -282,7 +296,7 @@ export default function KpisJefeCampana() {
     const renderSelectorCampana = () => {
         if (loadingCampanas) {
             return (
-                <Paper elevation={2} sx={{ p: 2, mb: 2, textAlign: 'center' }}>
+                <Paper elevation={2} sx={{ p: 2, textAlign: 'center' }}>
                     <CircularProgress size={24} />
                     <Typography sx={{ mt: 1 }}>Cargando campañas...</Typography>
                 </Paper>
@@ -291,7 +305,7 @@ export default function KpisJefeCampana() {
 
         if (campanas.length === 0) {
             return (
-                <Alert severity="warning" sx={{ mb: 2 }}>
+                <Alert severity="warning">
                     No hay campañas asignadas en el momento.
                 </Alert>
             );
@@ -301,14 +315,14 @@ export default function KpisJefeCampana() {
         if (campanas.length === 1) {
             const campana = campanas[0];
             return (
-                <Paper elevation={2} sx={{ p: 2, mb: 2, width: 'fit-content' }}>
+                <Paper elevation={2} sx={{ p: 2, width: 'fit-content' }}>
                     <Stack direction="row" spacing={2} alignItems="center">
-                        <Typography variant="h6" fontWeight={700}>
+                        <Typography variant="h6" sx={{ fontWeight: 700, flex: 1 }}>
                             {campana.nombre}
                         </Typography>
                         {campana.estado && (
                             <Chip
-                                label={campana.estado}
+                                label={formatEstadoLabel(campana.estado)}
                                 size="small"
                                 color={campana.estado === 'ACTIVA' ? 'success' : campana.estado === 'PAUSADA' ? 'warning' : 'default'}
                                 sx={{ fontWeight: 600 }}
@@ -321,7 +335,7 @@ export default function KpisJefeCampana() {
 
         // Si tiene múltiples campañas, mostrar selector
         return (
-            <Paper elevation={2} sx={{ p: 2, mb: 2, width: 'fit-content', minWidth: 400 }}>
+            <Paper elevation={2} sx={{ p: 2, width: 'fit-content', minWidth: 400 }}>
                 <FormControl fullWidth>
                     <InputLabel id="campana-label">Selecciona una campaña</InputLabel>
                     <Select
@@ -339,7 +353,7 @@ export default function KpisJefeCampana() {
                                     <Typography sx={{ flex: 1 }}>{camp.nombre}</Typography>
                                     {camp.estado && (
                                         <Chip
-                                            label={camp.estado}
+                                            label={formatEstadoLabel(camp.estado)}
                                             size="small"
                                             color={camp.estado === 'ACTIVA' ? 'success' : camp.estado === 'PAUSADA' ? 'warning' : 'default'}
                                             sx={{
@@ -554,51 +568,68 @@ export default function KpisJefeCampana() {
                         : 'linear-gradient(135deg, #EFF6FB 0%, #E0EDF9 100%)',
                 }}
             >
-                {/* Header */}
-                <div className="kpi-header">
-                    <h2>KPIs - Jefe de Campaña</h2>
-                    <div className="kpi-actions">
-                        {updatedAt && (
-                            <span className="update-badge">
-                                Última actualización: {new Date(updatedAt).toLocaleString()}
-                            </span>
-                        )}
-                        <button 
-                            className="btn" 
-                            onClick={() => {
-                                if (tabValue === 0) {
-                                    fetchData();
-                                } else if (equipoSeleccionado) {
-                                    fetchEquipoDetalle(equipoSeleccionado);
-                                } else {
-                                    fetchEquipos();
-                                }
-                            }} 
-                            disabled={loading || loadingEquipos || loadingEquipoDetalle}
-                        >
-                            {(loading || loadingEquipos || loadingEquipoDetalle) ? 
-                                <RefreshIcon fontSize="small" className="spinning" /> : 
-                                <RefreshIcon fontSize="small" />
-                            }
-                        </button>
+                {/* Header con selector de campaña y botón de actualizar */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    {/* Selector de Campaña */}
+                    <div>
+                        {renderSelectorCampana()}
                     </div>
-                </div>
 
-                {/* Selector de Campaña */}
-                {renderSelectorCampana()}
+                    {/* Botón de actualizar - Solo visible con campaña seleccionada */}
+                    {(campanaSeleccionada || campanas.length === 1) && (
+                        <div className="kpi-actions">
+                            {updatedAt && (
+                                <span className="update-badge">
+                                    Última actualización: {new Date(updatedAt).toLocaleString()}
+                                </span>
+                            )}
+                            <button 
+                                className="btn" 
+                                onClick={() => {
+                                    if (tabValue === 0) {
+                                        fetchData();
+                                    } else if (equipoSeleccionado) {
+                                        fetchEquipoDetalle(equipoSeleccionado);
+                                    } else {
+                                        fetchEquipos();
+                                    }
+                                }} 
+                                disabled={loading || loadingEquipos || loadingEquipoDetalle}
+                            >
+                                {(loading || loadingEquipos || loadingEquipoDetalle) ? 
+                                    <RefreshIcon fontSize="small" className="spinning" /> : 
+                                    <RefreshIcon fontSize="small" />
+                                }
+                            </button>
+                        </div>
+                    )}
+                </div>
 
                 {/* Pestañas */}
                 {(campanaSeleccionada || campanas.length === 1) && (
-                    <Paper elevation={2} sx={{ mb: 2 }}>
-                        <Tabs 
-                            value={tabValue} 
-                            onChange={handleTabChange}
-                            sx={{ borderBottom: 1, borderColor: 'divider' }}
-                        >
-                            <Tab label="Campaña" />
-                            <Tab label="Equipos" />
-                        </Tabs>
-                    </Paper>
+                    <div 
+                        className="kpi-filters" 
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            marginBottom: '20px',
+                        }}
+                    >
+                        <div className="segmented">
+                            <button
+                                className={tabValue === 0 ? "active" : ""}
+                                onClick={() => handleTabChange(null, 0)}
+                            >
+                                Campaña
+                            </button>
+                            <button
+                                className={tabValue === 1 ? "active" : ""}
+                                onClick={() => handleTabChange(null, 1)}
+                            >
+                                Equipos
+                            </button>
+                        </div>
+                    </div>
                 )}
 
                 {/* Mostrar filtros y contenido solo si hay campaña seleccionada */}

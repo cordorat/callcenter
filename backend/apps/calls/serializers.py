@@ -8,6 +8,7 @@ from apps.calls.models import Llamada, IteracionCliente, Venta, FormularioVenta,
 from apps.campaigns.models import Cliente, Campana, Producto
 from apps.users.models import User, EstadoAgenteActual, EstadoAgenteDetalle, TiposParametros
 from common.estados_helper import EstadosHelper, get_estado, get_estado_id
+from apps.users.helpers.estado_agente_service import cambiar_estado_agente
 
 
 
@@ -650,33 +651,15 @@ class RecibirLlamadaSerializer(serializers.Serializer):
             estado_recibida=get_estado('ESTADO_LLAMADA', 'TIMBRADO')
         )
         
-        # Actualizar estado del agente a EN_LLAMADA
-        estado_actual = EstadoAgenteActual.objects.get(agente_id=user)
-        
-        # Cerrar estado anterior
-        if estado_actual.estado_detalle_id:
-            try:
-                detalle_anterior = EstadoAgenteDetalle.objects.get(
-                    estado_agente_detalle_id=estado_actual.estado_detalle_id
-                )
-                if not detalle_anterior.hora_fin:
-                    detalle_anterior.hora_fin = timezone.now()
-                    detalle_anterior.save()
-            except EstadoAgenteDetalle.DoesNotExist:
-                pass
-        
-        # Crear nuevo estado EN_LLAMADA
-        nuevo_detalle = EstadoAgenteDetalle.objects.create(
-            agente_id=user,
-            estado_id=EstadosHelper.agente_en_llamada(),
-            comentario=f'Llamada recibida: {llamada.llamada_sid}',
-            hora_inicio=timezone.now(),
-            fecha=timezone.now().date()
-        )
-        
-        estado_actual.estado_id = EstadosHelper.agente_en_llamada()
-        estado_actual.estado_detalle_id = nuevo_detalle.estado_agente_detalle_id
-        estado_actual.save()
+        # Actualizar estado del agente a EN_LLAMADA usando servicio centralizado
+        try:
+            estado_en_llamada = EstadosHelper.agente_en_llamada()
+            cambiar_estado_agente(user, estado_en_llamada, usuario_cambio=user)
+        except Exception as e:
+            # Log error pero no fallar la creación de la llamada
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al cambiar estado del agente a EN_LLAMADA: {str(e)}")
         
         return llamada
 
@@ -758,39 +741,17 @@ class CompletarLlamadaSerializer(serializers.Serializer):
                 datos_formulario={}
             )
         
-        # Actualizar estado del agente a POSTCALL
+        # Actualizar estado del agente a POSTCALL usando servicio centralizado
         request = self.context.get('request')
         user = request.user
         
         try:
-            estado_actual = EstadoAgenteActual.objects.get(agente_id=user)
-            
-            # Cerrar estado anterior
-            if estado_actual.estado_detalle_id:
-                try:
-                    detalle_anterior = EstadoAgenteDetalle.objects.get(
-                        estado_agente_detalle_id=estado_actual.estado_detalle_id
-                    )
-                    if not detalle_anterior.hora_fin:
-                        detalle_anterior.hora_fin = timezone.now()
-                        detalle_anterior.save()
-                except EstadoAgenteDetalle.DoesNotExist:
-                    pass
-            
-            # Crear nuevo estado POSTCALL
-            nuevo_detalle = EstadoAgenteDetalle.objects.create(
-                agente_id=user,
-                estado_id=EstadosHelper.agente_postcall(),
-                comentario=f'Llamada completada: {instance.llamada_sid}',
-                hora_inicio=timezone.now(),
-                fecha=timezone.now().date()
-            )
-            
-            estado_actual.estado_id = EstadosHelper.agente_postcall()
-            estado_actual.estado_detalle_id = nuevo_detalle.estado_agente_detalle_id
-            estado_actual.save()
-        except EstadoAgenteActual.DoesNotExist:
-            pass
+            estado_postcall = EstadosHelper.agente_postcall()
+            cambiar_estado_agente(user, estado_postcall, usuario_cambio=user)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al cambiar estado del agente a POSTCALL: {str(e)}")
         
         return instance
 
@@ -838,39 +799,17 @@ class RechazarLlamadaSerializer(serializers.Serializer):
         
         instance.save()
         
-        # Actualizar estado del agente a DISPONIBLE
+        # Actualizar estado del agente a DISPONIBLE usando servicio centralizado
         request = self.context.get('request')
         user = request.user
         
         try:
-            estado_actual = EstadoAgenteActual.objects.get(agente_id=user)
-            
-            # Cerrar estado anterior
-            if estado_actual.estado_detalle_id:
-                try:
-                    detalle_anterior = EstadoAgenteDetalle.objects.get(
-                        estado_agente_detalle_id=estado_actual.estado_detalle_id
-                    )
-                    if not detalle_anterior.hora_fin:
-                        detalle_anterior.hora_fin = timezone.now()
-                        detalle_anterior.save()
-                except EstadoAgenteDetalle.DoesNotExist:
-                    pass
-            
-            # Volver a DISPONIBLE
-            nuevo_detalle = EstadoAgenteDetalle.objects.create(
-                agente_id=user,
-                estado_id=EstadosHelper.agente_disponible(),
-                comentario=f'Llamada rechazada: {instance.llamada_sid}',
-                hora_inicio=timezone.now(),
-                fecha=timezone.now().date()
-            )
-            
-            estado_actual.estado_id = EstadosHelper.agente_disponible()
-            estado_actual.estado_detalle_id = nuevo_detalle.estado_agente_detalle_id
-            estado_actual.save()
-        except EstadoAgenteActual.DoesNotExist:
-            pass
+            estado_disponible = EstadosHelper.agente_disponible()
+            cambiar_estado_agente(user, estado_disponible, usuario_cambio=user)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al cambiar estado del agente a DISPONIBLE: {str(e)}")
         
         return instance
 
@@ -933,65 +872,23 @@ class TransferirLlamadaSerializer(serializers.Serializer):
         instance.agente = agente_destino
         instance.save()
         
-        # Liberar agente origen
+        # Liberar agente origen usando servicio centralizado
         try:
-            estado_origen = EstadoAgenteActual.objects.get(agente_id=agente_origen)
-            
-            # Cerrar estado anterior
-            if estado_origen.estado_detalle_id:
-                try:
-                    detalle_anterior = EstadoAgenteDetalle.objects.get(
-                        estado_agente_detalle_id=estado_origen.estado_detalle_id
-                    )
-                    if not detalle_anterior.hora_fin:
-                        detalle_anterior.hora_fin = timezone.now()
-                        detalle_anterior.save()
-                except EstadoAgenteDetalle.DoesNotExist:
-                    pass
-            
-            nuevo_detalle_origen = EstadoAgenteDetalle.objects.create(
-                agente_id=agente_origen,
-                estado_id=EstadosHelper.agente_disponible(),
-                comentario=f'Llamada transferida: {instance.llamada_sid}',
-                hora_inicio=timezone.now(),
-                fecha=timezone.now().date()
-            )
-            
-            estado_origen.estado_id = EstadosHelper.agente_disponible()
-            estado_origen.estado_detalle_id = nuevo_detalle_origen.estado_agente_detalle_id
-            estado_origen.save()
-        except EstadoAgenteActual.DoesNotExist:
-            pass
+            estado_disponible = EstadosHelper.agente_disponible()
+            cambiar_estado_agente(agente_origen, estado_disponible, usuario_cambio=agente_origen)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al cambiar estado del agente origen: {str(e)}")
         
-        # Ocupar agente destino
+        # Ocupar agente destino usando servicio centralizado
         try:
-            estado_destino = EstadoAgenteActual.objects.get(agente_id=agente_destino)
-            
-            # Cerrar estado anterior
-            if estado_destino.estado_detalle_id:
-                try:
-                    detalle_anterior = EstadoAgenteDetalle.objects.get(
-                        estado_agente_detalle_id=estado_destino.estado_detalle_id
-                    )
-                    if not detalle_anterior.hora_fin:
-                        detalle_anterior.hora_fin = timezone.now()
-                        detalle_anterior.save()
-                except EstadoAgenteDetalle.DoesNotExist:
-                    pass
-            
-            nuevo_detalle_destino = EstadoAgenteDetalle.objects.create(
-                agente_id=agente_destino,
-                estado_id=EstadosHelper.agente_en_llamada(),
-                comentario=f'Llamada recibida por transferencia: {instance.llamada_sid}',
-                hora_inicio=timezone.now(),
-                fecha=timezone.now().date()
-            )
-            
-            estado_destino.estado_id = EstadosHelper.agente_en_llamada()
-            estado_destino.estado_detalle_id = nuevo_detalle_destino.estado_agente_detalle_id
-            estado_destino.save()
-        except EstadoAgenteActual.DoesNotExist:
-            pass
+            estado_en_llamada = EstadosHelper.agente_en_llamada()
+            cambiar_estado_agente(agente_destino, estado_en_llamada, usuario_cambio=agente_origen)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al cambiar estado del agente destino: {str(e)}")
         
         return instance
 
@@ -1267,3 +1164,4 @@ class ComisionSerializer(serializers.ModelSerializer):
         if obj.producto:
             return obj.producto.nombre
         return None
+        return notas

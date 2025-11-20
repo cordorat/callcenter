@@ -9,6 +9,8 @@ from django.db.models import Avg, Count, F, Q
 from datetime import timedelta, datetime, time, date
 from django.utils.dateparse import parse_date
 from django.db.models.functions import Extract
+from django.http import HttpResponse
+from io import BytesIO
 
 from apps.calls.models import Llamada
 from apps.users.models import User
@@ -17,6 +19,14 @@ from apps.kpis.serializers import AgenteListSerializer, KPIAgenteDetailSerialize
 from common.estados_helper import get_estado_id, get_estado
 from apps.campaigns.models import Campana, Equipo
 from rest_framework.pagination import PageNumberPagination
+
+# Importaciones para PDF
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 
 
@@ -949,18 +959,16 @@ class KPIViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validar que no sean fechas futuras (Criterio 3.5)
+        # Validar que fecha_desde no sea futura
         if fecha_desde > hoy:
             return Response(
                 {"detail": "No se pueden elegir fechas futuras (fecha_desde)"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Si fecha_hasta es futura, ajustarla a hoy
         if fecha_hasta > hoy:
-            return Response(
-                {"detail": "No se pueden elegir fechas futuras (fecha_hasta)"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            fecha_hasta = hoy
 
         # Validar rango de fechas (Criterio 3.4)
         if fecha_desde > fecha_hasta:
@@ -1353,10 +1361,10 @@ class KPIViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Validar que no sean fechas futuras
-        if fecha_desde > hoy or fecha_hasta > hoy:
+        # Validar que la fecha inicial no sea futura
+        if fecha_desde > hoy:
             return Response(
-                {"detail": "No se pueden elegir fechas futuras"},
+                {"detail": "La fecha inicial no puede ser futura"},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -1366,6 +1374,10 @@ class KPIViewSet(viewsets.ViewSet):
                 {"detail": "La fecha inicial no puede ser mayor a la fecha posterior"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Si fecha_hasta es futura, ajustarla a hoy para los cálculos
+        if fecha_hasta > hoy:
+            fecha_hasta = hoy
         
         # ===========================
         # 3. OBTENER AGENTES DEL EQUIPO
@@ -2289,6 +2301,401 @@ class KPIViewSet(viewsets.ViewSet):
         buffer.seek(0)
         response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
         filename = f"KPIs_Centro_{centro.nombre.replace(' ', '_')}_{fecha_desde.strftime('%Y%m%d')}_{fecha_hasta.strftime('%Y%m%d')}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+
+    @action(detail=False, methods=['get'], url_path='coordinador/exportar-pdf', permission_classes=[IsCoordinador])
+    def exportar_kpis_pdf(self, request):
+        """
+        Endpoint para exportar KPIs del equipo a PDF.
+        Solo accesible para Coordinadores.
+        
+        GET /api/kpis/coordinador/exportar-pdf/
+        GET /api/kpis/coordinador/exportar-pdf/?fecha_desde=2025-11-01&fecha_hasta=2025-11-08
+        
+        Query params:
+            fecha_desde: Fecha inicio (YYYY-MM-DD), opcional (default: hoy)
+            fecha_hasta: Fecha fin (YYYY-MM-DD), opcional (default: hoy)
+        
+        Response:
+            Archivo PDF descargable con todos los KPIs del equipo
+        """
+        # ===========================
+        # 1. OBTENER DATOS DE KPI
+        # ===========================
+        fecha_desde_str = request.query_params.get('fecha_desde')
+        fecha_hasta_str = request.query_params.get('fecha_hasta')
+
+        hoy = date.today()
+
+        if not fecha_desde_str and not fecha_hasta_str:
+            fecha_desde = fecha_hasta = hoy
+        elif fecha_desde_str and fecha_hasta_str:
+            fecha_desde = parse_date(fecha_desde_str)
+            fecha_hasta = parse_date(fecha_hasta_str)
+            if not fecha_desde or not fecha_hasta:
+                return Response(
+                    {"detail": "Fechas inválidas. Usa formato YYYY-MM-DD"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            return Response(
+                {"detail": "Debes enviar ambas fechas o ninguna"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validar que fecha_desde no sea futura
+        if fecha_desde > hoy:
+            return Response(
+                {"detail": "No se pueden elegir fechas futuras (fecha_desde)"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Si fecha_hasta es futura, ajustarla a hoy
+        if fecha_hasta > hoy:
+            fecha_hasta = hoy
+
+        if fecha_desde > fecha_hasta:
+            return Response(
+                {"detail": "La fecha inicial no puede ser mayor a la fecha posterior"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        coordinador = request.user
+
+        # Obtener equipos
+        if coordinador.is_admin():
+            equipos = Equipo.objects.filter(is_active=True)
+        else:
+            equipos = Equipo.objects.filter(coordinador=coordinador, is_active=True)
+
+        if not equipos.exists():
+            return Response(
+                {"detail": "No tienes equipos asignados"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Obtener agentes
+        agentes_ids = []
+        for equipo in equipos:
+            ids_equipo = equipo.agentes_detalle.values_list('agente_id', flat=True)
+            agentes_ids.extend(ids_equipo)
+
+        agentes_ids = list(set(agentes_ids))
+        agentes = User.objects.filter(documento_id__in=agentes_ids, is_active=True)
+        total_agentes = agentes.count()
+
+        # Calcular tiempo promedio por estado usando EstadoAgenteDetalle
+        from apps.users.models import EstadoAgenteDetalle
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Obtener tiempos promedio por estado en el período
+        estados_tiempo_promedio = {}
+        
+        # Primero, verificar qué estados existen en el período
+        # agente_id es la FK, así que filtramos directamente con los objetos User
+        registros_estados = EstadoAgenteDetalle.objects.filter(
+            agente_id__in=agentes,
+            fecha__range=(fecha_desde, fecha_hasta)
+        ).select_related('estado_id')
+        
+        logger.info(f"Total registros encontrados: {registros_estados.count()}")
+        
+        # Agrupar manualmente por estado
+        estados_agrupados = {}
+        registros_procesados = 0
+        registros_con_tiempo_cero = 0
+        
+        for registro in registros_estados:
+            logger.info(f"Registro: agente={registro.agente_id.documento_id}, estado={registro.estado_id.valor if registro.estado_id else 'None'}, tiempo={registro.tiempo}")
+            
+            if registro.estado_id and registro.estado_id.valor:
+                estado_nombre = registro.estado_id.valor
+                if estado_nombre not in estados_agrupados:
+                    estados_agrupados[estado_nombre] = []
+                
+                # Convertir tiempo HH:MM:SS a segundos
+                try:
+                    if registro.tiempo:
+                        h, m, s = map(int, registro.tiempo.split(':'))
+                        segundos = h * 3600 + m * 60 + s
+                        estados_agrupados[estado_nombre].append(segundos)
+                        registros_procesados += 1
+                        if segundos == 0:
+                            registros_con_tiempo_cero += 1
+                        logger.info(f"  -> Agregado: {segundos} segundos")
+                except Exception as e:
+                    logger.error(f"Error convirtiendo tiempo {registro.tiempo}: {e}")
+                    pass
+        
+        logger.info(f"Registros procesados: {registros_procesados}, con tiempo cero: {registros_con_tiempo_cero}")
+        
+        # Calcular promedios (incluir estados con tiempo 0)
+        for estado_nombre, tiempos in estados_agrupados.items():
+            if tiempos:
+                promedio_segundos = sum(tiempos) / len(tiempos)
+                estados_tiempo_promedio[estado_nombre] = promedio_segundos
+                logger.info(f"Estado {estado_nombre}: {len(tiempos)} registros, promedio: {promedio_segundos} seg")
+
+        # Filtrar llamadas del período
+        tz = timezone.get_current_timezone()
+        inicio_periodo = datetime.combine(fecha_desde, time.min).replace(tzinfo=tz)
+        fin_periodo = datetime.combine(fecha_hasta, time.max).replace(tzinfo=tz)
+
+        llamadas_periodo = Llamada.objects.filter(
+            agente_id__in=agentes_ids,
+            fecha_hora_inicio__range=(inicio_periodo, fin_periodo)
+        )
+
+        llamadas_del_periodo = llamadas_periodo.count()
+
+        duracion_promedio = llamadas_periodo.filter(
+            fue_contestada=True,
+            duracion__isnull=False
+        ).aggregate(promedio=Avg('duracion'))['promedio'] or 0
+
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        if estado_no_venta_id:
+            ventas_periodo = llamadas_periodo.filter(
+                fue_contestada=True
+            ).exclude(estado_venta_id=estado_no_venta_id).count()
+        else:
+            ventas_periodo = 0
+
+        llamadas_contestadas_periodo = llamadas_periodo.filter(fue_contestada=True).count()
+        tasa_conversion = (ventas_periodo / llamadas_contestadas_periodo * 100) if llamadas_contestadas_periodo > 0 else 0
+
+        # Ranking de agentes
+        ranking_data = llamadas_periodo.filter(
+            fue_contestada=True
+        ).exclude(
+            estado_venta_id=estado_no_venta_id
+        ).values(
+            'agente_id'
+        ).annotate(
+            total_ventas=Count('id')
+        ).order_by('-total_ventas')
+
+        ranking_agentes = []
+        for item in ranking_data:
+            try:
+                agente = User.objects.get(documento_id=item['agente_id'])
+                ranking_agentes.append({
+                    'nombre': agente.full_name,
+                    'ventas': item['total_ventas']
+                })
+            except User.DoesNotExist:
+                pass
+
+        # ===========================
+        # 2. GENERAR PDF
+        # ===========================
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
+        
+        # Estilos
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=20,
+            textColor=colors.HexColor('#1a365d'),
+            spaceAfter=30,
+            alignment=TA_CENTER
+        )
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=14,
+            textColor=colors.HexColor('#2d3748'),
+            spaceAfter=12,
+            spaceBefore=12
+        )
+        
+        # Contenido del PDF
+        elements = []
+        
+        # Logo y Título alineados horizontalmente
+        from reportlab.platypus import Image as RLImage
+        from django.conf import settings
+        import os
+        
+        logo_added = False
+        logo_paths = [
+            './frontend/public/call-center-service-blue.png',
+        ]
+        
+        # Intentar cargar el logo
+        logo_img = None
+        for logo_path in logo_paths:
+            try:
+                full_path = os.path.join(settings.BASE_DIR.parent if hasattr(settings.BASE_DIR, 'parent') else settings.BASE_DIR, logo_path)
+                if os.path.exists(full_path):
+                    logo_img = RLImage(full_path, width=0.6*inch, height=0.6*inch)
+                    logo_added = True
+                    break
+            except:
+                continue
+        
+        # Crear tabla con logo y título alineados y centrados
+        if logo_added and logo_img:
+            header_data = [[logo_img, Paragraph("Reporte de KPIs del Equipo", title_style)]]
+            header_table = Table(header_data, colWidths=[0.8*inch, 4*inch])
+            header_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            elements.append(header_table)
+        else:
+            # Si no hay logo, solo el título
+            elements.append(Paragraph("Reporte de KPIs del Equipo", title_style))
+        
+        elements.append(Spacer(1, 0.3 * inch))
+        
+        # Información del coordinador y período (SIN Total Equipos)
+        info_data = [
+            ['Coordinador:', coordinador.full_name],
+            ['Total Agentes:', str(total_agentes)],
+            ['Período:', f"{fecha_desde.strftime('%d/%m/%Y')} - {fecha_hasta.strftime('%d/%m/%Y')}"],
+            ['Fecha de Reporte:', timezone.now().strftime('%d/%m/%Y %H:%M:%S')]
+        ]
+        
+        info_table = Table(info_data, colWidths=[2*inch, 4*inch])
+        info_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e2e8f0')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
+        ]))
+        elements.append(info_table)
+        elements.append(Spacer(1, 0.3 * inch))
+        
+        # KPIs Principales (SIN Llamadas Activas)
+        elements.append(Paragraph("Indicadores Principales", heading_style))
+        
+        kpis_data = [
+            ['KPI', 'Valor'],
+            ['Llamadas del Período', str(llamadas_del_periodo)],
+            ['Tiempo Promedio de Llamada', f"{round(duracion_promedio, 2)} seg"],
+            ['Ventas Realizadas', str(ventas_periodo)],
+            ['Tasa de Conversión', f"{round(tasa_conversion, 2)}%"]
+        ]
+        
+        kpis_table = Table(kpis_data, colWidths=[3.5*inch, 2.5*inch])
+        kpis_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
+        ]))
+        elements.append(kpis_table)
+        elements.append(Spacer(1, 0.3 * inch))
+        
+        # Tiempo Promedio por Estado (en lugar de cantidad de agentes)
+        elements.append(Paragraph("Tiempo Promedio por Estado", heading_style))
+        
+        # Mapeo de estados técnicos a nombres amigables
+        estados_nombres = {
+            'DISPONIBLE': 'Disponible',
+            'EN_LLAMADA': 'En Llamada',
+            'AFTERCALL': 'After Call',
+            'BREAK': 'Break',
+            'ALMUERZO': 'Almuerzo',
+            'CAPACITACION': 'Capacitación',
+            'BAÑO': 'Baño',
+            'NO_DISPONIBLE': 'No Disponible',
+            'DESCONECTADO': 'Desconectado'
+        }
+        
+        estados_data = [['Estado', 'Tiempo Promedio']]
+        if estados_tiempo_promedio:
+            for estado, segundos_promedio in sorted(estados_tiempo_promedio.items(), key=lambda x: x[1], reverse=True):
+                # Convertir segundos a formato legible
+                horas = int(segundos_promedio // 3600)
+                minutos = int((segundos_promedio % 3600) // 60)
+                segundos = int(segundos_promedio % 60)
+                
+                if horas > 0:
+                    tiempo_str = f"{horas}h {minutos}m {segundos}s"
+                elif minutos > 0:
+                    tiempo_str = f"{minutos}m {segundos}s"
+                else:
+                    tiempo_str = f"{segundos}s"
+                
+                # Usar nombre amigable si existe, sino usar el original
+                estado_amigable = estados_nombres.get(estado, estado.replace('_', ' ').title())
+                estados_data.append([estado_amigable, tiempo_str])
+        else:
+            estados_data.append(['No hay datos de estados en este período', '-'])
+        
+        estados_table = Table(estados_data, colWidths=[3.5*inch, 2.5*inch])
+        estados_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
+        ]))
+        elements.append(estados_table)
+        elements.append(Spacer(1, 0.3 * inch))
+        
+        # Ranking de Agentes
+        if ranking_agentes:
+            elements.append(Paragraph("Ranking de Agentes por Ventas", heading_style))
+            
+            ranking_table_data = [['Posición', 'Agente', 'Ventas']]
+            for i, agente_rank in enumerate(ranking_agentes[:10], 1):  # Top 10
+                ranking_table_data.append([
+                    str(i),
+                    agente_rank['nombre'],
+                    str(agente_rank['ventas'])
+                ])
+            
+            ranking_table = Table(ranking_table_data, colWidths=[1*inch, 3.5*inch, 1.5*inch])
+            ranking_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2d3748')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+                ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+                ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                ('TOPPADDING', (0, 0), (-1, -1), 10),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ]))
+            elements.append(ranking_table)
+        
+        # Construir PDF
+        doc.build(elements)
+        
+        # Preparar respuesta HTTP
+        buffer.seek(0)
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        filename = f"KPIs_Equipo_{coordinador.documento_id}_{fecha_desde.strftime('%Y%m%d')}_{fecha_hasta.strftime('%Y%m%d')}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         return response

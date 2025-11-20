@@ -18,6 +18,10 @@ from .serializers import (
 )
 from .permissions import IsAdmin, IsAdminOrOwner
 from common.estados_helper import get_estado
+from apps.users.helpers.estado_agente_service import (
+    cambiar_estado_agente,
+    inicializar_estados_diarios
+)
 User = get_user_model()
 from django.core.paginator import Paginator
 from rest_framework.pagination import PageNumberPagination
@@ -310,55 +314,11 @@ class TiposParametrosViewSet(viewsets.ViewSet):
 class EstadoAgenteViewSet(viewsets.ViewSet):
     """
     ViewSet para gestionar el estado actual del agente autenticado.
+    
+    NOTA: Toda la lógica de cambio de estado ahora está centralizada en
+    apps.users.helpers.estado_agente_service para garantizar consistencia.
     """
     permission_classes = [IsAuthenticated]
-    
-    def _inicializar_estados_diarios(self, agente, fecha_actual):
-        """
-        Crea los 9 registros diarios para el agente si no existen.
-        Se ejecuta automáticamente al primer cambio de estado del día.
-        """
-        estados = TiposParametros.objects.filter(nombre='ESTADO_AGENTE')
-        
-        registros_creados = []
-        for estado in estados:
-            detalle, created = EstadoAgenteDetalle.objects.get_or_create(
-                agente_id=agente,
-                estado_id=estado,
-                fecha=fecha_actual,
-                defaults={'tiempo': timedelta(seconds=0), 'cambios': ''}
-            )
-            if created:
-                registros_creados.append(estado.valor)
-        
-        return registros_creados
-    
-    def _actualizar_tiempo_estado_anterior(self, agente, estado_anterior, duracion_segundos, usuario_cambio):
-        """
-        Actualiza el tiempo y agrega el cambio al historial del estado anterior.
-        
-        Args:
-            agente: Usuario agente
-            estado_anterior: TiposParametros del estado anterior
-            duracion_segundos: Tiempo que estuvo en ese estado
-            usuario_cambio: Usuario que realizó el cambio (puede ser el mismo agente u otro)
-        """
-        fecha_actual = date.today()
-        
-        # Obtener o crear el registro del día para ese estado
-        detalle, created = EstadoAgenteDetalle.objects.get_or_create(
-            agente_id=agente,
-            estado_id=estado_anterior,
-            fecha=fecha_actual,
-            defaults={'tiempo': timedelta(seconds=0), 'cambios': ''}
-        )
-        
-        # Agregar el cambio ANTES de actualizar el tiempo
-        detalle.agregar_cambio(usuario_cambio.full_name)
-        
-        # Actualizar el tiempo acumulado
-        detalle.agregar_tiempo(duracion_segundos)
-        detalle.save()
     
     @action(detail=False, methods=['get'], url_path='mi-estado')
     def mi_estado(self, request):
@@ -380,26 +340,30 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
                 'estado': estado_actual.estado_id.valor
             })
         except EstadoAgenteActual.DoesNotExist:
-            # Si no tiene estado, asignar "Desconectado" por defecto
+            # Si no tiene estado, asignar "Desconectado" por defecto usando el servicio
             try:
                 estado_desconectado = TiposParametros.objects.get(
                     nombre='ESTADO_AGENTE',
                     valor='Desconectado'
                 )
                 
-                with transaction.atomic():
-                    estado_actual = EstadoAgenteActual.objects.create(
-                        agente_id=request.user,
-                        estado_id=estado_desconectado
-                    )
-                    
-                    # Inicializar los 9 registros diarios
-                    self._inicializar_estados_diarios(request.user, date.today())
+                # Usar el servicio centralizado para inicializar el estado
+                success, message, estado_actual = cambiar_estado_agente(
+                    request.user,
+                    estado_desconectado,
+                    usuario_cambio=request.user
+                )
                 
-                return Response({
-                    'agente': request.user.full_name,
-                    'estado': estado_desconectado.valor
-                }, status=status.HTTP_201_CREATED)
+                if success:
+                    return Response({
+                        'agente': request.user.full_name,
+                        'estado': estado_desconectado.valor
+                    }, status=status.HTTP_201_CREATED)
+                else:
+                    return Response(
+                        {'detail': message},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
             except TiposParametros.DoesNotExist:
                 return Response(
                     {'detail': 'No se encontró el estado por defecto. Contacte al administrador.'},
@@ -409,7 +373,7 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'], url_path='cambiar-estado')
     def cambiar_estado(self, request):
         """
-        Cambia el estado del agente.
+        Cambia el estado del agente usando el servicio centralizado.
         
         POST /api/users/estado/cambiar-estado/
         Body: {
@@ -417,13 +381,11 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
             "agente_id": 123  // Opcional: solo si es un supervisor cambiando el estado de otro
         }
         
-        Lógica:
-        1. Si es el primer cambio del día, inicializa los 9 registros
-        2. Calcula cuánto tiempo estuvo en el estado anterior
-        3. Actualiza el registro del estado anterior con:
-           - El tiempo acumulado
-           - Agrega al historial: "HH:MM:SS - nombre_usuario"
-        4. Cambia al nuevo estado
+        El servicio centralizado se encarga de:
+        1. Inicializar los registros diarios si es necesario
+        2. Calcular y actualizar el tiempo del estado anterior
+        3. Registrar el cambio en el historial
+        4. Cambiar al nuevo estado
         """
         serializer = CambiarEstadoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -447,69 +409,31 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
             agente_objetivo = request.user
             usuario_cambio = request.user
         
-        # Validar el nuevo estado
+        # Usar el servicio centralizado para cambiar el estado
         try:
-            nuevo_estado = TiposParametros.objects.get(
-                parametros_id=estado_id,
-                nombre='ESTADO_AGENTE'
+            success, message, estado_actual = cambiar_estado_agente(
+                agente_objetivo,
+                estado_id,
+                usuario_cambio
             )
-        except TiposParametros.DoesNotExist:
+            
+            if not success:
+                return Response(
+                    {'detail': message},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Retornar respuesta simplificada
+            return Response({
+                'agente': agente_objetivo.full_name,
+                'estado': estado_actual.estado_id.valor
+            }, status=status.HTTP_200_OK)
+            
+        except ValueError as e:
             return Response(
-                {'detail': 'El estado especificado no es válido'},
+                {'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        fecha_actual = date.today()
-        
-        with transaction.atomic():
-            # Obtener o crear el estado actual del agente
-            estado_actual, created = EstadoAgenteActual.objects.select_for_update().get_or_create(
-                agente_id=agente_objetivo,
-                defaults={'estado_id': nuevo_estado}
-            )
-            
-            # Inicializar los registros diarios si es necesario
-            self._inicializar_estados_diarios(agente_objetivo, fecha_actual)
-            
-            if not created:
-                # Verificar si es el mismo estado
-                if estado_actual.estado_id.parametros_id == estado_id:
-                    return Response(
-                        {'detail': 'Ya se encuentra en ese estado'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                
-                # Calcular duración en el estado anterior
-                duracion_segundos = estado_actual.duracion_actual_segundos
-                
-                # Actualizar el tiempo del estado anterior
-                self._actualizar_tiempo_estado_anterior(
-                    agente_objetivo,
-                    estado_actual.estado_id,
-                    duracion_segundos,
-                    usuario_cambio
-                )
-                
-                # Cambiar al nuevo estado
-                estado_actual.estado_id = nuevo_estado
-                estado_actual.tiempo = timezone.now()
-                estado_actual.save()
-            else:
-                # Primera vez que se establece el estado
-                # Agregar el cambio inicial
-                detalle_inicial = EstadoAgenteDetalle.objects.get(
-                    agente_id=agente_objetivo,
-                    estado_id=nuevo_estado,
-                    fecha=fecha_actual
-                )
-                detalle_inicial.agregar_cambio(usuario_cambio.full_name)
-                detalle_inicial.save()
-        
-        # Retornar respuesta simplificada
-        return Response({
-            'agente': agente_objetivo.full_name,
-            'estado': nuevo_estado.valor
-        }, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['get'], url_path='detalle-diario')
     def detalle_diario(self, request):
