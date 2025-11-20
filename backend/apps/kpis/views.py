@@ -2333,3 +2333,369 @@ class KPIViewSet(viewsets.ViewSet):
             "fecha_hasta": fecha_hasta.isoformat(),
             "fecha_consulta": timezone.now()
         })
+
+    @action(detail=False, methods=['get'], url_path='jefe-campana/agentes', permission_classes=[IsJefeCampana])
+    def agentes_campana_list(self, request):
+        """
+        Endpoint para Jefe de Campaña: Lista de agentes de una campaña.
+        Solo accesible para Jefes de Campaña y Admins.
+
+        GET /api/kpis/jefe-campana/agentes/?campana_id=1&page=1&page_size=10&search=nombre&estado=DISPONIBLE&equipo_id=5
+
+        Query params:
+            campana_id: ID de la campaña (opcional, si no se envía retorna agentes de todas sus campañas)
+            page: Número de página (default: 1)
+            page_size: Elementos por página (default: 10)
+            search: Búsqueda por nombre o email del agente
+            estado: Filtro por estado del agente (código del estado, ej: DISPONIBLE, EN_LLAMADA)
+            equipo_id: Filtro por ID de equipo
+
+        Response:
+            {
+                "count": 45,
+                "next": "http://.../api/kpis/jefe-campana/agentes/?page=2",
+                "previous": null,
+                "results": [
+                    {
+                        "id": "123456",
+                        "nombre_completo": "Juan Pérez",
+                        "email": "juan@example.com",
+                        "phone": "+57300123456",
+                        "estado_actual": "DISPONIBLE",
+                        "estado_label": "Disponible",
+                        "equipo_id": 5,
+                        "equipo_nombre": "Equipo Alpha",
+                        "campana_id": 1,
+                        "campana_nombre": "Campaña Navidad"
+                    },
+                    ...
+                ]
+            }
+        """
+        # ===========================
+        # 1. VALIDAR CAMPAÑA
+        # ===========================
+        campana_id = request.query_params.get('campana_id')
+        
+        # Obtener estado ACTIVA (ID 14)
+        estado_activa = get_estado('ESTADO_CAMPANA', 'ACTIVA')
+        
+        # Obtener campañas del jefe (solo activas)
+        if request.user.is_admin():
+            campanas = Campana.objects.filter(estado=estado_activa) if estado_activa else Campana.objects.all()
+        else:
+            if estado_activa:
+                campanas = Campana.objects.filter(
+                    jefe_campana=request.user,
+                    estado=estado_activa
+                )
+            else:
+                campanas = Campana.objects.filter(jefe_campana=request.user)
+        
+        # Si se especifica campaña, validar que el jefe tenga acceso
+        if campana_id:
+            try:
+                campana = campanas.get(pk=int(campana_id))
+            except Campana.DoesNotExist:
+                return Response(
+                    {"detail": "No tienes acceso a esta campaña"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            except ValueError:
+                return Response(
+                    {"detail": "ID de campaña inválido"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Filtrar equipos de esa campaña
+            equipos = Equipo.objects.filter(campana=campana, is_active=True)
+        else:
+            # Obtener todos los equipos de todas las campañas del jefe
+            equipos = Equipo.objects.filter(campana__in=campanas, is_active=True)
+        
+        # ===========================
+        # 2. OBTENER AGENTES DE LOS EQUIPOS
+        # ===========================
+        from apps.campaigns.models import EquipoAgenteDetalle
+        
+        # Obtener IDs de agentes en esos equipos
+        agentes_ids = EquipoAgenteDetalle.objects.filter(
+            equipo_id__in=equipos
+        ).values_list('agente_id', flat=True).distinct()
+        
+        # Filtrar agentes activos
+        agentes = User.objects.filter(
+            documento_id__in=agentes_ids,
+            is_active=True
+        ).select_related('estado_actual__estado_id')
+        
+        # ===========================
+        # 3. APLICAR FILTROS
+        # ===========================
+        # Filtro de búsqueda por nombre o email
+        search = request.query_params.get('search', '').strip()
+        if search:
+            agentes = agentes.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search)
+            )
+        
+        # Filtro por estado
+        estado_codigo = request.query_params.get('estado', '').strip().upper()
+        if estado_codigo:
+            try:
+                estado = get_estado('ESTADO_AGENTE', estado_codigo)
+                if estado:
+                    agentes = agentes.filter(estado_actual__estado_id=estado)
+            except:
+                pass
+        
+        # Filtro por equipo
+        equipo_id = request.query_params.get('equipo_id', '').strip()
+        if equipo_id:
+            try:
+                # Filtrar agentes que pertenezcan a ese equipo específico
+                agentes_en_equipo = EquipoAgenteDetalle.objects.filter(
+                    equipo_id=int(equipo_id)
+                ).values_list('agente_id', flat=True)
+                agentes = agentes.filter(documento_id__in=agentes_en_equipo)
+            except ValueError:
+                pass
+        
+        # ===========================
+        # 4. CONSTRUIR DATOS DE RESPUESTA
+        # ===========================
+        agentes_data = []
+        
+        for agente in agentes:
+            # Obtener equipo del agente
+            try:
+                equipo_detalle = EquipoAgenteDetalle.objects.filter(
+                    agente_id=agente
+                ).select_related('equipo_id', 'equipo_id__campana').first()
+                
+                equipo_id_val = equipo_detalle.equipo_id.equipo_id if equipo_detalle else None
+                equipo_nombre = equipo_detalle.equipo_id.nombre if equipo_detalle else "Sin equipo"
+                campana_id_val = equipo_detalle.equipo_id.campana.pk if equipo_detalle and equipo_detalle.equipo_id.campana else None
+                campana_nombre = equipo_detalle.equipo_id.campana.nombre if equipo_detalle and equipo_detalle.equipo_id.campana else "Sin campaña"
+            except:
+                equipo_id_val = None
+                equipo_nombre = "Sin equipo"
+                campana_id_val = None
+                campana_nombre = "Sin campaña"
+            
+            # Obtener estado actual
+            estado_codigo = None
+            estado_label = "Desconectado"
+            
+            # Obtener estado DESCONECTADO por defecto
+            estado_desconectado = get_estado('ESTADO_AGENTE', 'DESCONECTADO')
+            if estado_desconectado:
+                estado_codigo = estado_desconectado.parametros_id
+                estado_label = estado_desconectado.valor
+            
+            try:
+                if hasattr(agente, 'estado_actual') and agente.estado_actual:
+                    if agente.estado_actual.estado_id:
+                        estado_codigo = agente.estado_actual.estado_id.codigo
+                        estado_label = agente.estado_actual.estado_id.nombre
+            except Exception as e:
+                # Si hay error al obtener el estado, usar el estado desconectado por defecto
+                pass
+            
+            agentes_data.append({
+                "id": agente.documento_id,
+                "nombre_completo": agente.get_full_name(),
+                "email": agente.email,
+                "phone": agente.phone or "",
+                "estado_actual": estado_codigo,
+                "estado_label": estado_label,
+                "equipo_id": equipo_id_val,
+                "equipo_nombre": equipo_nombre,
+                "campana_id": campana_id_val,
+                "campana_nombre": campana_nombre
+            })
+        
+        # ===========================
+        # 5. PAGINACIÓN
+        # ===========================
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        
+        paginator = PageNumberPagination()
+        paginator.page_size = page_size
+        
+        # Ordenar por nombre
+        agentes_data = sorted(agentes_data, key=lambda x: x['nombre_completo'])
+        
+        # Aplicar paginación manual
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_data = agentes_data[start:end]
+        
+        return Response({
+            "count": len(agentes_data),
+            "next": None if end >= len(agentes_data) else f"?page={page + 1}",
+            "previous": None if page == 1 else f"?page={page - 1}",
+            "results": paginated_data
+        })
+
+    @action(detail=False, methods=['get'], url_path='jefe-campana/agentes/(?P<documento_id>[^/.]+)/detalle', permission_classes=[IsJefeCampana])
+    def agente_campana_detalle_kpis(self, request, documento_id=None):
+        """
+        Endpoint para Jefe de Campaña: KPIs detallados de un agente específico.
+        Solo accesible para Jefes de Campaña y Admins.
+
+        GET /api/kpis/jefe-campana/agentes/<documento_id>/detalle/?fecha_desde=2025-11-01&fecha_hasta=2025-11-08
+
+        Query params:
+            fecha_desde: Fecha inicio (YYYY-MM-DD), opcional (default: hoy)
+            fecha_hasta: Fecha fin (YYYY-MM-DD), opcional (default: hoy)
+
+        Response:
+            {
+                "agente_id": "123456",
+                "agente_nombre": "Juan Pérez",
+                "agente_email": "juan@example.com",
+                "equipo_id": 5,
+                "equipo_nombre": "Equipo Alpha",
+                "campana_id": 1,
+                "campana_nombre": "Campaña Navidad",
+                "tiempo_promedio_llamada": 180.5,
+                "llamadas_del_dia": 45,
+                "ventas_realizadas": 12,
+                "tasa_conversion": 26.67,
+                "fecha_desde": "2025-11-08",
+                "fecha_hasta": "2025-11-08",
+                "fecha_consulta": "2025-11-08T15:30:00Z"
+            }
+        """
+        # ===========================
+        # 1. OBTENER Y VALIDAR AGENTE
+        # ===========================
+        agente = get_object_or_404(User, documento_id=documento_id, is_active=True)
+        
+        # Validar que el agente pertenezca a una campaña del jefe
+        from apps.campaigns.models import EquipoAgenteDetalle
+        
+        equipo_detalle = EquipoAgenteDetalle.objects.filter(
+            agente_id=agente,
+            equipo_id__is_active=True
+        ).select_related('equipo_id', 'equipo_id__campana').first()
+        
+        if not equipo_detalle or not equipo_detalle.equipo_id.campana:
+            return Response(
+                {"detail": "Este agente no está asignado a ninguna campaña"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        campana = equipo_detalle.equipo_id.campana
+        
+        # Validar que el jefe tenga acceso a esta campaña
+        if not request.user.is_admin():
+            if campana.jefe_campana != request.user:
+                return Response(
+                    {"detail": "No tienes permiso para ver KPIs de este agente"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # ===========================
+        # 2. PARSEAR Y VALIDAR FECHAS
+        # ===========================
+        fecha_desde_str = request.query_params.get('fecha_desde')
+        fecha_hasta_str = request.query_params.get('fecha_hasta')
+        
+        hoy = date.today()
+        
+        # Si no envía fechas, usar el día actual
+        if not fecha_desde_str and not fecha_hasta_str:
+            fecha_desde = fecha_hasta = hoy
+        elif fecha_desde_str and fecha_hasta_str:
+            fecha_desde = parse_date(fecha_desde_str)
+            fecha_hasta = parse_date(fecha_hasta_str)
+            
+            if not fecha_desde or not fecha_hasta:
+                return Response(
+                    {"detail": "Fechas inválidas. Usa formato YYYY-MM-DD"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            return Response(
+                {"detail": "Debes enviar ambas fechas (fecha_desde y fecha_hasta) o ninguna"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validar que la fecha inicial no sea futura
+        if fecha_desde > hoy:
+            return Response(
+                {"detail": "La fecha inicial no puede ser futura"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validar rango de fechas
+        if fecha_desde > fecha_hasta:
+            return Response(
+                {"detail": "La fecha inicial no puede ser mayor a la fecha posterior"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Si fecha_hasta es futura, ajustarla a hoy para los cálculos
+        if fecha_hasta > hoy:
+            fecha_hasta = hoy
+        
+        # ===========================
+        # 3. CALCULAR KPIs DEL AGENTE
+        # ===========================
+        tz = timezone.get_current_timezone()
+        inicio_periodo = datetime.combine(fecha_desde, time.min).replace(tzinfo=tz)
+        fin_periodo = datetime.combine(fecha_hasta, time.max).replace(tzinfo=tz)
+        
+        # Filtrar llamadas del agente en el período
+        llamadas_periodo = Llamada.objects.filter(
+            agente=agente,
+            fecha_hora_inicio__range=(inicio_periodo, fin_periodo)
+        )
+        
+        # KPI 1: LLAMADAS DEL DÍA/PERÍODO
+        llamadas_del_periodo = llamadas_periodo.count()
+        
+        # KPI 2: TIEMPO PROMEDIO DE LLAMADA
+        duracion_promedio = llamadas_periodo.filter(
+            fue_contestada=True,
+            duracion__isnull=False
+        ).aggregate(promedio=Avg('duracion'))['promedio'] or 0
+        
+        # KPI 3: VENTAS REALIZADAS
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        
+        if estado_no_venta_id:
+            ventas_periodo = llamadas_periodo.filter(
+                fue_contestada=True
+            ).exclude(estado_venta_id=estado_no_venta_id).count()
+        else:
+            ventas_periodo = 0
+        
+        # KPI 4: TASA DE CONVERSIÓN
+        llamadas_contestadas_periodo = llamadas_periodo.filter(fue_contestada=True).count()
+        tasa_conversion = (ventas_periodo / llamadas_contestadas_periodo * 100) if llamadas_contestadas_periodo > 0 else 0
+        
+        # ===========================
+        # 4. CONSTRUIR RESPUESTA
+        # ===========================
+        return Response({
+            "agente_id": agente.documento_id,
+            "agente_nombre": agente.get_full_name(),
+            "agente_email": agente.email,
+            "equipo_id": equipo_detalle.equipo_id.equipo_id,
+            "equipo_nombre": equipo_detalle.equipo_id.nombre,
+            "campana_id": campana.pk,
+            "campana_nombre": campana.nombre,
+            "tiempo_promedio_llamada": round(duracion_promedio, 2),
+            "llamadas_del_dia": llamadas_del_periodo,
+            "ventas_realizadas": ventas_periodo,
+            "tasa_conversion": round(tasa_conversion, 2),
+            "fecha_desde": fecha_desde.isoformat(),
+            "fecha_hasta": fecha_hasta.isoformat(),
+            "fecha_consulta": timezone.now()
+        })
