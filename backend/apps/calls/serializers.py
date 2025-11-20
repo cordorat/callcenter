@@ -4,7 +4,7 @@ Serializadores para gestión de llamadas del call center.
 from rest_framework import serializers
 from django.utils import timezone
 from django.db import transaction
-from apps.calls.models import Llamada, IteracionCliente, Venta, FormularioVenta, ReporteLlamada
+from apps.calls.models import Llamada, IteracionCliente, Venta, FormularioVenta, ReporteLlamada, Comision
 from apps.campaigns.models import Cliente, Campana, Producto
 from apps.users.models import User, EstadoAgenteActual, EstadoAgenteDetalle, TiposParametros
 from common.estados_helper import EstadosHelper, get_estado, get_estado_id
@@ -1200,3 +1200,37 @@ class HistorialJefeCampanaSerializer(serializers.ModelSerializer):
                 })
         
         return notas
+
+
+class ComisionSerializer(serializers.ModelSerializer):
+    """
+    Serializer para comisiones de agentes.
+    """
+    agente_nombre = serializers.SerializerMethodField()
+    campana_nombre = serializers.SerializerMethodField()
+    producto_nombre = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Comision
+        fields = [
+            'comision_id', 'agente', 'agente_nombre', 'venta',
+            'producto', 'producto_nombre', 'cantidad', 'fecha',
+            'campana_nombre'
+        ]
+        read_only_fields = ['comision_id', 'fecha']
+    
+    def get_agente_nombre(self, obj):
+        """Obtiene el nombre completo del agente."""
+        return obj.agente.get_full_name() if obj.agente else None
+    
+    def get_campana_nombre(self, obj):
+        """Obtiene el nombre de la campaña desde la venta."""
+        if obj.venta and obj.venta.campana_id:
+            return obj.venta.campana_id.nombre
+        return None
+    
+    def get_producto_nombre(self, obj):
+        """Obtiene el nombre del producto."""
+        if obj.producto:
+            return obj.producto.nombre
+        return None
