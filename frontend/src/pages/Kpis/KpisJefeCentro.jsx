@@ -161,15 +161,6 @@ export default function KpisJefeCentro() {
         fetchData();
     }, [from, to, campanaSeleccionada]);
 
-    // Auto-refresh cada 5 minutos (300000 ms)
-    React.useEffect(() => {
-        const interval = setInterval(() => {
-            fetchData();
-        }, 300000); // 5 minutos
-
-        return () => clearInterval(interval);
-    }, [from, to, campanaSeleccionada]);
-
     // Extraer datos
     const campanas = data?.campanas || [];
     const totalCampanasActivas = data?.total_campanas_activas || 0;
