@@ -22,6 +22,15 @@ export default function UserMenuButton() {
   const open = Boolean(anchorEl);
   const navigate = useNavigate();
 
+  // Generar iniciales del nombre completo
+  const getInitials = () => {
+    if (!user) return "?";
+    const firstName = user?.first_name || "";
+    const lastName = user?.last_name || "";
+    const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+    return initials || "?";
+  };
+
   const handleMenu = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
 
@@ -43,8 +52,18 @@ export default function UserMenuButton() {
     <>
       <Tooltip title="Menú de usuario">
         <IconButton onClick={handleMenu} size="small" sx={{ ml: 2 }}>
-          <Avatar sx={{ width: 32, height: 32 }}>
-            {user?.username?.charAt(0).toUpperCase() || "?"}
+          <Avatar 
+            sx={{ 
+              width: 32, 
+              height: 32,
+              backgroundColor: (theme) => theme.palette.primary.main,
+              color: "white",
+              fontWeight: 700,
+              fontSize: "0.875rem",
+            }}
+            src={user?.foto_perfil || undefined}
+          >
+            {getInitials()}
           </Avatar>
         </IconButton>
       </Tooltip>

@@ -70,30 +70,7 @@ export default function BackofficeCallsList() {
   };
   return (
     <MainLayout title="Auditoria de Llamadas">
-        <Box sx={{ p: 2 }}>
-          {/* Subtítulo con filtros activos */}
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 600,
-                color: "text.secondary",
-                fontSize: "0.95rem",
-              }}
-            >
-              {getTitleSubtitle()}
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: "text.secondary",
-                mt: 0.5,
-                fontSize: "0.85rem",
-              }}
-            >
-              Total: {data.count || 0} llamadas • Página {page} de {data.total_pages || 1}
-            </Typography>
-          </Box>
+        <Box sx={{ p: 2, marginTop: 2}}>
 
           <FiltrosyBusquedaBackoffice
             estadoReportada={estadoReportada}
