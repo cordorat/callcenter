@@ -1902,3 +1902,396 @@ class KPIViewSet(viewsets.ViewSet):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         return response
+
+    @action(detail=False, methods=['get'], url_path='agente-dashboard')
+    def agente_dashboard(self, request):
+        """
+        Endpoint unificado para el dashboard del agente.
+        Combina KPIs del agente + últimas 5 llamadas en una sola respuesta.
+        
+        GET /api/kpis/agente-dashboard/?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD
+        
+        Query params:
+            fecha_desde: Fecha inicio (YYYY-MM-DD), requerido
+            fecha_hasta: Fecha fin (YYYY-MM-DD), requerido
+        
+        Response:
+            {
+                "now": "2025-11-19T12:00:00Z",
+                "kpis": {
+                    "values": { ... },
+                    "meta": { ... },
+                    "series": { ... }
+                },
+                "ultimas_llamadas": [
+                    {
+                        "id": 1,
+                        "cliente_nombre": "Cliente X",
+                        "telefono": "+573001234567",
+                        "fecha_hora_inicio": "2025-11-19T10:30:00Z",
+                        "duracion": 120,
+                        "estado": "Contestado",
+                        "fue_venta": true
+                    },
+                    ...
+                ]
+            }
+        """
+        # Obtener agente del token JWT
+        agente = request.user
+        
+        # Parsear fechas
+        fecha_desde_str = request.query_params.get('fecha_desde')
+        fecha_hasta_str = request.query_params.get('fecha_hasta')
+        
+        if not fecha_desde_str or not fecha_hasta_str:
+            return Response(
+                {"detail": "Los parámetros fecha_desde y fecha_hasta son requeridos (formato YYYY-MM-DD)"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        fecha_desde = parse_date(fecha_desde_str)
+        fecha_hasta = parse_date(fecha_hasta_str)
+        
+        if not fecha_desde or not fecha_hasta:
+            return Response(
+                {"detail": "Fechas inválidas. Usa formato YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if fecha_desde > fecha_hasta:
+            return Response(
+                {"detail": "La fecha_desde no puede ser posterior a la fecha_hasta"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Convertir fechas a datetime con timezone
+        tz = timezone.get_current_timezone()
+        inicio_dia = datetime.combine(fecha_desde, time.min).replace(tzinfo=tz)
+        fin_dia = datetime.combine(fecha_hasta, time.max).replace(tzinfo=tz)
+        
+        # Filtrar llamadas del agente en el rango
+        llamadas = Llamada.objects.filter(
+            agente=agente,
+            fecha_hora_inicio__range=(inicio_dia, fin_dia)
+        )
+        
+        # ===========================
+        # CALCULAR KPIs
+        # ===========================
+        total_llamadas = llamadas.filter(fue_contestada=True).count()
+        
+        # Ventas realizadas
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        if estado_no_venta_id:
+            ventas = llamadas.filter(fue_contestada=True).exclude(
+                estado_venta_id=estado_no_venta_id).count()
+        else:
+            ventas = 0
+        
+        # Cumplimiento como decimal
+        cumplimiento_decimal = (ventas / total_llamadas) if total_llamadas > 0 else 0
+        
+        # Llamadas por hora (promedio)
+        dias = (fecha_hasta - fecha_desde).days + 1
+        horas_totales = dias * 8
+        llamadas_por_hora_promedio = round(
+            total_llamadas / horas_totales, 2) if horas_totales > 0 else 0
+        
+        # Desglose de llamadas por hora
+        llamadas_por_hora_qs = (
+            llamadas.filter(fue_contestada=True).annotate(
+                hora=Extract('fecha_hora_inicio', 'hour')
+            )
+            .values('hora')
+            .annotate(total=Count('id'))
+            .order_by('hora')
+        )
+        
+        horas_dict = {i: 0 for i in range(9, 19)}
+        for item in llamadas_por_hora_qs:
+            horas_dict[item['hora']] = item['total']
+        
+        series_llamadas_por_hora = [
+            {"hora": f"{hora:02d}:00", "valor": total}
+            for hora, total in sorted(horas_dict.items())
+        ]
+        
+        # Duración promedio
+        duracion_promedio = llamadas.filter(
+            fue_contestada=True,
+            duracion__isnull=False
+        ).aggregate(promedio=Avg('duracion'))['promedio'] or 0
+        
+        # Metas fijas
+        metas = {
+            "llamadas_atendidas": 50,
+            "ventas_realizadas": 15,
+            "tiempo_promedio_llamada": 180,
+            "llamadas_por_hora": 6,
+            "cumplimiento": 1
+        }
+        
+        # ===========================
+        # ÚLTIMAS 5 LLAMADAS
+        # ===========================
+        ultimas_llamadas_qs = llamadas.select_related(
+            'cliente', 'estado_llamada', 'estado_venta'
+        ).order_by('-fecha_hora_inicio')[:5]
+        
+        ultimas_llamadas = []
+        for llamada in ultimas_llamadas_qs:
+            # Determinar estado de la llamada
+            if llamada.fue_contestada:
+                estado = "Contestado"
+            else:
+                estado_valor = llamada.estado_llamada.valor if llamada.estado_llamada else "Desconocido"
+                estado_map = {
+                    "NO_CONTESTADA": "No contestado",
+                    "RECHAZADA": "Rechazada",
+                    "COLGADA": "Colgada",
+                    "OCUPADO": "Ocupado",
+                    "ERROR": "Error"
+                }
+                estado = estado_map.get(estado_valor, estado_valor)
+            
+            # Determinar si fue venta
+            fue_venta = False
+            if estado_no_venta_id and llamada.estado_venta_id:
+                fue_venta = llamada.estado_venta_id != estado_no_venta_id
+            
+            ultimas_llamadas.append({
+                "id": llamada.pk,
+                "cliente_nombre": llamada.cliente.nombre if llamada.cliente else "Cliente desconocido",
+                "telefono": llamada.telefono_destino or "",
+                "fecha_hora_inicio": llamada.fecha_hora_inicio.isoformat(),
+                "duracion": llamada.duracion or 0,
+                "estado": estado,
+                "fue_venta": fue_venta
+            })
+        
+        # ===========================
+        # RESPUESTA UNIFICADA
+        # ===========================
+        return Response({
+            "now": timezone.now().isoformat(),
+            "kpis": {
+                "values": {
+                    "llamadas_atendidas": total_llamadas,
+                    "ventas_realizadas": ventas,
+                    "tiempo_promedio_llamada": round(duracion_promedio, 2),
+                    "llamadas_por_hora": llamadas_por_hora_promedio,
+                    "cumplimiento": round(cumplimiento_decimal, 4)
+                },
+                "meta": metas,
+                "series": {
+                    "llamadas_por_hora": series_llamadas_por_hora
+                }
+            },
+            "ultimas_llamadas": ultimas_llamadas
+        })
+
+    @action(detail=False, methods=['get'], url_path='jefe-centro/dashboard')
+    def jefe_centro_dashboard(self, request):
+        """
+        Endpoint para el dashboard del jefe de centro.
+        Muestra suma de llamadas, ventas y proyección de metas por campaña
+        de todas las campañas del centro a cargo.
+        
+        GET /api/kpis/jefe-centro/dashboard/?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD
+        
+        Query params:
+            fecha_desde: Fecha inicio (YYYY-MM-DD), opcional (default: hoy)
+            fecha_hasta: Fecha fin (YYYY-MM-DD), opcional (default: hoy)
+        
+        Response:
+            {
+                "centro": {
+                    "id": 1,
+                    "nombre": "Centro Principal",
+                    "direccion": "Calle 123"
+                },
+                "fecha_desde": "2025-11-19",
+                "fecha_hasta": "2025-11-19",
+                "resumen": {
+                    "total_campanas": 3,
+                    "total_llamadas": 150,
+                    "total_ventas": 45,
+                    "total_objetivo_ventas": 100,
+                    "porcentaje_cumplimiento": 45.0
+                },
+                "campanas": [
+                    {
+                        "campana_id": 1,
+                        "nombre": "Campaña 1",
+                        "total_llamadas": 50,
+                        "total_ventas": 15,
+                        "objetivo_ventas": 30,
+                        "porcentaje_cumplimiento": 50.0,
+                        "proyeccion_meta": "En progreso"
+                    },
+                    ...
+                ]
+            }
+        """
+        user = request.user
+        
+        # Verificar que sea jefe de centro
+        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        if user.rol_id != rol_jefe_centro_id:
+            return Response({
+                'detail': 'Solo los jefes de centro pueden acceder a esta información'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Obtener centro(s) del jefe
+        from apps.users.models import Centro
+        centros = Centro.objects.filter(jefe_centro=user)
+        
+        if not centros.exists():
+            return Response({
+                'detail': 'No tiene un centro asignado'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Tomar el primer centro (asumiendo que un jefe maneja un centro)
+        centro = centros.first()
+        
+        # Parsear fechas (opcional, default = hoy)
+        hoy = date.today()
+        fecha_desde_str = request.query_params.get('fecha_desde')
+        fecha_hasta_str = request.query_params.get('fecha_hasta')
+        
+        if fecha_desde_str:
+            fecha_desde = parse_date(fecha_desde_str)
+            if not fecha_desde:
+                return Response(
+                    {"detail": "Fecha 'fecha_desde' inválida. Usa formato YYYY-MM-DD"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            fecha_desde = hoy
+        
+        if fecha_hasta_str:
+            fecha_hasta = parse_date(fecha_hasta_str)
+            if not fecha_hasta:
+                return Response(
+                    {"detail": "Fecha 'fecha_hasta' inválida. Usa formato YYYY-MM-DD"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            fecha_hasta = hoy
+        
+        if fecha_desde > fecha_hasta:
+            return Response(
+                {"detail": "La fecha 'fecha_desde' no puede ser posterior a 'fecha_hasta'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Convertir fechas a datetime con timezone
+        tz = timezone.get_current_timezone()
+        inicio_dia = datetime.combine(fecha_desde, time.min).replace(tzinfo=tz)
+        fin_dia = datetime.combine(fecha_hasta, time.max).replace(tzinfo=tz)
+        
+        # Obtener campañas del centro
+        from apps.campaigns.models import Campana, Equipo
+        campanas = Campana.objects.filter(centro=centro)
+        
+        # Variables de resumen
+        total_campanas = campanas.count()
+        total_llamadas_global = 0
+        total_ventas_global = 0
+        total_objetivo_ventas_global = 0
+        
+        campanas_data = []
+        estado_no_venta_id = get_estado_id('ESTADO_VENTA', 'NO_VENTA')
+        
+        for campana in campanas:
+            # Obtener equipos de la campaña
+            equipos = Equipo.objects.filter(campana=campana, is_active=True)
+            
+            # Obtener agentes de todos los equipos de esta campaña
+            agentes_ids = []
+            for equipo in equipos:
+                ids_equipo = equipo.agentes_detalle.values_list('agente_id', flat=True)
+                agentes_ids.extend(ids_equipo)
+            
+            # Eliminar duplicados
+            agentes_ids = list(set(agentes_ids))
+            
+            # Filtrar llamadas de los agentes de esta campaña en el rango de fechas
+            llamadas_campana = Llamada.objects.filter(
+                agente__documento_id__in=agentes_ids,
+                fecha_hora_inicio__range=(inicio_dia, fin_dia)
+            )
+            
+            # Contar llamadas contestadas
+            total_llamadas = llamadas_campana.filter(fue_contestada=True).count()
+            
+            # Contar ventas (excluir NO_VENTA)
+            if estado_no_venta_id:
+                total_ventas = llamadas_campana.filter(
+                    fue_contestada=True
+                ).exclude(estado_venta_id=estado_no_venta_id).count()
+            else:
+                total_ventas = 0
+            
+            # Objetivo de ventas de la campaña
+            objetivo_ventas = campana.objetivo_ventas or 0
+            
+            # Porcentaje de cumplimiento
+            if objetivo_ventas > 0:
+                porcentaje_cumplimiento = round((total_ventas / objetivo_ventas) * 100, 2)
+            else:
+                porcentaje_cumplimiento = 0.0
+            
+            # Proyección de meta
+            if porcentaje_cumplimiento >= 100:
+                proyeccion_meta = "Meta alcanzada"
+            elif porcentaje_cumplimiento >= 75:
+                proyeccion_meta = "Cerca de la meta"
+            elif porcentaje_cumplimiento >= 50:
+                proyeccion_meta = "En progreso"
+            elif porcentaje_cumplimiento > 0:
+                proyeccion_meta = "Inicio"
+            else:
+                proyeccion_meta = "Sin avance"
+            
+            campanas_data.append({
+                "campana_id": campana.pk,
+                "nombre": campana.nombre,
+                "total_llamadas": total_llamadas,
+                "total_ventas": total_ventas,
+                "objetivo_ventas": objetivo_ventas,
+                "porcentaje_cumplimiento": porcentaje_cumplimiento,
+                "proyeccion_meta": proyeccion_meta
+            })
+            
+            # Acumular en totales globales
+            total_llamadas_global += total_llamadas
+            total_ventas_global += total_ventas
+            total_objetivo_ventas_global += objetivo_ventas
+        
+        # Calcular porcentaje global
+        if total_objetivo_ventas_global > 0:
+            porcentaje_cumplimiento_global = round(
+                (total_ventas_global / total_objetivo_ventas_global) * 100, 2
+            )
+        else:
+            porcentaje_cumplimiento_global = 0.0
+        
+        return Response({
+            "centro": {
+                "id": centro.pk,
+                "nombre": centro.nombre,
+                "direccion": centro.direccion
+            },
+            "fecha_desde": fecha_desde.isoformat(),
+            "fecha_hasta": fecha_hasta.isoformat(),
+            "resumen": {
+                "total_campanas": total_campanas,
+                "total_llamadas": total_llamadas_global,
+                "total_ventas": total_ventas_global,
+                "total_objetivo_ventas": total_objetivo_ventas_global,
+                "porcentaje_cumplimiento": porcentaje_cumplimiento_global
+            },
+            "campanas": campanas_data
+        })
