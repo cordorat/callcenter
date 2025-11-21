@@ -113,7 +113,7 @@ export default function CoordinadorDashboard() {
   }, [load]);
 
   return (
-    <MainLayout title="Panel de Control">
+    <MainLayout title="Dashboard">
       <Box sx={{ width: "100%", p: 3 }}>
         {/* Header con título y botón refresh */}
         <Box

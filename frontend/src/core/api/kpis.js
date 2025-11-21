@@ -92,3 +92,13 @@ export async function exportarCoordinadorKpisPDF({ fecha_desde, fecha_hasta }) {
   });
   return response;
 }
+
+// KPIs para Jefe de Centro - Dashboard
+export async function getJefeCentroDashboard({ fecha_desde, fecha_hasta }) {
+  const params = {};
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_DASHBOARD, { params });
+  return data;
+}

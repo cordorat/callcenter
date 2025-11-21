@@ -106,7 +106,7 @@ export default function JefeCampañaDashboard() {
   }, [load]);
 
   return (
-    <MainLayout title="Panel de Control - Jefe de Campaña">
+    <MainLayout title="Dashboard">
       <Box sx={{ width: "100%", p: 3 }}>
         {/* Header con título y botón refresh */}
         <Box

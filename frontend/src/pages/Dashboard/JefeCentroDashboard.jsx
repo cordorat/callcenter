@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
+import { getJefeCentroDashboard } from "@/core/api/kpis";
 import {
   Box,
   Typography,
@@ -10,6 +11,8 @@ import {
   Stack,
   Card,
   CardContent,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import IconButton from "@mui/material/IconButton";
@@ -24,22 +27,75 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+const toLocalDateString = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 export default function JefeCentroDashboard() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
 
-  // Estados dummy - sin hacer conexión a API
-  const [kpi] = React.useState({
+  const today = React.useMemo(() => toLocalDateString(new Date()), []);
+
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+  const [kpi, setKpi] = React.useState({
     llamadasTotales: 0,
     ventasRealizadas: 0,
     tasaConversion: 0,
     campanasActivas: 0,
   });
 
-  const [ventasData] = React.useState([]);
+  const [ventasData, setVentasData] = React.useState([]);
+
+  const load = React.useCallback(async () => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const data = await getJefeCentroDashboard({
+        fecha_desde: today,
+        fecha_hasta: today,
+      });
+
+      // Mapear los valores del API al estado
+      const llamadasTotales = Number(data.llamadas_totales ?? 0);
+      const ventasRealizadas = Number(data.ventas_realizadas ?? 0);
+      const tasaConvPct = Number(data.tasa_conversion ?? 0);
+      const campanasActivas = Number(data.campanas_activas ?? 0);
+
+      setKpi({
+        llamadasTotales,
+        ventasRealizadas,
+        tasaConversion: tasaConvPct,
+        campanasActivas,
+      });
+
+      // Procesar datos de ventas por campaña
+      if (data.ventas_por_campana && Array.isArray(data.ventas_por_campana)) {
+        const chartData = data.ventas_por_campana.map((item) => ({
+          nombre: item.campana_nombre || "Sin nombre",
+          ventas: Number(item.ventas ?? 0) || 0,
+        }));
+        setVentasData(chartData);
+      }
+    } catch (e) {
+      console.error(e);
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [today]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
 
   return (
-    <MainLayout title="Panel de Control - Jefe de Centro">
+    <MainLayout title="Dashboard">
       <Box sx={{ width: "100%", p: 3 }}>
         {/* Header con título y botón refresh */}
         <Box
@@ -62,7 +118,8 @@ export default function JefeCentroDashboard() {
           </Typography>
           <Tooltip title="Actualizar">
             <IconButton
-              disabled
+              onClick={load}
+              disabled={loading}
               aria-label="Actualizar"
               size="large"
               sx={{
@@ -82,14 +139,40 @@ export default function JefeCentroDashboard() {
               <RefreshIcon
                 sx={{
                   transition: "transform 0.6s ease",
+                  animation: loading ? "spin 1s linear infinite" : "none",
+                  "@keyframes spin": {
+                    "0%": { transform: "rotate(0deg)" },
+                    "100%": { transform: "rotate(360deg)" },
+                  },
                 }}
               />
             </IconButton>
           </Tooltip>
         </Box>
 
-        {/* KPI Cards Stack */}
-        <Stack
+        {/* Error Alert */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            No se pudieron cargar los KPIs del centro.
+          </Alert>
+        )}
+
+        {/* Loading State */}
+        {loading ? (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+            }}
+          >
+            <CircularProgress size={60} />
+          </Box>
+        ) : (
+          <>
+            {/* KPI Cards Stack */}
+            <Stack
           direction={{ xs: "column", sm: "row" }}
           spacing={3}
           sx={{ mb: 4, flexWrap: "wrap" }}
@@ -372,6 +455,8 @@ export default function JefeCentroDashboard() {
             )}
           </CardContent>
         </Card>
+          </>
+        )}
       </Box>
     </MainLayout>
   );
