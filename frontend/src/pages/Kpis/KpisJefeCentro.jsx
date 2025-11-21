@@ -4,12 +4,15 @@ import MainLayout from "@/core/components/layout/MainLayout";
 import { 
     getJefeCentroCampanasKpi, 
     getEquiposJefeCentro, 
-    getEquipoKpiDetalleJefeCentro 
+    getEquipoKpiDetalleJefeCentro,
+    exportarJefeCentroKpisPDF
 } from "@/core/api/kpis";
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useTheme } from '@mui/material/styles';
 import CampaignIcon from '@mui/icons-material/Campaign';
+import ButtonTooltip from "@/components/campaing/ButtonTooltip";
 
 import "./Kpis.css";
 
@@ -116,6 +119,9 @@ export default function KpisJefeCentro() {
     const [equipoSeleccionado, setEquipoSeleccionado] = React.useState(null);
     const [dataEquipo, setDataEquipo] = React.useState(null);
     const [loadingEquipoDetalle, setLoadingEquipoDetalle] = React.useState(false);
+    
+    // Estado para exportación
+    const [exportando, setExportando] = React.useState(false);
 
     // Actualizar rango de fechas según modo
     React.useEffect(() => {
@@ -309,7 +315,34 @@ export default function KpisJefeCentro() {
             tasa_conversion: tasaConversion,
         };
     }, [campanas]);
+    // Función para exportar KPIs a PDF
+    const handleExportarPDF = async () => {
+        setExportando(true);
+        try {
+            const response = await exportarJefeCentroKpisPDF({
+                campana_id: campanaSeleccionada || undefined,
+                fecha_desde: from,
+                fecha_hasta: to,
+            });
 
+            // Crear un blob y descargar el archivo
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `KPIs_Centro_${from}_${to}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+        } catch (e) {
+            console.error(e);
+            setErrMsg("No se pudieron exportar los KPIs. Intenta nuevamente.");
+        } finally {
+            setExportando(false);
+        }
+    };
     // Extraer datos de equipo
     const equipoLlamadasActivas = Number(dataEquipo?.llamadas_activas || 0);
     const equipoAgentesDisponibles = Number(dataEquipo?.agentes_disponibles || 0);
@@ -515,6 +548,21 @@ export default function KpisJefeCentro() {
                             <span className="update-badge">
                                 Última actualización: {new Date(updatedAt).toLocaleString()}
                             </span>
+                        )}
+                        {!exportando ? (
+                            <ButtonTooltip
+                                title="Exportar KPI"
+                                icon={<PictureAsPdfIcon />}
+                                onClick={handleExportarPDF}
+                                color="error"
+                            />
+                        ) : (
+                            <ButtonTooltip
+                                title="Exportando..."
+                                icon={<CircularProgress size={24} sx={{ color: 'white' }} />}
+                                onClick={() => {}}
+                                color="error"
+                            />
                         )}
                         <button 
                             className="btn" 

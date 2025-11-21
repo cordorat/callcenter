@@ -1,13 +1,13 @@
 // PATH: src/pages/Kpis/KpisJefeCampana.jsx
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
-import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle, exportarJefeCampanaKpisPDF } from "@/core/api/kpis";
-import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle, getAgentesJefeCampana, getAgenteKpiDetalleJefe } from "@/core/api/kpis";
+import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle, exportarJefeCampanaKpisPDF,getAgentesJefeCampana, getAgenteKpiDetalleJefe } from "@/core/api/kpis";
 import { historialJefeService } from "@/core/api/historialJefeCampana";
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useTheme } from '@mui/material/styles';
+import ButtonTooltip from "@/components/campaing/ButtonTooltip";
 import PersonIcon from '@mui/icons-material/Person';
 import SearchIcon from '@mui/icons-material/Search';
 import GroupIcon from '@mui/icons-material/Group';
@@ -894,17 +894,21 @@ export default function KpisJefeCampana() {
                                     Última actualización: {new Date(updatedAt).toLocaleString()}
                                 </span>
                             )}
-                            <button 
-                                className="btn" 
-                                onClick={handleExportarPDF}
-                                disabled={exportando || loading || loadingEquipos || loadingEquipoDetalle}
-                                title="Exportar KPIs a PDF"
-                            >
-                                {exportando ? 
-                                    <CircularProgress size={20} color="inherit" /> : 
-                                    <PictureAsPdfIcon fontSize="small" />
-                                }
-                            </button>
+                            {!exportando ? (
+                                <ButtonTooltip
+                                    title="Exportar KPI"
+                                    icon={<PictureAsPdfIcon />}
+                                    onClick={handleExportarPDF}
+                                    color="error"
+                                />
+                            ) : (
+                                <ButtonTooltip
+                                    title="Exportando..."
+                                    icon={<CircularProgress size={24} sx={{ color: 'white' }} />}
+                                    onClick={() => {}}
+                                    color="error"
+                                />
+                            )}
                             <button 
                                 className="btn" 
                                 onClick={() => {

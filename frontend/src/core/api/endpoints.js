@@ -57,6 +57,7 @@ export const ENDPOINTS = {
   KPIS_JEFE_CENTRO_CAMPANAS: `${BASE_URL}/kpis/jefe-centro/campanas/`, // GET KPIs de todas las campañas del centro
   KPIS_JEFE_CENTRO_EQUIPOS_LIST: `${BASE_URL}/kpis/jefe-centro/equipos/`, // GET lista de equipos del centro
   KPIS_JEFE_CENTRO_EQUIPO_DETALLE: (equipoId) => `${BASE_URL}/kpis/jefe-centro/equipos/${equipoId}/detalle/`, // GET KPIs de equipo
+  KPIS_JEFE_CENTRO_EXPORTAR_PDF: `${BASE_URL}/kpis/jefe-centro/exportar-pdf/`, // GET Exportar KPIs a PDF
   
   // --- CAMPAIGNS / BASES DE DATOS ---
   CAMPAIGNS_UPLOAD: `${BASE_URL}/campaigns/cargar-base-datos/`,    // POST multipart file + campana_id

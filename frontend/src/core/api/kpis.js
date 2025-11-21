@@ -117,8 +117,6 @@ export async function exportarCoordinadorKpisPDF({ fecha_desde, fecha_hasta }) {
 
 // Exportar KPIs de Jefe de Campaña a PDF
 export async function exportarJefeCampanaKpisPDF({ campana_id, fecha_desde, fecha_hasta }) {
-// KPIs para Jefe de Centro - Campañas del centro
-export async function getJefeCentroCampanasKpi({ campana_id, fecha_desde, fecha_hasta }) {
   const params = {};
   if (campana_id) params.campana_id = campana_id;
   if (fecha_desde) params.fecha_desde = fecha_desde;
@@ -129,6 +127,15 @@ export async function getJefeCentroCampanasKpi({ campana_id, fecha_desde, fecha_
     responseType: 'blob' 
   });
   return response;
+}
+
+// KPIs para Jefe de Centro - Overview de campañas
+export async function getJefeCentroCampanasKpi({ fecha_desde, fecha_hasta, campana_id }) {
+  const params = {};
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  if (campana_id) params.campana_id = campana_id;
+  
   const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_CAMPANAS, { params });
   return data;
 }
@@ -149,4 +156,19 @@ export async function getEquipoKpiDetalleJefeCentro(equipoId, { fecha_desde, fec
   
   const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_EQUIPO_DETALLE(equipoId), { params });
   return data;
+}
+
+// Exportar KPIs de Jefe de Centro a PDF
+export async function exportarJefeCentroKpisPDF({ centro_id, fecha_desde, fecha_hasta, campana_id }) {
+  const params = {};
+  if (centro_id) params.centro_id = centro_id;
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  if (campana_id) params.campana_id = campana_id;
+  
+  const response = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_EXPORTAR_PDF, { 
+    params,
+    responseType: 'blob' 
+  });
+  return response;
 }
