@@ -44,6 +44,20 @@ const KpisRouter = () => {
   // Por defecto (AGENTE), mostrar KPIs de agente
   return <Kpis />;
 };
+
+// Componente que redirige según el rol del usuario
+const RootRouter = () => {
+  const { user } = useAuth();
+
+  // Si es ADMIN, redirigir a usuarios
+  if (user?.role === 'ADMIN') {
+    return <Navigate to="/usuarios" replace />;
+  }
+
+  // Por defecto, redirigir a dashboard
+  return <Navigate to="/dashboard" replace />;
+};
+
 import CoordinadorCallHistoryAgents from '@/pages/Historial/CoordinadorCallHistoryAgents';
 import BackofficeCallsList from '@/pages/Backoffice/BackofficeCallsList';
 import CallDetailPage from '@/pages/Backoffice/CallDetailPage';
@@ -57,7 +71,7 @@ const AppRoutes = () => {
         {/* Ruta pública: Login */}
         <Route
           path="/"
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
+          element={isAuthenticated ? <RootRouter /> : <Login />}
         />
 
         {/* Ruta pública: Reset Password */}

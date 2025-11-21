@@ -885,6 +885,53 @@ class KPIViewSet(viewsets.ViewSet):
                            100) if llamadas_contestadas_periodo > 0 else 0
 
         # ===========================
+        # 8. TIMELINE POR HORA
+        # ===========================
+        # Construir distribución de llamadas y ventas por hora
+        from django.db.models.functions import Extract
+        
+        timeline_dict = {}
+        for hora in range(8, 20):  # 8am a 7pm
+            timeline_dict[hora] = {"llamadas": 0, "ventas": 0}
+        
+        # Obtener llamadas por hora
+        llamadas_por_hora = (
+            llamadas_periodo.filter(fue_contestada=True)
+            .annotate(hora=Extract('fecha_hora_inicio', 'hour'))
+            .values('hora')
+            .annotate(total=Count('id'))
+        )
+        
+        for item in llamadas_por_hora:
+            hora = item['hora']
+            if hora in timeline_dict:
+                timeline_dict[hora]['llamadas'] = item['total']
+        
+        # Obtener ventas por hora
+        ventas_por_hora = (
+            llamadas_periodo.filter(fue_contestada=True)
+            .exclude(estado_venta_id=estado_no_venta_id)
+            .annotate(hora=Extract('fecha_hora_inicio', 'hour'))
+            .values('hora')
+            .annotate(total=Count('id'))
+        )
+        
+        for item in ventas_por_hora:
+            hora = item['hora']
+            if hora in timeline_dict:
+                timeline_dict[hora]['ventas'] = item['total']
+        
+        # Convertir a lista ordenada
+        timeline_por_hora = [
+            {
+                "hora": f"{hora:02d}:00",
+                "llamadas": timeline_dict[hora]['llamadas'],
+                "ventas": timeline_dict[hora]['ventas']
+            }
+            for hora in sorted(timeline_dict.keys())
+        ]
+
+        # ===========================
         # 9. CONSTRUIR RESPUESTA
         # ===========================
         return Response({
@@ -899,7 +946,8 @@ class KPIViewSet(viewsets.ViewSet):
             "fecha_consulta": timezone.now(),
             "total_agentes": total_agentes,
             "fecha_desde": fecha_desde.isoformat(),
-            "fecha_hasta": fecha_hasta.isoformat()
+            "fecha_hasta": fecha_hasta.isoformat(),
+            "timeline_por_hora": timeline_por_hora
         })
 
     @action(detail=False, methods=['get'], url_path='coordinador/overview', permission_classes=[IsCoordinador])
@@ -3015,10 +3063,18 @@ class KPIViewSet(viewsets.ViewSet):
             agentes_ids = list(set(agentes_ids))
             
             # Filtrar llamadas de los agentes de esta campaña en el rango de fechas
-            llamadas_campana = Llamada.objects.filter(
-                agente__documento_id__in=agentes_ids,
-                fecha_hora_inicio__range=(inicio_dia, fin_dia)
-            )
+            # También incluir llamadas directas de la campaña (si no hay equipos)
+            if agentes_ids:
+                llamadas_campana = Llamada.objects.filter(
+                    agente__documento_id__in=agentes_ids,
+                    fecha_hora_inicio__range=(inicio_dia, fin_dia)
+                )
+            else:
+                # Si no hay agentes en equipos, buscar por cliente__campana
+                llamadas_campana = Llamada.objects.filter(
+                    cliente__campana=campana,
+                    fecha_hora_inicio__range=(inicio_dia, fin_dia)
+                )
             
             # Contar llamadas contestadas
             total_llamadas = llamadas_campana.filter(fue_contestada=True).count()
@@ -3075,6 +3131,20 @@ class KPIViewSet(viewsets.ViewSet):
         else:
             porcentaje_cumplimiento_global = 0.0
         
+        # Calcular tasa de conversión global
+        tasa_conversion_global = 0.0
+        if total_llamadas_global > 0:
+            tasa_conversion_global = round((total_ventas_global / total_llamadas_global) * 100, 2)
+        
+        # Preparar datos de ventas por campaña para el gráfico
+        ventas_por_campana = [
+            {
+                "campana_nombre": item["nombre"],
+                "ventas": item["total_ventas"]
+            }
+            for item in campanas_data
+        ]
+        
         return Response({
             "centro": {
                 "id": centro.pk,
@@ -3083,6 +3153,13 @@ class KPIViewSet(viewsets.ViewSet):
             },
             "fecha_desde": fecha_desde.isoformat(),
             "fecha_hasta": fecha_hasta.isoformat(),
+            # Campos que espera el dashboard
+            "llamadas_totales": total_llamadas_global,
+            "ventas_realizadas": total_ventas_global,
+            "tasa_conversion": tasa_conversion_global,
+            "campanas_activas": total_campanas,
+            "ventas_por_campana": ventas_por_campana,
+            # Campos adicionales para detalles
             "resumen": {
                 "total_campanas": total_campanas,
                 "total_llamadas": total_llamadas_global,
@@ -3092,7 +3169,6 @@ class KPIViewSet(viewsets.ViewSet):
             },
             "campanas": campanas_data
         })
-        return response
 
     
     @action(detail=False, methods=['get'], url_path='jefe-centro/campanas', permission_classes=[IsJefeCentro])
