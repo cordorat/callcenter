@@ -12,6 +12,7 @@ from .serializers import (
     UserSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
+    AdminUserUpdateSerializer,
     ChangePasswordSerializer,
     CambiarEstadoSerializer,
     ProfileUpdateSerializer
@@ -48,6 +49,10 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return UserCreateSerializer
         elif self.action in ['update', 'partial_update']:
+            # Si es administrador, usar el serializador completo
+            if self.request.user.is_admin():
+                return AdminUserUpdateSerializer
+            # Si es el propio usuario, usar el serializador limitado
             return UserUpdateSerializer
         elif self.action == 'change_password':
             return ChangePasswordSerializer
@@ -58,8 +63,12 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'destroy']:
             # Solo administradores pueden crear y eliminar usuarios
             permission_classes = [IsAdmin]
-        elif self.action in ['update', 'partial_update', 'retrieve']:
-            # Administradores o el propio usuario
+        elif self.action in ['update', 'partial_update']:
+            # Solo administradores pueden actualizar cualquier usuario
+            # Los usuarios pueden actualizar su propio perfil mediante /profile/
+            permission_classes = [IsAdmin]
+        elif self.action == 'retrieve':
+            # Administradores o el propio usuario pueden ver el perfil
             permission_classes = [IsAdminOrOwner]
         else:
             # Por defecto, usuarios autenticados
@@ -87,6 +96,30 @@ class UserViewSet(viewsets.ModelViewSet):
             UserSerializer(user).data,
             status=status.HTTP_201_CREATED
         )
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Actualiza un usuario (solo administradores).
+        Criterio 3.1: Al presionar "Guardar", si los campos son correctos, 
+        los cambios se actualizan en la base de datos y se mostrará el mensaje 
+        "Datos actualizados correctamente".
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        # Usar UserSerializer para la respuesta (sin campos sensibles)
+        response_data = UserSerializer(instance).data
+        response_data['message'] = 'Datos actualizados correctamente'
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Actualización parcial de usuario (solo administradores)."""
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
     
     def destroy(self, request, *args, **kwargs):
         """

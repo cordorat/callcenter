@@ -80,6 +80,28 @@ export async function getEquipoKpiDetalle(equipoId, { fecha_desde, fecha_hasta }
   return data;
 }
 
+// KPIs para Jefe de Campaña - Lista de agentes
+export async function getAgentesJefeCampana({ campana_id, page = 1, page_size = 10, search, estado, equipo_id }) {
+  const params = { page, page_size };
+  if (campana_id) params.campana_id = campana_id;
+  if (search) params.search = search;
+  if (estado) params.estado = estado;
+  if (equipo_id) params.equipo_id = equipo_id;
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_AGENTES_LIST, { params });
+  return data;
+}
+
+// KPIs para Jefe de Campaña - Detalle de agente
+export async function getAgenteKpiDetalleJefe(documentoId, { fecha_desde, fecha_hasta }) {
+  const params = {};
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_AGENTE_DETALLE(documentoId), { params });
+  return data;
+}
+
 // Exportar KPIs del coordinador a PDF
 export async function exportarCoordinadorKpisPDF({ fecha_desde, fecha_hasta }) {
   const params = {};
@@ -100,5 +122,34 @@ export async function getJefeCentroDashboard({ fecha_desde, fecha_hasta }) {
   if (fecha_hasta) params.fecha_hasta = fecha_hasta;
   
   const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_DASHBOARD, { params });
+  return data;
+}
+
+// KPIs para Jefe de Centro - Campañas del centro
+export async function getJefeCentroCampanasKpi({ campana_id, fecha_desde, fecha_hasta }) {
+  const params = {};
+  if (campana_id) params.campana_id = campana_id;
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_CAMPANAS, { params });
+  return data;
+}
+
+// KPIs para Jefe de Centro - Lista de equipos
+export async function getEquiposJefeCentro({ page = 1, page_size = 10 }) {
+  const params = { page, page_size };
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_EQUIPOS_LIST, { params });
+  return data;
+}
+
+// KPIs para Jefe de Centro - Detalle de equipo
+export async function getEquipoKpiDetalleJefeCentro(equipoId, { fecha_desde, fecha_hasta }) {
+  const params = {};
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_EQUIPO_DETALLE(equipoId), { params });
   return data;
 }
