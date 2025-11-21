@@ -115,24 +115,8 @@ export async function exportarCoordinadorKpisPDF({ fecha_desde, fecha_hasta }) {
   return response;
 }
 
-// KPIs para Jefe de Centro - Dashboard
-export async function getJefeCentroDashboard({ fecha_desde, fecha_hasta }) {
-  const params = {};
-  if (fecha_desde) params.fecha_desde = fecha_desde;
-  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
-
-  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_DASHBOARD, { params });
-  return data;
-}
 // Exportar KPIs de Jefe de Campaña a PDF
 export async function exportarJefeCampanaKpisPDF({ campana_id, fecha_desde, fecha_hasta }) {
-  
-  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_DASHBOARD, { params });
-  return data;
-}
-
-// KPIs para Jefe de Centro - Campañas del centro
-export async function getJefeCentroCampanasKpi({ campana_id, fecha_desde, fecha_hasta }) {
   const params = {};
   if (campana_id) params.campana_id = campana_id;
   if (fecha_desde) params.fecha_desde = fecha_desde;
@@ -145,12 +129,22 @@ export async function getJefeCentroCampanasKpi({ campana_id, fecha_desde, fecha_
   return response;
 }
 
-// KPIs para Jefe de Centro - Overview de campañas
-export async function getJefeCentroCampanasKpi({ fecha_desde, fecha_hasta, campana_id }) {
+// KPIs para Jefe de Centro - Dashboard
+export async function getJefeCentroDashboard({ fecha_desde, fecha_hasta }) {
   const params = {};
   if (fecha_desde) params.fecha_desde = fecha_desde;
   if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+
+  const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_DASHBOARD, { params });
+  return data;
+}
+
+// KPIs para Jefe de Centro - Campañas del centro
+export async function getJefeCentroCampanasKpi({ campana_id, fecha_desde, fecha_hasta }) {
+  const params = {};
   if (campana_id) params.campana_id = campana_id;
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
   
   const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_CAMPANAS, { params });
   return data;
