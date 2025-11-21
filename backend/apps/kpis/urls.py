@@ -26,4 +26,10 @@ urlpatterns = [
     path('jefe-centro/dashboard/', KPIViewSet.as_view({'get': 'jefe_centro_dashboard'}), name='jefe-centro-dashboard'),
     path('jefe-campana/exportar-pdf/', KPIViewSet.as_view({'get': 'exportar_kpis_campana_pdf'}), name='jefe-campana-exportar-pdf'),
     path('jefe-centro/exportar-pdf/', KPIViewSet.as_view({'get': 'exportar_kpis_centro_pdf'}), name='jefe-centro-exportar-pdf'),
+    path('jefe-campana/agentes/', KPIViewSet.as_view({'get': 'agentes_campana_list'}), name='jefe-campana-agentes-list'),
+    path('jefe-campana/agentes/<str:documento_id>/detalle/', KPIViewSet.as_view({'get': 'agente_campana_detalle_kpis'}), name='jefe-campana-agente-detalle'),
+    path('jefe-centro/campanas/', KPIViewSet.as_view({'get': 'campanas_jefe_centro'}), name='jefe-centro-campanas'),
+    path('jefe-centro/equipos/', KPIViewSet.as_view({'get': 'equipos_centro_list'}), name='jefe-centro-equipos-list'),
+    path('jefe-centro/equipos/<int:equipo_id>/detalle/', KPIViewSet.as_view({'get': 'equipo_centro_detalle_kpis'}), name='jefe-centro-equipo-detalle'),
+
 ]

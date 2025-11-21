@@ -13,7 +13,7 @@ from django.http import HttpResponse
 from io import BytesIO
 
 from apps.calls.models import Llamada
-from apps.users.models import User
+from apps.users.models import Centro, User
 from apps.users.permissions import IsAdminOrCoordinador, IsAdmin, IsJefeCampana, IsCoordinador, IsJefeCentro
 from apps.kpis.serializers import AgenteListSerializer, KPIAgenteDetailSerializer
 from common.estados_helper import get_estado_id, get_estado

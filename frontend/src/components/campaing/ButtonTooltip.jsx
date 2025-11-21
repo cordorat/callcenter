@@ -39,9 +39,9 @@ export default function FloatingActionButton({
           backgroundColor: (theme) => theme.palette[color].main,
           color: "white",
           borderRadius: "50%",
-          minWidth: "56px",
-          width: "56px",
-          height: "56px",
+          minWidth: "48px",
+          width: "48px",
+          height: "48px",
           padding: 0,
           display: "flex",
           alignItems: "center",
@@ -60,7 +60,7 @@ export default function FloatingActionButton({
           },
           transition: "all 0.2s ease",
           "& .MuiSvgIcon-root": {
-            fontSize: "1.8rem",
+            fontSize: "1.5rem",
           },
         }}
       >

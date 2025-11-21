@@ -526,8 +526,9 @@ class CampanaUpdateSerializer(serializers.ModelSerializer):
     productos_ids = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
-        required=True,
-        help_text='Lista de IDs de productos a asociar (mínimo 1)'
+        required=False,
+        allow_empty=True,
+        help_text='Lista de IDs de productos a asociar (opcional)'
     )
     
     # Campos de lectura para mostrar información completa en la respuesta
@@ -582,7 +583,7 @@ class CampanaUpdateSerializer(serializers.ModelSerializer):
     def validate_nombre(self, value):
         """
         - Mínimo 5 caracteres, máximo 50
-        - Solo caracteres alfabéticos (espacios permitidos)
+        - Permite letras, números y espacios
         """
         if len(value) < 5:
             raise serializers.ValidationError(
@@ -594,10 +595,10 @@ class CampanaUpdateSerializer(serializers.ModelSerializer):
                 'El nombre no puede exceder 50 caracteres'
             )
         
-        # Permitir letras (incluyendo tildes y ñ), espacios
-        if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$', value):
+        # Permitir letras (incluyendo tildes y ñ), números y espacios
+        if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+$', value):
             raise serializers.ValidationError(
-                'El nombre solo puede contener caracteres alfabéticos'
+                'El nombre solo puede contener letras, números y espacios'
             )
         
         return value.strip()
@@ -605,17 +606,14 @@ class CampanaUpdateSerializer(serializers.ModelSerializer):
     def validate_descripcion(self, value):
         """
         - Máximo 200 caracteres
-        - Debe ser tipo alfabético
+        - Permite cualquier carácter
         """
+        if not value:
+            return value
+            
         if len(value) > 200:
             raise serializers.ValidationError(
                 'La descripción no puede exceder 200 caracteres'
-            )
-        
-        # Permitir letras, espacios, puntos y comas
-        if value and not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.,]+$', value):
-            raise serializers.ValidationError(
-                'La descripción solo puede contener caracteres alfabéticos'
             )
         
         return value.strip()
@@ -641,13 +639,12 @@ class CampanaUpdateSerializer(serializers.ModelSerializer):
     
     def validate_productos_ids(self, value):
         """
-        - Debe haber al menos 1 producto
-        - Todos los IDs deben existir y estar activos
+        - Si se envían productos, todos los IDs deben existir y estar activos
+        - Permite lista vacía (opcional)
         """
+        # Si no se envía o está vacío, es válido
         if not value or len(value) == 0:
-            raise serializers.ValidationError(
-                'Debe seleccionar al menos un producto'
-            )
+            return value
         
         productos = Producto.objects.filter(
             id__in=value,
