@@ -35,6 +35,7 @@ import {
 import { usersService } from '@/core/api/users';
 import { useTheme } from '@mui/material/styles';
 import CrearUsuario from './CrearUsuario';
+import EditarUsuario from './EditarUsuario';
 import GroupIcon from '@mui/icons-material/Group';
 
 export default function Usuarios() {
@@ -46,7 +47,10 @@ export default function Usuarios() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [openModal, setOpenModal] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const pageSize = 6;
   const theme = useTheme();
 
@@ -87,8 +91,28 @@ export default function Usuarios() {
     setOpenModal(false);
     fetchUsers(1);
     setPage(1);
+    setSuccessMessage('Usuario creado correctamente');
     setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 2000);
+    setTimeout(() => setShowSuccess(false), 3000);
+  };
+
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setOpenEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setOpenEditModal(false);
+    setSelectedUser(null);
+  };
+
+  const handleUserUpdated = () => {
+    setOpenEditModal(false);
+    setSelectedUser(null);
+    fetchUsers(page); // Recargar la página actual
+    setSuccessMessage('Datos actualizados correctamente');
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
   };
 
   const getRoleColor = (role) => {
@@ -113,7 +137,7 @@ export default function Usuarios() {
       <Box sx={{ height: '100%', overflow: 'auto' }}>
         {showSuccess && (
           <Alert severity="success" sx={{ mb: 3 }}>
-            Usuario creado correctamente
+            {successMessage}
           </Alert>
         )}
         {/* Header con gradiente adaptivo */}
@@ -293,6 +317,7 @@ export default function Usuarios() {
                             <Tooltip title="Editar">
                               <IconButton
                                 size="small"
+                                onClick={() => handleEditUser(user)}
                                 sx={{
                                   transition: 'all 0.2s',
                                   borderRadius: '50%',
@@ -309,28 +334,7 @@ export default function Usuarios() {
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Desactivar">
-                              <IconButton
-                                size="small"
-                                disabled={!user.is_active}
-                                sx={{
-                                  transition: 'all 0.2s',
-                                  borderRadius: '50%',
-                                  bgcolor: theme.palette.mode === 'light' ? 'grey.200' : 'grey.800',
-                                  color: theme.palette.mode === 'light' ? 'grey.700' : 'grey.300',
-                                  boxShadow: theme.palette.mode === 'light' ? '0 2px 8px rgba(102,126,234,0.10)' : '0 2px 8px rgba(0,0,0,0.25)',
-                                  '&:hover': {
-                                    bgcolor: theme.palette.error.main,
-                                    color: 'white',
-                                    transform: 'scale(1.15)',
-                                    boxShadow: theme.palette.mode === 'light' ? '0 4px 16px rgba(255,0,0,0.18)' : '0 4px 16px rgba(0,0,0,0.35)',
-                                  }
-                                }}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                            </Tooltip>                 
                           </Box>
                         </TableCell>
                       </TableRow>
@@ -389,6 +393,44 @@ export default function Usuarios() {
         </Box>
         <DialogContent sx={{ p: 3, pt: 1 }}>
           <CrearUsuario isModal={true} onUserCreated={handleUserCreated} onCancel={handleCloseModal} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal para editar usuario */}
+      <Dialog
+        open={openEditModal}
+        onClose={handleCloseEditModal}
+        maxWidth="md"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            borderRadius: 3,
+          }
+        }}
+      >
+        <Box sx={{ position: 'relative' }}>
+          <IconButton
+            onClick={handleCloseEditModal}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              zIndex: 1,
+              backgroundColor: theme.palette.mode === 'light' ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
+              '&:hover': {
+                backgroundColor: theme.palette.mode === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)',
+              }
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <DialogContent sx={{ p: 3, pt: 1 }}>
+          <EditarUsuario 
+            user={selectedUser} 
+            onUserUpdated={handleUserUpdated} 
+            onCancel={handleCloseEditModal} 
+          />
         </DialogContent>
       </Dialog>
     </MainLayout>

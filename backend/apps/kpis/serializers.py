@@ -289,3 +289,27 @@ class KPIEquipoSerializer(serializers.Serializer):
     fecha_consulta = serializers.DateTimeField(
         help_text='Timestamp de cuándo se generaron estos KPIs'
     )
+class KPICampanaJefeCentroSerializer(serializers.Serializer):
+    """
+    Serializer para KPIs de una campaña individual (vista Jefe de Centro).
+    """
+    campana_id = serializers.IntegerField(help_text='ID de la campaña')
+    campana_nombre = serializers.CharField(help_text='Nombre de la campaña')
+    llamadas_activas = serializers.IntegerField(help_text='Llamadas en curso')
+    tiempo_promedio_llamada = serializers.FloatField(help_text='Segundos')
+    llamadas_del_periodo = serializers.IntegerField(help_text='Total en rango')
+    ventas_realizadas = serializers.IntegerField(help_text='Ventas exitosas')
+    tasa_conversion = serializers.FloatField(help_text='Porcentaje 0-100')
+
+
+class KPIJefeCentroResponseSerializer(serializers.Serializer):
+    """
+    Serializer para respuesta completa del endpoint de Jefe de Centro.
+    """
+    centro_id = serializers.IntegerField()
+    centro_nombre = serializers.CharField()
+    total_campanas_activas = serializers.IntegerField()
+    fecha_desde = serializers.DateField()
+    fecha_hasta = serializers.DateField()
+    fecha_consulta = serializers.DateTimeField()
+    campanas = KPICampanaJefeCentroSerializer(many=True)

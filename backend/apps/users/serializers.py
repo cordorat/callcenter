@@ -170,6 +170,252 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class AdminUserUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializador para actualización completa de usuarios por administrador.
+    Cumple con HU: Actualizar los datos de un Usuario (Administrador).
+    
+    Campos editables:
+    - Nombre completo (first_name, last_name)
+    - Correo electrónico (email)
+    - Teléfono (phone)
+    - Rol (role/rol)
+    - Estado (is_active)
+    - Contraseña (password, opcional)
+    """
+    
+    # Campo 'role' para compatibilidad con frontend (acepta strings como 'ADMIN', 'AGENTE')
+    role = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_null=True,
+        help_text="Rol del usuario (ADMIN, AGENTE, COORDINADOR, etc.)"
+    )
+    
+    # Campo password opcional para cambio de contraseña
+    password = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        style={'input_type': 'password'},
+        help_text="Nueva contraseña (opcional)"
+    )
+    
+    # Campo computado para mostrar el rol actual
+    current_role = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            'first_name',
+            'last_name',
+            'email',
+            'phone',
+            'rol',
+            'role',  # Campo adicional para aceptar string
+            'current_role',  # Campo de solo lectura
+            'is_active',
+            'password'
+        ]
+        extra_kwargs = {
+            'first_name': {'required': True},
+            'last_name': {'required': True},
+            'email': {'required': True},
+            'phone': {'required': True},
+            'is_active': {'required': True}
+        }
+
+    def get_current_role(self, obj):
+        """Devuelve el rol actual del usuario."""
+        if obj.rol:
+            return obj.rol.valor
+        return None
+
+    def validate_email(self, value):
+        """
+        Valida que el email cumpla con el formato requerido.
+        Criterio 2.2: El correo debe contener el dominio.
+        """
+        if not value:
+            raise serializers.ValidationError(
+                "El correo electrónico es obligatorio."
+            )
+
+        # Verificar que tenga @
+        if '@' not in value:
+            raise serializers.ValidationError(
+                "El correo debe contener un dominio válido (ej: usuario@dominio.com)"
+            )
+
+        # Verificar que tenga un dominio después del @
+        partes = value.split('@')
+        if len(partes) != 2 or not partes[1] or '.' not in partes[1]:
+            raise serializers.ValidationError(
+                "El correo debe contener un dominio válido (ej: usuario@dominio.com)"
+            )
+
+        # Verificar que el email no esté siendo usado por otro usuario
+        if self.instance:
+            # En actualización, excluir el usuario actual
+            if User.objects.exclude(pk=self.instance.pk).filter(email=value).exists():
+                raise serializers.ValidationError(
+                    "Este correo electrónico ya está en uso por otro usuario."
+                )
+        else:
+            # En creación (no debería pasar pero por seguridad)
+            if User.objects.filter(email=value).exists():
+                raise serializers.ValidationError(
+                    "Este correo electrónico ya está en uso."
+                )
+
+        return value
+
+    def validate_phone(self, value):
+        """
+        Valida el formato del teléfono.
+        Acepta dos formatos:
+        1. Solo números: 10 dígitos (ej: 3001234567)
+        2. Con código de país: +XX seguido de 7-15 dígitos (ej: +573001234567)
+        
+        Criterio 2.2: El teléfono debe contener solo números y contener solo 10 caracteres
+        (o formato internacional con +).
+        """
+        if not value:
+            raise serializers.ValidationError(
+                "El teléfono es obligatorio."
+            )
+
+        # Remover espacios en blanco
+        value = value.strip()
+
+        # CASO 1: Número con código de país (comienza con +)
+        if value.startswith('+'):
+            # Validar formato: +XX... donde XX... son solo dígitos
+            numero_sin_mas = value[1:]  # Quitar el símbolo +
+
+            if not numero_sin_mas.isdigit():
+                raise serializers.ValidationError(
+                    "El formato con código de país debe ser: +XX seguido de números (ej: +573001234567)"
+                )
+
+            # Validar longitud: mínimo 8 (+ + 1 dígito país + 7 dígitos número)
+            # máximo 16 (+ + 3 dígitos país + 15 dígitos número)
+            if len(numero_sin_mas) < 8 or len(numero_sin_mas) > 15:
+                raise serializers.ValidationError(
+                    "El número con código de país debe tener entre 8 y 15 dígitos después del +"
+                )
+
+        # CASO 2: Número sin código de país (solo dígitos)
+        else:
+            # Verificar que solo contenga números
+            if not value.isdigit():
+                raise serializers.ValidationError(
+                    "El teléfono debe contener solo números. Si desea incluir código de país, use el formato: +573001234567"
+                )
+
+            # Verificar que tenga exactamente 10 dígitos
+            if len(value) != 10:
+                raise serializers.ValidationError(
+                    "El teléfono debe contener exactamente 10 dígitos o incluir el código de país (ej: +573001234567)"
+                )
+
+        return value
+
+    def validate_password(self, value):
+        """
+        Valida la complejidad de la contraseña si se proporciona.
+        Criterio 2.2: La contraseña deberá tener mínimo 8 caracteres, una minúscula, 
+        una mayúscula, un número y un caracter especial.
+        """
+        # Si no se proporciona contraseña o está vacía, no validar
+        if not value:
+            return value
+
+        # Verificar longitud mínima
+        if len(value) < 8:
+            raise serializers.ValidationError(
+                "La contraseña debe tener al menos 8 caracteres."
+            )
+
+        # Verificar que tenga al menos una minúscula
+        if not re.search(r'[a-z]', value):
+            raise serializers.ValidationError(
+                "La contraseña debe contener al menos una letra minúscula."
+            )
+
+        # Verificar que tenga al menos una mayúscula
+        if not re.search(r'[A-Z]', value):
+            raise serializers.ValidationError(
+                "La contraseña debe contener al menos una letra mayúscula."
+            )
+
+        # Verificar que tenga al menos un número
+        if not re.search(r'\d', value):
+            raise serializers.ValidationError(
+                "La contraseña debe contener al menos un número."
+            )
+
+        # Verificar que tenga al menos un carácter especial
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};:\'",.<>?/\\|`~]', value):
+            raise serializers.ValidationError(
+                "La contraseña debe contener al menos un carácter especial."
+            )
+
+        return value
+
+    def validate(self, attrs):
+        """
+        Validaciones cruzadas y conversión de 'role' a 'rol'.
+        """
+        # Convertir 'role' (string) a 'rol' (objeto TiposParametros) si se proporciona
+        role_string = attrs.pop('role', None)
+        
+        if role_string:
+            # Mapear valores comunes a los valores en la base de datos
+            role_mapping = {
+                'AGENTE': 'AGENTE',
+                'ADMIN': 'ADMIN',
+                'COORDINADOR': 'COORDINADOR',
+                'BACKOFFICE': 'BACKOFFICE',
+                'JEFE DE CENTRO': 'JEFE_CENTRO',
+                'JEFE_CENTRO': 'JEFE_CENTRO',
+                'JEFE DE CAMPAÑA': 'JEFE_CAMPANA',
+                'JEFE_CAMPANA': 'JEFE_CAMPANA'
+            }
+            
+            # Convertir a valor de base de datos
+            role_valor = role_mapping.get(role_string.upper(), role_string.upper())
+            
+            # Buscar el TiposParametros correspondiente
+            rol_obj = get_estado('ROL_USUARIO', role_valor)
+            if not rol_obj:
+                raise serializers.ValidationError({
+                    "role": f"Rol '{role_string}' no válido. Debe ser 'ADMIN', 'AGENTE', 'COORDINADOR', 'BACKOFFICE', 'JEFE_CENTRO' o 'JEFE_CAMPANA'."
+                })
+            attrs['rol'] = rol_obj
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        """
+        Actualiza el usuario con los datos validados.
+        Si se proporciona contraseña, la actualiza también.
+        """
+        # Extraer password si se proporciona
+        password = validated_data.pop('password', None)
+        
+        # Actualizar campos normales
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        # Actualizar password si se proporcionó
+        if password:
+            instance.set_password(password)
+        
+        instance.save()
+        return instance
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     """Serializador para cambiar contraseña."""
 

@@ -869,6 +869,64 @@ class EquipoViewSet(viewsets.ModelViewSet):
             'coordinadores': coordinadores_data
         }, status=status.HTTP_200_OK)
     
+    @action(detail=False, methods=['get'], url_path='campanas-activas')
+    def campanas_activas(self, request):
+        """
+        Obtiene lista de campañas activas disponibles para asignar a equipos.
+        
+        GET /api/campaigns/equipos/campanas-activas/
+        
+        Retorna:
+        - Lista de campañas activas filtradas según el rol del usuario
+        """
+        user = request.user
+        estado_activa = get_estado('ESTADO_CAMPANA', 'ACTIVA')
+        
+        # Filtrar campañas según el rol
+        rol_jefe_centro_id = get_estado_id('ROL_USUARIO', 'JEFE_CENTRO')
+        rol_jefe_campana_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
+        
+        if user.rol_id == rol_jefe_centro_id:
+            # Jefe de centro: campañas de su centro
+            centros = Centro.objects.filter(jefe_centro=user)
+            campanas = Campana.objects.filter(
+                centro__in=centros,
+                estado=estado_activa
+            ).order_by('nombre')
+        elif user.rol_id == rol_jefe_campana_id:
+            # Jefe de campaña: solo sus campañas
+            campanas = Campana.objects.filter(
+                jefe_campana=user,
+                estado=estado_activa
+            ).order_by('nombre')
+        elif user.is_admin():
+            # Admin: todas las campañas activas
+            campanas = Campana.objects.filter(
+                estado=estado_activa
+            ).order_by('nombre')
+        else:
+            # Otros roles: sin acceso
+            return Response({
+                'success': False,
+                'message': 'No tienes permiso para ver campañas'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Serializar datos
+        campanas_data = [{
+            'id': campana.pk,
+            'nombre': campana.nombre,
+            'descripcion': campana.descripcion,
+            'fecha_inicio': campana.fecha_inicio,
+            'fecha_fin': campana.fecha_fin,
+            'centro_nombre': campana.centro.nombre if campana.centro else None
+        } for campana in campanas]
+        
+        return Response({
+            'success': True,
+            'count': len(campanas_data),
+            'campanas': campanas_data
+        }, status=status.HTTP_200_OK)
+    
     @action(detail=False, methods=['get'], url_path='mi-centro')
     def mi_centro(self, request):
         """
@@ -1467,37 +1525,37 @@ class CampanaViewSet(viewsets.ModelViewSet):
         Endpoint personalizado para búsqueda de jefes de campaña.
         Criterio 2.1.1: Campo de búsqueda en tiempo real por nombre o código.
         
-        URL: GET /api/campaigns/buscar-jefes/?q=texto
+        URL: GET /api/campaigns/campanas/buscar-jefes/?q=texto
         
         Query params:
-            q: Texto a buscar (nombre o código)
+            q: Texto a buscar (nombre o código). Si está vacío, devuelve todos los jefes activos.
             
         Returns:
             Lista de jefes que coinciden con la búsqueda
         """
         query = request.query_params.get('q', '').strip()
         
-        if not query:
-            return Response(
-                {'detail': 'Debe proporcionar un término de búsqueda'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
         # Obtener el ID del rol JEFE_CAMPANA
         jefe_campana_role_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
         
-        # Buscar usuarios con rol JEFE_CAMPANA que estén activos
-        # Q objects permiten OR en queries de Django
-        jefes = User.objects.filter(
+        # Base queryset: usuarios con rol JEFE_CAMPANA que estén activos
+        jefes_qs = User.objects.filter(
             rol_id=jefe_campana_role_id,
             is_active=True
-        ).filter(
-            Q(first_name__icontains=query) |  # Búsqueda por nombre
-            Q(last_name__icontains=query) |   # Búsqueda por apellido
-            Q(documento_id__icontains=query)  # Búsqueda por código
-        )[:10]  # Limitar a 10 resultados (performance)
+        )
         
-        serializer = JefeCampanaSearchSerializer(jefes, many=True)
+        # Si hay término de búsqueda, filtrar
+        if query:
+            jefes_qs = jefes_qs.filter(
+                Q(first_name__icontains=query) |  # Búsqueda por nombre
+                Q(last_name__icontains=query) |   # Búsqueda por apellido
+                Q(documento_id__icontains=query)  # Búsqueda por código
+            )[:10]  # Limitar a 10 resultados cuando hay búsqueda
+        else:
+            # Sin término de búsqueda, devolver todos los jefes (sin límite)
+            jefes_qs = jefes_qs[:50]  # Límite razonable para evitar sobrecarga
+        
+        serializer = JefeCampanaSearchSerializer(jefes_qs, many=True)
         return Response(serializer.data)
     
     @action(detail=True, methods=['patch'], url_path='actualizar-objetivo')

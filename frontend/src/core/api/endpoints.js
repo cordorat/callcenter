@@ -50,6 +50,13 @@ export const ENDPOINTS = {
   KPIS_JEFE_EQUIPOS_LIST: `${BASE_URL}/kpis/jefe-campana/equipos/`, // GET lista de equipos
   KPIS_JEFE_EQUIPO_DETALLE: (equipoId) => `${BASE_URL}/kpis/jefe-campana/equipos/${equipoId}/detalle/`, // GET KPIs de equipo
   KPIS_JEFE_CAMPANA_EXPORTAR_PDF: `${BASE_URL}/kpis/jefe-campana/exportar-pdf/`, // GET Exportar KPIs a PDF
+  KPIS_JEFE_AGENTES_LIST: `${BASE_URL}/kpis/jefe-campana/agentes/`, // GET lista de agentes de campaña
+  KPIS_JEFE_AGENTE_DETALLE: (documentoId) => `${BASE_URL}/kpis/jefe-campana/agentes/${documentoId}/detalle/`, // GET KPIs de agente
+  
+  // KPIs Jefe de Centro
+  KPIS_JEFE_CENTRO_CAMPANAS: `${BASE_URL}/kpis/jefe-centro/campanas/`, // GET KPIs de todas las campañas del centro
+  KPIS_JEFE_CENTRO_EQUIPOS_LIST: `${BASE_URL}/kpis/jefe-centro/equipos/`, // GET lista de equipos del centro
+  KPIS_JEFE_CENTRO_EQUIPO_DETALLE: (equipoId) => `${BASE_URL}/kpis/jefe-centro/equipos/${equipoId}/detalle/`, // GET KPIs de equipo
   
   // --- CAMPAIGNS / BASES DE DATOS ---
   CAMPAIGNS_UPLOAD: `${BASE_URL}/campaigns/cargar-base-datos/`,    // POST multipart file + campana_id

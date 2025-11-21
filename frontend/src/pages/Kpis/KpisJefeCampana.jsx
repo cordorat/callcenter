@@ -2,11 +2,18 @@
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
 import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle, exportarJefeCampanaKpisPDF } from "@/core/api/kpis";
+import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle, getAgentesJefeCampana, getAgenteKpiDetalleJefe } from "@/core/api/kpis";
 import { historialJefeService } from "@/core/api/historialJefeCampana";
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useTheme } from '@mui/material/styles';
+import PersonIcon from '@mui/icons-material/Person';
+import SearchIcon from '@mui/icons-material/Search';
+import GroupIcon from '@mui/icons-material/Group';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 
 import "./Kpis.css";
 
@@ -30,6 +37,9 @@ import {
     TableRow,
     TablePagination,
     IconButton,
+    TextField,
+    InputAdornment,
+    Button,
 } from "@mui/material";
 
 // Función helper para convertir Date a formato YYYY-MM-DD en zona horaria local
@@ -99,7 +109,7 @@ export default function KpisJefeCampana() {
     const isDark = theme.palette.mode === 'dark';
 
     // Estado de pestañas
-    const [tabValue, setTabValue] = React.useState(0); // 0 = Campaña, 1 = Equipos
+    const [tabValue, setTabValue] = React.useState(0); // 0 = Campaña, 1 = Equipos, 2 = Agentes
 
     // Estado de campañas
     const [campanas, setCampanas] = React.useState([]);
@@ -131,6 +141,20 @@ export default function KpisJefeCampana() {
     
     // Estado para exportación
     const [exportando, setExportando] = React.useState(false);
+    // Estado de agentes
+    const [agentes, setAgentes] = React.useState([]);
+    const [loadingAgentes, setLoadingAgentes] = React.useState(false);
+    const [pageAgentes, setPageAgentes] = React.useState(0);
+    const [rowsPerPageAgentes, setRowsPerPageAgentes] = React.useState(10);
+    const [totalAgentes, setTotalAgentes] = React.useState(0);
+    const [searchAgentes, setSearchAgentes] = React.useState('');
+    const [filtroEstado, setFiltroEstado] = React.useState('');
+    const [filtroEquipo, setFiltroEquipo] = React.useState('');
+    
+    // Estado de detalle de agente
+    const [agenteSeleccionado, setAgenteSeleccionado] = React.useState(null);
+    const [dataAgente, setDataAgente] = React.useState(null);
+    const [loadingAgenteDetalle, setLoadingAgenteDetalle] = React.useState(false);
 
     // Cargar campañas al montar
     React.useEffect(() => {
@@ -205,6 +229,8 @@ export default function KpisJefeCampana() {
                 fetchData();
             } else if (tabValue === 1) {
                 fetchEquipos();
+            } else if (tabValue === 2) {
+                fetchAgentes();
             }
         }
     }, [from, to, campanaSeleccionada, loadingCampanas, tabValue]);
@@ -295,13 +321,90 @@ export default function KpisJefeCampana() {
         }
     };
 
+    // Fetch lista de agentes
+    const fetchAgentes = async () => {
+        if (campanas.length > 1 && !campanaSeleccionada) {
+            return;
+        }
+
+        setLoadingAgentes(true);
+        setErrMsg("");
+        try {
+            const params = {
+                page: pageAgentes + 1, // Backend usa 1-indexed
+                page_size: rowsPerPageAgentes,
+            };
+
+            if (campanaSeleccionada) {
+                params.campana_id = campanaSeleccionada;
+            }
+
+            if (searchAgentes) {
+                params.search = searchAgentes;
+            }
+
+            if (filtroEstado) {
+                params.estado = filtroEstado;
+            }
+
+            if (filtroEquipo) {
+                params.equipo_id = filtroEquipo;
+            }
+
+            const resp = await getAgentesJefeCampana(params);
+            setAgentes(resp.results || []);
+            setTotalAgentes(resp.count || 0);
+        } catch (e) {
+            console.error(e);
+            setErrMsg("No se pudieron cargar los agentes. Intenta nuevamente.");
+        } finally {
+            setLoadingAgentes(false);
+        }
+    };
+
+    // Fetch KPIs de agente específico
+    const fetchAgenteDetalle = async (agente) => {
+        setAgenteSeleccionado(agente);
+        setLoadingAgenteDetalle(true);
+        setErrMsg("");
+        try {
+            const params = {
+                fecha_desde: from,
+                fecha_hasta: to,
+            };
+
+            const resp = await getAgenteKpiDetalleJefe(agente.id, params);
+            setDataAgente(resp || null);
+            setUpdatedAt(resp?.fecha_consulta || new Date().toISOString());
+        } catch (e) {
+            console.error(e);
+            setErrMsg("No se pudieron cargar los KPIs del agente. Intenta nuevamente.");
+        } finally {
+            setLoadingAgenteDetalle(false);
+        }
+    };
+
+    // Volver a la lista de agentes
+    const handleVolverAListaAgentes = () => {
+        setAgenteSeleccionado(null);
+        setDataAgente(null);
+    };
+
     // Cambiar pestaña
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
         setErrMsg("");
         
-        // Resetear estado de equipo seleccionado al cambiar de pestaña
+        // Resetear estado de equipo/agente seleccionado al cambiar de pestaña
         if (newValue === 0) {
+            setEquipoSeleccionado(null);
+            setDataEquipo(null);
+            setAgenteSeleccionado(null);
+            setDataAgente(null);
+        } else if (newValue === 1) {
+            setAgenteSeleccionado(null);
+            setDataAgente(null);
+        } else if (newValue === 2) {
             setEquipoSeleccionado(null);
             setDataEquipo(null);
         }
@@ -318,12 +421,30 @@ export default function KpisJefeCampana() {
         setPage(0);
     };
 
+    // Manejar cambio de página en tabla de agentes
+    const handleChangePageAgentes = (event, newPage) => {
+        setPageAgentes(newPage);
+    };
+
+    // Manejar cambio de filas por página de agentes
+    const handleChangeRowsPerPageAgentes = (event) => {
+        setRowsPerPageAgentes(parseInt(event.target.value, 10));
+        setPageAgentes(0);
+    };
+
     // Recargar equipos cuando cambia la paginación
     React.useEffect(() => {
         if (tabValue === 1 && !equipoSeleccionado && (campanaSeleccionada || campanas.length === 1)) {
             fetchEquipos();
         }
     }, [page, rowsPerPage]);
+
+    // Recargar agentes cuando cambia la paginación o filtros
+    React.useEffect(() => {
+        if (tabValue === 2 && !agenteSeleccionado && (campanaSeleccionada || campanas.length === 1)) {
+            fetchAgentes();
+        }
+    }, [pageAgentes, rowsPerPageAgentes, searchAgentes, filtroEstado, filtroEquipo]);
 
     // Renderizar selector de campaña
     const renderSelectorCampana = () => {
@@ -412,7 +533,7 @@ export default function KpisJefeCampana() {
     const llamadasDelDia = Number(data?.llamadas_del_dia || 0);
     const ventasRealizadas = Number(data?.ventas_realizadas || 0);
     const tasaConversion = Number(data?.tasa_conversion || 0);
-    const totalAgentes = Number(data?.total_agentes || 0);
+    const totalAgentesCampana = Number(data?.total_agentes || 0);
 
     // Extraer datos de equipo
     const equipoLlamadasActivas = Number(dataEquipo?.llamadas_activas || 0);
@@ -581,6 +702,163 @@ export default function KpisJefeCampana() {
         );
     };
 
+    // Renderizar tabla de agentes
+    const renderTablaAgentes = () => {
+        if (loadingAgentes) {
+            return (
+                <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+                    <CircularProgress />
+                    <Typography sx={{ mt: 2 }}>Cargando agentes...</Typography>
+                </Paper>
+            );
+        }
+
+        if (agentes.length === 0) {
+            return (
+                <Alert severity="info">
+                    No hay agentes asignados a esta campaña.
+                </Alert>
+            );
+        }
+
+        return (
+            <Paper elevation={2} sx={{ width: '100%', overflow: 'hidden' }}>
+                <TableContainer>
+                    <Table>
+                        <TableHead>
+                            <TableRow sx={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
+                                <TableCell><strong>Nombre</strong></TableCell>
+                                <TableCell><strong>Email</strong></TableCell>
+                                <TableCell align="center"><strong>Equipo</strong></TableCell>
+                                <TableCell align="center"><strong>Estado</strong></TableCell>
+                                <TableCell align="center"><strong>Acciones</strong></TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {agentes.map((agente) => (
+                                <TableRow
+                                    key={agente.id}
+                                    hover
+                                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                >
+                                    <TableCell>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '8px', background: 'linear-gradient(135deg, rgba(47, 118, 230, 0.12), rgba(47, 118, 230, 0.08))', color: 'primary.main', flexShrink: 0 }}>
+                                                <PersonIcon sx={{ fontSize: 16 }} />
+                                            </Box>
+                                            <span>{agente.nombre_completo}</span>
+                                        </Box>
+                                    </TableCell>
+                                    <TableCell>{agente.email}</TableCell>
+                                    <TableCell align="center">{agente.equipo_nombre}</TableCell>
+                                    <TableCell align="center">
+                                        <Chip
+                                            label={agente.estado_label || 'Sin estado'}
+                                            size="small"
+                                            sx={{
+                                                fontWeight: 600,
+                                                fontSize: '0.75rem',
+                                                height: '24px',
+                                            }}
+                                        />
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Button
+                                            endIcon={<KeyboardArrowRightIcon />}
+                                            size="small"
+                                            variant="text"
+                                            onClick={() => fetchAgenteDetalle(agente)}
+                                            sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px' }}
+                                        >
+                                            Ver KPIs
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+                <TablePagination
+                    rowsPerPageOptions={[5, 10, 25, 50]}
+                    component="div"
+                    count={totalAgentes}
+                    rowsPerPage={rowsPerPageAgentes}
+                    page={pageAgentes}
+                    onPageChange={handleChangePageAgentes}
+                    onRowsPerPageChange={handleChangeRowsPerPageAgentes}
+                    labelRowsPerPage="Agentes por página:"
+                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+                />
+            </Paper>
+        );
+    };
+
+    // Renderizar KPIs de agente
+    const renderKpisAgente = () => {
+        if (!agenteSeleccionado) return null;
+
+        return (
+            <>
+                {/* Botón para volver */}
+                <Paper elevation={2} sx={{ p: 2, mb: 2, width: 'fit-content' }}>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                        <IconButton onClick={handleVolverAListaAgentes} size="small">
+                            <ArrowBackIcon />
+                        </IconButton>
+                        <Stack>
+                            <Typography variant="h6" fontWeight={700}>
+                                {agenteSeleccionado.nombre_completo}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {agenteSeleccionado.email}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Equipo: {agenteSeleccionado.equipo_nombre}
+                            </Typography>
+                        </Stack>
+                    </Stack>
+                </Paper>
+
+                {loadingAgenteDetalle ? (
+                    <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+                        <CircularProgress />
+                        <Typography sx={{ mt: 2 }}>Cargando KPIs del agente...</Typography>
+                    </Paper>
+                ) : (
+                    <div className="kpi-grid">
+                        <div className="kpi-card">
+                            <div className="kpi-label">Tiempo promedio de llamada</div>
+                            <div className="kpi-value-row">
+                                <div className="kpi-value">{fmtSecs(dataAgente?.tiempo_promedio_llamada || 0)}</div>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card">
+                            <div className="kpi-label">Llamadas del período</div>
+                            <div className="kpi-value-row">
+                                <div className="kpi-value">{dataAgente?.llamadas_del_dia || 0}</div>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card">
+                            <div className="kpi-label">Ventas realizadas</div>
+                            <div className="kpi-value-row">
+                                <div className="kpi-value">{dataAgente?.ventas_realizadas || 0}</div>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card kpi-highlight">
+                            <div className="kpi-label">Tasa de conversión</div>
+                            <div className="kpi-value-row">
+                                <div className="kpi-value">{(dataAgente?.tasa_conversion || 0).toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    };
+
     return (
         <MainLayout title="KPIs de Campaña">
             <div
@@ -672,6 +950,12 @@ export default function KpisJefeCampana() {
                             >
                                 Equipos
                             </button>
+                            <button
+                                className={tabValue === 2 ? "active" : ""}
+                                onClick={() => handleTabChange(null, 2)}
+                            >
+                                Agentes
+                            </button>
                         </div>
                     </div>
                 )}
@@ -755,7 +1039,7 @@ export default function KpisJefeCampana() {
                                 <div className="kpi-label">Agentes disponibles</div>
                                 <div className="kpi-value-row">
                                     <div className="kpi-value">{agentesDisponibles}</div>
-                                    <span className="kpi-chip">de {totalAgentes}</span>
+                                    <span className="kpi-chip">de {totalAgentesCampana}</span>
                                 </div>
                             </div>
 
@@ -793,6 +1077,44 @@ export default function KpisJefeCampana() {
                             /* Vista de Equipos */
                             <>
                                 {equipoSeleccionado ? renderKpisEquipo() : renderTablaEquipos()}
+                            </>
+                        )}
+
+                        {tabValue === 2 && (
+                            /* Vista de Agentes */
+                            <>
+                                {agenteSeleccionado ? renderKpisAgente() : (
+                                    <>
+                                        {/* Barra de búsqueda y filtros */}
+                                        <Box sx={{ mb: 3 }}>
+                                            <TextField
+                                                fullWidth
+                                                placeholder="Buscar por nombre o email..."
+                                                value={searchAgentes}
+                                                onChange={(e) => setSearchAgentes(e.target.value)}
+                                                disabled={loadingAgentes}
+                                                InputProps={{
+                                                    startAdornment: (
+                                                        <InputAdornment position="start">
+                                                            <SearchIcon sx={{ color: 'primary.main' }} />
+                                                        </InputAdornment>
+                                                    ),
+                                                }}
+                                                sx={{
+                                                    maxWidth: 600,
+                                                    '& .MuiOutlinedInput-root': {
+                                                        borderRadius: 3,
+                                                        bgcolor: 'background.paper',
+                                                        boxShadow: theme.palette.mode === 'light'
+                                                            ? '0 2px 8px rgba(0,0,0,0.08)'
+                                                            : '0 2px 8px rgba(0,0,0,0.3)',
+                                                    }
+                                                }}
+                                            />
+                                        </Box>
+                                        {renderTablaAgentes()}
+                                    </>
+                                )}
                             </>
                         )}
                     </>
