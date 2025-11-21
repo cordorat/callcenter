@@ -1,9 +1,10 @@
 // PATH: src/pages/Kpis/KpisJefeCampana.jsx
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
-import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle } from "@/core/api/kpis";
+import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle, exportarJefeCampanaKpisPDF } from "@/core/api/kpis";
 import { historialJefeService } from "@/core/api/historialJefeCampana";
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useTheme } from '@mui/material/styles';
 
@@ -127,6 +128,9 @@ export default function KpisJefeCampana() {
     const [equipoSeleccionado, setEquipoSeleccionado] = React.useState(null);
     const [dataEquipo, setDataEquipo] = React.useState(null);
     const [loadingEquipoDetalle, setLoadingEquipoDetalle] = React.useState(false);
+    
+    // Estado para exportación
+    const [exportando, setExportando] = React.useState(false);
 
     // Cargar campañas al montar
     React.useEffect(() => {
@@ -260,6 +264,35 @@ export default function KpisJefeCampana() {
     const handleVolverALista = () => {
         setEquipoSeleccionado(null);
         setDataEquipo(null);
+    };
+
+    // Función para exportar KPIs a PDF
+    const handleExportarPDF = async () => {
+        setExportando(true);
+        try {
+            const response = await exportarJefeCampanaKpisPDF({
+                campana_id: campanaSeleccionada || (campanas.length === 1 ? campanas[0].id : null),
+                fecha_desde: from,
+                fecha_hasta: to,
+            });
+
+            // Crear un blob y descargar el archivo
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `KPIs_Campana_${from}_${to}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+        } catch (e) {
+            console.error(e);
+            setErrMsg("No se pudieron exportar los KPIs. Intenta nuevamente.");
+        } finally {
+            setExportando(false);
+        }
     };
 
     // Cambiar pestaña
@@ -583,6 +616,17 @@ export default function KpisJefeCampana() {
                                     Última actualización: {new Date(updatedAt).toLocaleString()}
                                 </span>
                             )}
+                            <button 
+                                className="btn" 
+                                onClick={handleExportarPDF}
+                                disabled={exportando || loading || loadingEquipos || loadingEquipoDetalle}
+                                title="Exportar KPIs a PDF"
+                            >
+                                {exportando ? 
+                                    <CircularProgress size={20} color="inherit" /> : 
+                                    <PictureAsPdfIcon fontSize="small" />
+                                }
+                            </button>
                             <button 
                                 className="btn" 
                                 onClick={() => {
