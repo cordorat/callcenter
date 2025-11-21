@@ -1,6 +1,24 @@
 import apiClient from "@/core/api/apiClient";
 import { ENDPOINTS } from "@/core/api/endpoints";
 
+// Sistema de subscripciones para recargar KPIs cuando cambian
+const kpiSubscribers = new Set();
+
+export function subscribeToKpiChanges(callback) {
+  kpiSubscribers.add(callback);
+  return () => kpiSubscribers.delete(callback); // Retorna unsubscribe
+}
+
+export function notifyKpiChanges() {
+  kpiSubscribers.forEach(callback => {
+    try {
+      callback();
+    } catch (error) {
+      console.error("Error en callback de KPI:", error);
+    }
+  });
+}
+
 // KPIs del agente autenticado (existentes)
 export async function getKpiOverview({ from, to }) {
   const { data } = await apiClient.get(ENDPOINTS.KPIS_OVERVIEW, { params: { from, to } });
@@ -152,4 +170,19 @@ export async function getEquipoKpiDetalleJefeCentro(equipoId, { fecha_desde, fec
   
   const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_EQUIPO_DETALLE(equipoId), { params });
   return data;
+}
+
+// Exportar KPIs de Jefe de Centro a PDF
+export async function exportarJefeCentroKpisPDF({ centro_id, fecha_desde, fecha_hasta, campana_id }) {
+  const params = {};
+  if (centro_id) params.centro_id = centro_id;
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  if (campana_id) params.campana_id = campana_id;
+  
+  const response = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_EXPORTAR_PDF, { 
+    params,
+    responseType: 'blob' 
+  });
+  return response;
 }
