@@ -474,8 +474,11 @@ def twilio_call_status_webhook(request, llamada_id=None):
         call_duration = params.get('CallDuration', 0)
         recording_url = params.get('RecordingUrl', '')
         recording_sid = params.get('RecordingSid', '')
+        answered_by = params.get('AnsweredBy', '')  # human, machine, fax, o vacío
+        dial_call_status = params.get('DialCallStatus', '')  # 🔥 Estado del Dial (answered, no-answer, busy, failed)
         
-        logger.info(f"[WEBHOOK STATUS] SID={call_sid}, ParentSID={parent_call_sid}, Status={call_status}, Duration={call_duration}")
+        # Log de todos los parámetros para debugging
+        logger.info(f"[WEBHOOK STATUS] SID={call_sid}, ParentSID={parent_call_sid}, Status={call_status}, Duration={call_duration}, AnsweredBy={answered_by}, DialCallStatus={dial_call_status}")
         
         if not call_sid and not llamada_id:
             logger.error("[WEBHOOK STATUS] No se proporcionó CallSid ni llamada_id")
@@ -522,8 +525,17 @@ def twilio_call_status_webhook(request, llamada_id=None):
             elif call_status == 'in-progress':
                 estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
                 llamada.estado_llamada = estado_en_curso
-                llamada.fue_contestada = True  # ✅ MARCAMOS QUE FUE CONTESTADA
-                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> EN_CURSO (CONTESTADA)")
+                
+                # ✅ SOLO marcar como contestada si DialCallStatus NO es 'no-answer'
+                # DialCallStatus indica el resultado del <Dial> (answered, no-answer, busy, failed)
+                # Si DialCallStatus='no-answer', significa que el teléfono sonó pero no se contestó
+                if dial_call_status == 'no-answer':
+                    logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> EN_CURSO pero DialCallStatus=no-answer (NO MARCAR COMO CONTESTADA)")
+                elif not llamada.fue_contestada:
+                    llamada.fue_contestada = True
+                    logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> EN_CURSO (MARCADA COMO CONTESTADA, DialCallStatus={dial_call_status or 'vacío'})")
+                else:
+                    logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> EN_CURSO (ya estaba marcada como CONTESTADA)")
                 
                 # Asegurar que el agente se mantenga EN_LLAMADA (no cambiar a AFTERCALL todavía)
                 estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')
@@ -547,6 +559,14 @@ def twilio_call_status_webhook(request, llamada_id=None):
                     llamada.fecha_hora_fin = timezone.now()
                 if call_duration:
                     llamada.duracion = int(call_duration)
+                
+                # ⚠️ NO marcar como contestada basándose solo en la duración
+                # La duración incluye el tiempo de timbre, no solo el tiempo contestado
+                # Solo se marca como contestada si ya pasó por 'in-progress'
+                if llamada.fue_contestada:
+                    logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> COMPLETADA (fue contestada previamente, duración: {call_duration}s)")
+                else:
+                    logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> COMPLETADA SIN CONTESTAR (duración: {call_duration}s incluye timbre)")
                 
                 logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> COMPLETADA, cambiando agente a AFTERCALL")
                 
