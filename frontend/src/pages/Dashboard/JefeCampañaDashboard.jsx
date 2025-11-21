@@ -74,14 +74,12 @@ export default function JefeCampañaDashboard() {
       });
 
       // Mapear valores del API al estado
-      const llamadas = Number(data.llamadas_campaña ?? data.llamadas_totales ?? 0);
+      const llamadas = Number(data.llamadas_del_dia ?? data.llamadas_campaña ?? data.llamadas_totales ?? 0);
       const ventas = Number(data.ventas_realizadas ?? data.ventas ?? 0);
+      const tasaConvApi = Number(data.tasa_conversion ?? 0);
       
-      // Calcular tasa de conversión
-      let tasaConv = 0;
-      if (llamadas > 0) {
-        tasaConv = (ventas / llamadas) * 100;
-      }
+      // Usar tasa del API si está disponible, sino calcularla
+      let tasaConv = tasaConvApi > 0 ? tasaConvApi : (llamadas > 0 ? (ventas / llamadas) * 100 : 0);
 
       setKpi({
         llamadas,
@@ -89,7 +87,7 @@ export default function JefeCampañaDashboard() {
         tasaConversion: tasaConv,
       });
 
-      // Procesar datos de línea temporal por hora
+      // Procesar datos de línea temporal por hora (si disponible)
       if (data.timeline_por_hora && Array.isArray(data.timeline_por_hora)) {
         setTimelineData(data.timeline_por_hora);
       }
