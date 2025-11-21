@@ -1,11 +1,13 @@
 // PATH: src/pages/Kpis/KpisJefeCampana.jsx
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
-import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle, getAgentesJefeCampana, getAgenteKpiDetalleJefe } from "@/core/api/kpis";
+import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle, exportarJefeCampanaKpisPDF,getAgentesJefeCampana, getAgenteKpiDetalleJefe } from "@/core/api/kpis";
 import { historialJefeService } from "@/core/api/historialJefeCampana";
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useTheme } from '@mui/material/styles';
+import ButtonTooltip from "@/components/campaing/ButtonTooltip";
 import PersonIcon from '@mui/icons-material/Person';
 import SearchIcon from '@mui/icons-material/Search';
 import GroupIcon from '@mui/icons-material/Group';
@@ -137,6 +139,8 @@ export default function KpisJefeCampana() {
     const [dataEquipo, setDataEquipo] = React.useState(null);
     const [loadingEquipoDetalle, setLoadingEquipoDetalle] = React.useState(false);
     
+    // Estado para exportación
+    const [exportando, setExportando] = React.useState(false);
     // Estado de agentes
     const [agentes, setAgentes] = React.useState([]);
     const [loadingAgentes, setLoadingAgentes] = React.useState(false);
@@ -286,6 +290,35 @@ export default function KpisJefeCampana() {
     const handleVolverALista = () => {
         setEquipoSeleccionado(null);
         setDataEquipo(null);
+    };
+
+    // Función para exportar KPIs a PDF
+    const handleExportarPDF = async () => {
+        setExportando(true);
+        try {
+            const response = await exportarJefeCampanaKpisPDF({
+                campana_id: campanaSeleccionada || (campanas.length === 1 ? campanas[0].id : null),
+                fecha_desde: from,
+                fecha_hasta: to,
+            });
+
+            // Crear un blob y descargar el archivo
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `KPIs_Campana_${from}_${to}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+        } catch (e) {
+            console.error(e);
+            setErrMsg("No se pudieron exportar los KPIs. Intenta nuevamente.");
+        } finally {
+            setExportando(false);
+        }
     };
 
     // Fetch lista de agentes
@@ -860,6 +893,21 @@ export default function KpisJefeCampana() {
                                 <span className="update-badge">
                                     Última actualización: {new Date(updatedAt).toLocaleString()}
                                 </span>
+                            )}
+                            {!exportando ? (
+                                <ButtonTooltip
+                                    title="Exportar KPI"
+                                    icon={<PictureAsPdfIcon />}
+                                    onClick={handleExportarPDF}
+                                    color="error"
+                                />
+                            ) : (
+                                <ButtonTooltip
+                                    title="Exportando..."
+                                    icon={<CircularProgress size={24} sx={{ color: 'white' }} />}
+                                    onClick={() => {}}
+                                    color="error"
+                                />
                             )}
                             <button 
                                 className="btn" 

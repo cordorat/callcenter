@@ -150,6 +150,20 @@ export async function getJefeCentroCampanasKpi({ campana_id, fecha_desde, fecha_
   if (fecha_desde) params.fecha_desde = fecha_desde;
   if (fecha_hasta) params.fecha_hasta = fecha_hasta;
   
+  const response = await apiClient.get(ENDPOINTS.KPIS_JEFE_CAMPANA_EXPORTAR_PDF, { 
+    params,
+    responseType: 'blob' 
+  });
+  return response;
+}
+
+// KPIs para Jefe de Centro - Overview de campañas
+export async function getJefeCentroCampanasKpi({ fecha_desde, fecha_hasta, campana_id }) {
+  const params = {};
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  if (campana_id) params.campana_id = campana_id;
+  
   const { data } = await apiClient.get(ENDPOINTS.KPIS_JEFE_CENTRO_CAMPANAS, { params });
   return data;
 }
