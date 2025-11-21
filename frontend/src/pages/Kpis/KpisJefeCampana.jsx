@@ -82,7 +82,7 @@ const monthRange = () => {
 };
 
 const fmtSecs = (s) => {
-    const n = Number(s || 0);
+    const n = Math.round(Number(s || 0)); // Redondear primero
     const m = Math.floor(n / 60);
     const ss = n % 60;
     return `${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")} min`;

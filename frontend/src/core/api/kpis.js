@@ -143,8 +143,8 @@ export async function getJefeCentroDashboard({ fecha_desde, fecha_hasta }) {
   return data;
 }
 
-// KPIs para Jefe de Centro - Campañas del centro
-export async function getJefeCentroCampanasKpi({ campana_id, fecha_desde, fecha_hasta }) {
+// Exportar KPIs de Jefe de Campaña a PDF
+export async function exportarJefeCampanaKpisPDF({ campana_id, fecha_desde, fecha_hasta }) {
   const params = {};
   if (campana_id) params.campana_id = campana_id;
   if (fecha_desde) params.fecha_desde = fecha_desde;
