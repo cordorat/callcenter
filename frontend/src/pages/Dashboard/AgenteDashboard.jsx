@@ -105,8 +105,8 @@ export default function AgenteDashboard() {
   }, [load]);
 
   const statusIcon = (estado) => {
-    if (estado === "Contestado") return <CheckCircleIcon sx={{ color: "#0a6b2b" }} />;
-    if (estado === "Fallida") return <CancelIcon sx={{ color: "#c41e3a" }} />;
+    if (estado === "Contestada") return <CheckCircleIcon sx={{ color: "#0a6b2b" }} />;
+    if (estado === "No contestada") return <PhoneMissedIcon sx={{ color: "#c41e3a" }} />;
     return <PhoneMissedIcon sx={{ color: isDark ? "#E6EDFF" : "#0C155A" }} />;
   };
 
@@ -580,31 +580,26 @@ export default function AgenteDashboard() {
                             <TableCell
                               sx={{
                                 fontSize: "0.875rem",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
                               }}
                             >
-                              {statusIcon(
-                                llamada.fue_contestada === true
-                                  ? "Contestado"
-                                  : llamada.fue_contestada === false
-                                  ? "Fallida"
-                                  : "No contestada"
-                              )}
-                              <span
-                                style={{
-                                  color: isDark
-                                    ? "rgba(255,255,255,0.7)"
-                                    : "rgba(12,21,90,0.7)",
-                                }}
-                              >
-                                {llamada.fue_contestada === true
-                                  ? "Contestada"
-                                  : llamada.fue_contestada === false
-                                  ? "Fallida"
-                                  : "No contestada"}
-                              </span>
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                {statusIcon(
+                                  llamada.fue_contestada === true
+                                    ? "Contestada"
+                                    : "No contestada"
+                                )}
+                                <span
+                                  style={{
+                                    color: isDark
+                                      ? "rgba(255,255,255,0.7)"
+                                      : "rgba(12,21,90,0.7)",
+                                  }}
+                                >
+                                  {llamada.fue_contestada === true
+                                    ? "Contestada"
+                                    : "No contestada"}
+                                </span>
+                              </Box>
                             </TableCell>
                             <TableCell
                               sx={{
@@ -612,9 +607,9 @@ export default function AgenteDashboard() {
                                 fontSize: "0.875rem",
                               }}
                             >
-                              {llamada.duracion_segundos
-                                ? `${Math.floor(llamada.duracion_segundos / 60)}:${String(
-                                    llamada.duracion_segundos % 60
+                              {llamada.duracion
+                                ? `${Math.floor(llamada.duracion / 60)}:${String(
+                                    llamada.duracion % 60
                                   ).padStart(2, "0")}`
                                 : "-"}
                             </TableCell>
