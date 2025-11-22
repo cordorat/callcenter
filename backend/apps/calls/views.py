@@ -927,22 +927,18 @@ class LlamadaViewSet(viewsets.ModelViewSet):
                 Q(twilio_call_sid=call_sid) | Q(twilio_child_call_sid=call_sid)
             ).first()
             
-                if not llamada:
-                    logger.warning(f"[by_sid] ⚠️ Llamada no encontrada con CallSid: {call_sid}")
-                    
-                    # Buscar parent call mediante API de Twilio                from common.twilio_client import twilio_client
+            if not llamada:
+                logger.warning(f"[by_sid] ⚠️ Llamada no encontrada con CallSid: {call_sid}")
+                
+                # Buscar parent call mediante API de Twilio
+                from common.twilio_client import twilio_client
                 
                 if twilio_client.is_configured():
                     try:
-                        # Consultar la API de Twilio para obtener detalles de esta llamada
                         call_details = twilio_client.get_call_details(call_sid)
                         parent_call_sid = call_details.get('parent_call_sid')
                         
-                        logger.info(f"[by_sid] API Twilio dice: CallSid={call_sid}, ParentCallSid={parent_call_sid}")
-                        
-                        # Si tiene parent call, buscar por ese parent
                         if parent_call_sid:
-                            logger.info(f"[by_sid] 🔍 Es un child call. Buscando llamada con parent CallSid: {parent_call_sid}")
                             llamada = Llamada.objects.select_related(
                                 'agente',
                                 'cliente',
@@ -957,7 +953,6 @@ class LlamadaViewSet(viewsets.ModelViewSet):
                                 if not llamada.twilio_child_call_sid:
                                     llamada.twilio_child_call_sid = call_sid
                                     llamada.save(update_fields=['twilio_child_call_sid'])
-                    
                     except Exception as e:
                         logger.error(f"[by_sid] ❌ Error consultando API de Twilio: {str(e)}")
                 
