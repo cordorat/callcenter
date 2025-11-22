@@ -124,8 +124,6 @@ def twilio_voice_request(request):
         campaign_id = request.POST.get('campaignId')
         client_id = request.POST.get('clientId')
         
-        logger.info(f"Voice request: CallSid={call_sid}, From={from_identity}, To={to_number}, Agent={agent_id}, Campaign={campaign_id}")
-        
         # Validar parámetros
         if not to_number or not agent_id or not campaign_id:
             logger.error("Parámetros incompletos en voice request")
@@ -165,8 +163,6 @@ def twilio_voice_request(request):
                         'otros_datos': {'origen': 'llamada_saliente'}
                     }
                 )
-                if created:
-                    logger.info(f"Cliente creado: {cliente.cliente_id} - {to_number}")
         except Cliente.DoesNotExist:
             logger.error(f"Cliente {client_id} no encontrado en campaña {campaign_id}")
             return HttpResponse('<Response><Say language="es-MX">Error: Cliente no encontrado</Say></Response>', content_type='text/xml')
@@ -208,8 +204,7 @@ def twilio_voice_request(request):
                 fecha_hora_inicio=timezone.now()
             )
             
-            logger.info(f"✓ Llamada {llamada.id} creada exitosamente con CallSid={call_sid}")
-            logger.info(f"✓ Llamada guardada - ID: {llamada.id}, twilio_call_sid: {llamada.twilio_call_sid}, agente: {llamada.agente.get_full_name()}, cliente: {llamada.cliente.nombre}")
+            logger.info(f"Llamada {llamada.id} creada con CallSid={call_sid}")
             
             # Cambiar estado del agente a EN_LLAMADA
             estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')
@@ -239,25 +234,23 @@ def twilio_voice_request(request):
                 estado_id=estado_en_llamada,
                 tiempo=timezone.now()
             )
-            
-            logger.info(f"Llamada {llamada.id} creada exitosamente con CallSid={call_sid}")
         except Exception as e:
             logger.error(f"Error creando llamada: {str(e)}", exc_info=True)
             return HttpResponse('<Response><Say language="es-MX">Error al crear registro de llamada</Say></Response>', content_type='text/xml')
         
         # Generar TwiML para realizar la llamada
         try:
-            # URL para recibir callback después del Dial
+            # URLs para callbacks
             status_callback_url = request.build_absolute_uri('/api/webhooks/twilio/call-status/')
+            recording_callback_url = request.build_absolute_uri('/api/webhooks/twilio/recording/')
             
             twiml = twilio_client.generate_twiml_for_browser_call(
                 to_number=to_number,
                 caller_id=twilio_client.phone_number,
-                status_callback_url=status_callback_url
+                status_callback_url=status_callback_url,
+                recording_callback_url=recording_callback_url
             )
             
-            logger.info(f"TwiML generado exitosamente para llamada {llamada.id}")
-            logger.debug(f"TwiML: {twiml}")
             return HttpResponse(twiml, content_type='text/xml')
         except Exception as e:
             logger.error(f"Error generando TwiML: {str(e)}")
@@ -475,7 +468,9 @@ def twilio_call_status_webhook(request, llamada_id=None):
         recording_url = params.get('RecordingUrl', '')
         recording_sid = params.get('RecordingSid', '')
         
-        logger.info(f"[WEBHOOK STATUS] SID={call_sid}, ParentSID={parent_call_sid}, Status={call_status}, Duration={call_duration}")
+        # Log solo para estados importantes
+        if call_status not in ['ringing', 'in-progress']:
+            logger.info(f"[WEBHOOK] {call_status}: CallSid={call_sid}, Duration={call_duration}s")
         
         if not call_sid and not llamada_id:
             logger.error("[WEBHOOK STATUS] No se proporcionó CallSid ni llamada_id")
@@ -485,21 +480,12 @@ def twilio_call_status_webhook(request, llamada_id=None):
             # 🔍 Buscar llamada por SID o ID
             if llamada_id:
                 llamada = Llamada.objects.get(id=llamada_id)
-                logger.info(f"[WEBHOOK STATUS] Llamada encontrada por ID: {llamada_id}")
             elif parent_call_sid:
-                # Este es un child call, buscar por parent CallSid
-                logger.info(f"[WEBHOOK STATUS] 👶 Es un CHILD CALL - Parent: {parent_call_sid}, Child: {call_sid}")
                 llamada = Llamada.objects.get(twilio_call_sid=parent_call_sid)
-                # Guardar el child CallSid SI NO ESTÁ YA GUARDADO
                 if not llamada.twilio_child_call_sid:
                     llamada.twilio_child_call_sid = call_sid
-                    llamada.save(update_fields=['twilio_child_call_sid'])  # Guardar inmediatamente
-                    logger.info(f"[WEBHOOK STATUS] ✅ Child CallSid GUARDADO: {call_sid} (Parent: {parent_call_sid})")
-                else:
-                    logger.info(f"[WEBHOOK STATUS] ℹ️ Child CallSid ya estaba guardado: {llamada.twilio_child_call_sid}")
+                    llamada.save(update_fields=['twilio_child_call_sid'])
             else:
-                # Buscar por twilio_call_sid (parent) o twilio_child_call_sid (child)
-                logger.info(f"[WEBHOOK STATUS] 🔍 Buscando por CallSid (sin parent): {call_sid}")
                 from django.db.models import Q
                 llamada = Llamada.objects.filter(
                     Q(twilio_call_sid=call_sid) | Q(twilio_child_call_sid=call_sid)
@@ -507,40 +493,57 @@ def twilio_call_status_webhook(request, llamada_id=None):
                 if not llamada:
                     raise Llamada.DoesNotExist
             
-            logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} encontrada - Agente: {llamada.agente.email}, Parent: '{llamada.twilio_call_sid}', Child: '{llamada.twilio_child_call_sid}', Estado actual agente: {llamada.agente.estado_actual.estado_id.descripcion if hasattr(llamada.agente, 'estado_actual') else 'N/A'}")
+
 
             
             # Actualizar estado de Twilio
             llamada.twilio_status = call_status
             from common.estados_helper import get_estado
             
+            # 🔍 Detectar si la llamada fue contestada usando DialBridged
+            dial_bridged = params.get('DialBridged', '').lower() == 'true'
+            dial_call_duration = params.get('DialCallDuration', '0')
+            
             # Mapear estados de Twilio a nuestros estados
             if call_status == 'ringing':
                 estado_timbrado = get_estado('ESTADO_LLAMADA', 'TIMBRADO')
                 llamada.estado_llamada = estado_timbrado
-                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> TIMBRADO (no cambia estado agente)")
-            elif call_status == 'in-progress':
+            elif call_status in ['in-progress', 'answered']:
                 estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
                 llamada.estado_llamada = estado_en_curso
-                llamada.fue_contestada = True  # ✅ MARCAMOS QUE FUE CONTESTADA
-                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> EN_CURSO (CONTESTADA)")
                 
-                # Asegurar que el agente se mantenga EN_LLAMADA (no cambiar a AFTERCALL todavía)
+                # 🔍 DETECTAR TIPO DE LLAMADA:
+                # - Llamada MANUAL (desde navegador): NO tiene child CallSid
+                # - Llamada AUTOMÁTICA (desde backend): SÍ tiene child CallSid
+                is_automatic_call = bool(llamada.twilio_child_call_sid)
+                
+                if call_status == 'answered':
+                    if not llamada.fue_contestada:
+                        llamada.fue_contestada = True
+                        logger.info(f"[WEBHOOK] Llamada {llamada.id} contestada")
+                elif call_status == 'in-progress':
+                    if not is_automatic_call and not llamada.fue_contestada:
+                        llamada.fue_contestada = True
+                        logger.info(f"[WEBHOOK] Llamada manual {llamada.id} contestada")
+                
+                # Asegurar que el agente se mantenga EN_LLAMADA
                 estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')
                 try:
-                    # Verificar que el agente esté EN_LLAMADA
                     estado_actual = EstadoAgenteActual.objects.filter(agente_id=llamada.agente).first()
                     if estado_actual and estado_actual.estado_id != estado_en_llamada:
-                        logger.warning(f"[WEBHOOK STATUS] ⚠️ Agente {llamada.agente.email} estaba en {estado_actual.estado_id.descripcion}, corrigiendo a EN_LLAMADA")
                         EstadoAgenteActual.objects.filter(agente_id=llamada.agente).update(
                             estado_id=estado_en_llamada,
                             tiempo=timezone.now()
                         )
-                    else:
-                        logger.info(f"[WEBHOOK STATUS] ✓ Agente {llamada.agente.email} ya está EN_LLAMADA (correcto)")
                 except Exception as e:
-                    logger.error(f"[WEBHOOK STATUS] Error verificando estado del agente: {str(e)}")
+                    logger.error(f"[WEBHOOK] Error estado agente: {str(e)}")
             elif call_status == 'completed':
+                if dial_bridged and not llamada.fue_contestada:
+                    llamada.fue_contestada = True
+                    logger.info(f"[WEBHOOK] Llamada {llamada.id} completada y contestada")
+                elif not llamada.fue_contestada:
+                    logger.info(f"[WEBHOOK] Llamada {llamada.id} completada sin contestar")
+                
                 estado_completada = get_estado('ESTADO_LLAMADA', 'COMPLETADA')
                 llamada.estado_llamada = estado_completada
                 if not llamada.fecha_hora_fin:
@@ -548,46 +551,76 @@ def twilio_call_status_webhook(request, llamada_id=None):
                 if call_duration:
                     llamada.duracion = int(call_duration)
                 
-                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> COMPLETADA, cambiando agente a AFTERCALL")
-                
-                # Cambiar estado del agente a AFTERCALL (post llamada)
-                try:
-                    estado_aftercall = get_estado('ESTADO_AGENTE', 'AFTERCALL')
-                    
-                    # Obtener o crear el registro de detalle para hoy
-                    from datetime import date
-                    detalle, created = EstadoAgenteDetalle.objects.get_or_create(
-                        agente_id=llamada.agente,
-                        estado_id=estado_aftercall,
-                        fecha=date.today(),
-                        defaults={
-                            'tiempo': '00:00:00',
-                            'cambios': f'Llamada completada - Duración: {call_duration}s'
-                        }
-                    )
-                    
-                    # Si ya existía, agregar el cambio al historial
-                    if not created:
-                        if detalle.cambios:
-                            detalle.cambios += f', Llamada completada - Duración: {call_duration}s'
-                        else:
-                            detalle.cambios = f'Llamada completada - Duración: {call_duration}s'
-                        detalle.save()
-                    
-                    # Actualizar estado actual
-                    EstadoAgenteActual.objects.filter(agente_id=llamada.agente).update(
-                        estado_id=estado_aftercall,
-                        tiempo=timezone.now()
-                    )
-                except Exception as e:
-                    logger.error(f"Error actualizando estado del agente: {str(e)}")
+                if llamada.fue_contestada:
+                    # Cambiar estado del agente a AFTERCALL (post llamada)
+                    try:
+                        estado_aftercall = get_estado('ESTADO_AGENTE', 'AFTERCALL')
+                        
+                        # Obtener o crear el registro de detalle para hoy
+                        from datetime import date
+                        detalle, created = EstadoAgenteDetalle.objects.get_or_create(
+                            agente_id=llamada.agente,
+                            estado_id=estado_aftercall,
+                            fecha=date.today(),
+                            defaults={
+                                'tiempo': '00:00:00',
+                                'cambios': f'Llamada completada - Duración: {call_duration}s'
+                            }
+                        )
+                        
+                        # Si ya existía, agregar el cambio al historial
+                        if not created:
+                            if detalle.cambios:
+                                detalle.cambios += f', Llamada completada - Duración: {call_duration}s'
+                            else:
+                                detalle.cambios = f'Llamada completada - Duración: {call_duration}s'
+                            detalle.save()
+                        
+                        # Actualizar estado actual
+                        EstadoAgenteActual.objects.filter(agente_id=llamada.agente).update(
+                            estado_id=estado_aftercall,
+                            tiempo=timezone.now()
+                        )
+                    except Exception as e:
+                        logger.error(f"Error actualizando estado del agente: {str(e)}")
+                else:
+                    # Llamada NO contestada - volver agente a DISPONIBLE
+                    try:
+                        estado_disponible = get_estado('ESTADO_AGENTE', 'DISPONIBLE')
+                        
+                        # Obtener o crear el registro de detalle para hoy
+                        from datetime import date
+                        detalle, created = EstadoAgenteDetalle.objects.get_or_create(
+                            agente_id=llamada.agente,
+                            estado_id=estado_disponible,
+                            fecha=date.today(),
+                            defaults={
+                                'tiempo': '00:00:00',
+                                'cambios': f'Llamada completada sin contestar'
+                            }
+                        )
+                        
+                        # Si ya existía, agregar el cambio al historial
+                        if not created:
+                            if detalle.cambios:
+                                detalle.cambios += f', Llamada completada sin contestar'
+                            else:
+                                detalle.cambios = f'Llamada completada sin contestar'
+                            detalle.save()
+                        
+                        # Actualizar estado actual
+                        EstadoAgenteActual.objects.filter(agente_id=llamada.agente).update(
+                            estado_id=estado_disponible,
+                            tiempo=timezone.now()
+                        )
+                    except Exception as e:
+                        logger.error(f"Error actualizando estado del agente: {str(e)}")
                     
             elif call_status in ['busy', 'failed', 'no-answer', 'canceled']:
                 estado_no_contestada = get_estado('ESTADO_LLAMADA', 'NO_CONTESTADA')
                 llamada.estado_llamada = estado_no_contestada
                 llamada.fecha_hora_fin = timezone.now()
-                
-                logger.info(f"[WEBHOOK STATUS] Llamada {llamada.id} -> NO_CONTESTADA ({call_status}), volviendo agente a DISPONIBLE")
+                logger.info(f"[WEBHOOK] Llamada {llamada.id} no contestada: {call_status}")
                 
                 # Volver agente a DISPONIBLE
                 try:
@@ -629,9 +662,6 @@ def twilio_call_status_webhook(request, llamada_id=None):
                 llamada.twilio_recording_sid = recording_sid
             
             llamada.save()
-            
-            logger.info(f"Llamada {llamada.id} actualizada a estado {call_status} (Twilio: {llamada.twilio_status})")
-            logger.info(f"Llamada {llamada.id} - Inicio: {llamada.fecha_hora_inicio}, Duración: {llamada.duracion}s")
             
         except Llamada.DoesNotExist:
             logger.error(f"Llamada no encontrada: SID={call_sid}, ID={llamada_id}. Puede que la llamada no se haya creado correctamente en voice-request.")
@@ -694,12 +724,8 @@ def twilio_automated_call_handler(request):
             
             response = VoiceResponse()
             
-            # Mensaje de bienvenida al cliente
-            response.say(
-                'Hola, gracias por atender. Te comunicaremos con tu asesor.',
-                language='es-MX',
-                voice='Polly.Mia'
-            )
+            # ⚠️ NO reproducir mensaje de bienvenida
+            # Conectar DIRECTAMENTE al agente para que escuche el ringing
             
             # Conectar al agente usando Twilio Client
             client_identity = f"agent_{agente.pk}"
@@ -711,12 +737,12 @@ def twilio_automated_call_handler(request):
             dial = Dial(
                 action=dial_status_url,  # Se ejecuta cuando el Dial termina (backup)
                 statusCallback=dial_status_url,  # 🔥 Se ejecuta en eventos en tiempo real (camelCase!)
-                statusCallbackEvent=['initiated', 'answered', 'completed'],  # 🔥 Eventos que queremos capturar (camelCase!)
-                statusCallbackMethod='GET',  # 🔥 Especificar método explícitamente
+                statusCallbackEvent='initiated answered completed',  # 🔥 String separado por espacios
+                statusCallbackMethod='POST',  # Usar POST para consistencia
                 timeout=30,  # Tiempo de espera para que el agente conteste
                 record='record-from-answer',  # Grabar desde que se contesta
                 recordingStatusCallback=request.build_absolute_uri('/api/webhooks/twilio/recording/'),
-                recordingStatusCallbackMethod='GET'
+                recordingStatusCallbackMethod='POST'  # Cambiar a POST para consistencia
             )
             dial.client(client_identity)
             response.append(dial)
@@ -827,7 +853,7 @@ def twilio_join_conference(request):
 
 
 @csrf_exempt
-@require_http_methods(["GET", "POST"])  # 🔧 Permitir GET y POST
+@require_http_methods(["GET", "POST"])
 def twilio_recording_webhook(request):
     """
     Webhook para recibir notificaciones de grabaciones.
@@ -841,12 +867,14 @@ def twilio_recording_webhook(request):
         recording_sid = params.get('RecordingSid')
         recording_url = params.get('RecordingUrl')
         call_sid = params.get('CallSid')
+        recording_status = params.get('RecordingStatus')
+        recording_duration = params.get('RecordingDuration')
         
-        logger.info(f"Grabación recibida: SID={recording_sid}, CallSID={call_sid}")
-
+        # Log solo si hay grabación completada
+        if recording_status == 'completed':
+            logger.info(f"[RECORDING] Grabación {recording_duration}s guardada para CallSid={call_sid}")
         
         if not call_sid:
-            logger.error("No se proporcionó CallSid en webhook de grabación")
             return HttpResponse(status=200)
         
         try:
@@ -857,16 +885,16 @@ def twilio_recording_webhook(request):
             ).first()
             
             if llamada:
-                llamada.twilio_recording_sid = recording_sid
-                llamada.twilio_recording_url = recording_url
-                llamada.grabacion_url = recording_url
-                llamada.save()
-                logger.info(f"Grabación guardada para llamada {llamada.id}")
+                if recording_status in ['completed', 'absent']:
+                    llamada.twilio_recording_sid = recording_sid
+                    llamada.twilio_recording_url = recording_url
+                    llamada.grabacion_url = recording_url
+                    llamada.save(update_fields=['twilio_recording_sid', 'twilio_recording_url', 'grabacion_url'])
             else:
-                logger.error(f"Llamada no encontrada para grabación: CallSID={call_sid}")
+                logger.error(f"[RECORDING] Llamada no encontrada - CallSID={call_sid}")
                 
         except Exception as e:
-            logger.error(f"Error guardando grabación: {str(e)}", exc_info=True)
+            logger.error(f"[RECORDING] Error guardando grabación: {str(e)}")
         
         # SIEMPRE devolver 200
         return HttpResponse(status=200)
@@ -878,7 +906,7 @@ def twilio_recording_webhook(request):
 
 
 @csrf_exempt
-@require_http_methods(["GET", "POST"])  # 🔧 Permitir GET y POST
+@require_http_methods(["GET", "POST"])
 def twilio_dial_status_webhook(request):
     """
     Webhook para capturar el CallSid del child call generado por <Dial>.
@@ -900,49 +928,67 @@ def twilio_dial_status_webhook(request):
     IMPORTANTE: Este endpoint NO debe devolver TwiML, solo HTTP 200.
     """
     try:
-        # Twilio puede enviar GET o POST dependiendo del evento
+        # Twilio puede enviar GET o POST
         params = request.GET if request.method == 'GET' else request.POST
         
-        # 🔍 DEBUGGING: Mostrar TODOS los parámetros recibidos
-        all_params = dict(params.items())
-        logger.info(f"[DIAL STATUS] 🔍 TODOS los parámetros recibidos: {all_params}")
-        
-        parent_call_sid = params.get('CallSid')  # Parent (llamada al cliente)
-        child_call_sid = params.get('DialCallSid')  # Child (conexión del agente)
-        dial_status = params.get('DialCallStatus')  # Estado del child call
-        call_status = params.get('CallStatus')  # Estado del parent call
-        status_callback_event = params.get('StatusCallbackEvent')  # Evento que disparó el webhook
-        
-        logger.info(f"[DIAL STATUS] Method={request.method}, Event={status_callback_event}, Parent={parent_call_sid}, Child={child_call_sid}, DialStatus={dial_status}, CallStatus={call_status}")
+        parent_call_sid = params.get('CallSid')
+        child_call_sid = params.get('DialCallSid')
+        dial_status = params.get('DialCallStatus')
+        status_callback_event = params.get('StatusCallbackEvent')
 
         
         if not parent_call_sid:
-            logger.error(f"[DIAL STATUS] ❌ No se proporcionó CallSid")
             return HttpResponse(status=200)
         
         try:
             # Buscar la llamada por el parent CallSid
-            llamada = Llamada.objects.get(twilio_call_sid=parent_call_sid)
+            llamada = Llamada.objects.select_related('agente').get(twilio_call_sid=parent_call_sid)
             
-            # Guardar el child CallSid si está disponible
             if child_call_sid and not llamada.twilio_child_call_sid:
                 llamada.twilio_child_call_sid = child_call_sid
                 llamada.save(update_fields=['twilio_child_call_sid'])
-                logger.info(f"[DIAL STATUS] ✅ Child CallSid guardado para llamada {llamada.id}: {child_call_sid}")
-            elif child_call_sid:
-                logger.info(f"[DIAL STATUS] ℹ️ Child CallSid ya guardado para llamada {llamada.id}")
-            else:
-                logger.warning(f"[DIAL STATUS] ⚠️ No se recibió DialCallSid en evento {status_callback_event}")
+            
+            if dial_status == 'answered' or status_callback_event == 'answered':
+                from common.estados_helper import get_estado
+                from datetime import date
+                
+                estado_en_llamada = get_estado('ESTADO_AGENTE', 'EN_LLAMADA')
+                estado_actual = EstadoAgenteActual.objects.filter(agente_id=llamada.agente).first()
+                
+                if estado_actual and estado_actual.estado_id != estado_en_llamada:
+                    logger.info(f"[DIAL] Agente {llamada.agente.email} contestó llamada {llamada.id}")
+                    
+                    # Actualizar detalle del día
+                    detalle, created = EstadoAgenteDetalle.objects.get_or_create(
+                        agente_id=llamada.agente,
+                        estado_id=estado_en_llamada,
+                        fecha=date.today(),
+                        defaults={
+                            'tiempo': '00:00:00',
+                            'cambios': f'Llamada automática contestada - Cliente: {llamada.cliente.telefono}'
+                        }
+                    )
+                    
+                    if not created:
+                        if detalle.cambios:
+                            detalle.cambios += f', Llamada automática contestada - Cliente: {llamada.cliente.telefono}'
+                        else:
+                            detalle.cambios = f'Llamada automática contestada - Cliente: {llamada.cliente.telefono}'
+                        detalle.save()
+                    
+                    EstadoAgenteActual.objects.filter(agente_id=llamada.agente).update(
+                        estado_id=estado_en_llamada,
+                        tiempo=timezone.now()
+                    )
             
         except Llamada.DoesNotExist:
-            logger.error(f"[DIAL STATUS] ❌ Llamada no encontrada con parent CallSid: {parent_call_sid}")
+            logger.error(f"[DIAL] Llamada no encontrada: {parent_call_sid}")
         except Exception as e:
-            logger.error(f"[DIAL STATUS] ❌ Error procesando: {str(e)}", exc_info=True)
+            logger.error(f"[DIAL] Error: {str(e)}")
         
         # SIEMPRE devolver 200
         return HttpResponse(status=200)
         
     except Exception as e:
-        # Capturar CUALQUIER error no manejado y devolver 200
-        logger.error(f"[DIAL STATUS] ❌ Error crítico: {str(e)}", exc_info=True)
+        logger.error(f"[DIAL] Error crítico: {str(e)}")
         return HttpResponse(status=200)

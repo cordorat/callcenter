@@ -988,6 +988,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
     def mis_campanas_jefe(self, request):
         """
         Endpoint para que el Jefe de Campaña obtenga sus campañas con equipos y agentes.
+        Los admins obtienen TODAS las campañas.
         
         GET /api/campaigns/equipos/jefe-campana/mis-campanas/
         
@@ -996,6 +997,7 @@ class EquipoViewSet(viewsets.ModelViewSet):
         - 2.1: Mostrar lista de campañas asignadas al jefe
         - 2.3: Cada campaña muestra sus equipos
         - 2.3: Cada equipo muestra sus agentes
+        - Admin: Muestra TODAS las campañas del sistema
         
         Returns:
             {
@@ -1005,23 +1007,27 @@ class EquipoViewSet(viewsets.ModelViewSet):
         """
         user = request.user
         
-        # Verificar que el usuario sea jefe de campaña
+        # Verificar que el usuario sea jefe de campaña o admin
         rol_jefe_campana_id = get_estado_id('ROL_USUARIO', 'JEFE_CAMPANA')
-        if user.rol_id != rol_jefe_campana_id and not user.is_admin():
+        
+        if user.is_admin():
+            # Admin: obtener TODAS las campañas
+            campanas = Campana.objects.all().select_related('centro', 'estado').prefetch_related('equipos')
+        elif user.rol_id == rol_jefe_campana_id:
+            # Jefe de campaña: solo sus campañas asignadas
+            campanas = Campana.objects.filter(
+                jefe_campana=user
+            ).select_related('centro', 'estado').prefetch_related('equipos')
+        else:
             return Response({
                 'success': False,
-                'message': 'Solo los jefes de campaña pueden acceder a esta información'
+                'message': 'Solo los jefes de campaña o administradores pueden acceder a esta información'
             }, status=status.HTTP_403_FORBIDDEN)
-        
-        # Obtener campañas del jefe autenticado
-        campanas = Campana.objects.filter(
-            jefe_campana=user
-        ).select_related('centro', 'estado').prefetch_related('equipos')
         
         if not campanas.exists():
             return Response({
                 'success': True,
-                'message': 'No tiene campañas asignadas',
+                'message': 'No hay campañas disponibles',
                 'campanas': []
             }, status=status.HTTP_200_OK)
         
@@ -1031,7 +1037,8 @@ class EquipoViewSet(viewsets.ModelViewSet):
         return Response({
             'success': True,
             'count': campanas.count(),
-            'campanas': serializer.data
+            'campanas': serializer.data,
+            'es_admin': user.is_admin()
         }, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['post'], url_path='asignar-coordinador')

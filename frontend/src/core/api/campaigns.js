@@ -117,7 +117,12 @@ export const getActiveCampaigns = async () => {
 
 /**
  * Obtener campañas del jefe de campaña autenticado con equipos y agentes
- * @returns {Promise<Object>} { success, count, campanas }
+ * 
+ * Comportamiento según rol:
+ * - JEFE_CAMPANA: Devuelve solo sus campañas asignadas
+ * - ADMIN: Devuelve TODAS las campañas del sistema
+ * 
+ * @returns {Promise<Object>} { success, count, campanas, es_admin }
  */
 export const getMisCampanasJefe = async () => {
   try {
@@ -200,7 +205,7 @@ export const updateSalesGoal = async (campaignId, objetivo_ventas) => {
 export const programarIteracionBase = async (baseId, payload) => {
   try {
     const response = await apiClient.put(
-      `/campaigns/campanas/base-datos/${baseId}/programar-iteracion/`,
+      `/campaigns/base-datos/${baseId}/programar-iteracion/`,
       payload
     );
     return response.data;

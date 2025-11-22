@@ -13,8 +13,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Constante para máximo de intentos
-MAX_INTENTOS = 3
+# Constante para máximo de intentos (solo se usa si no está en settings)
+MAX_INTENTOS = 1
 
 
 class IteracionService:

@@ -168,7 +168,8 @@ class TwilioClient:
         self, 
         to_number: str,
         caller_id: Optional[str] = None,
-        status_callback_url: Optional[str] = None
+        status_callback_url: Optional[str] = None,
+        recording_callback_url: Optional[str] = None
     ) -> str:
         """
         Genera TwiML para realizar una llamada desde el navegador (Twilio Client).
@@ -177,6 +178,7 @@ class TwilioClient:
             to_number: Número al que se llama
             caller_id: Caller ID que se mostrará (opcional)
             status_callback_url: URL para recibir actualizaciones de estado (opcional)
+            recording_callback_url: URL para recibir notificaciones de grabación (opcional)
         
         Returns:
             String con XML de TwiML
@@ -190,13 +192,27 @@ class TwilioClient:
             language='es-ES'
         )
         
-        # Realizar la llamada
-        dial = Dial(
-            caller_id=caller_id or self.phone_number,
-            timeout=30,
-            action=status_callback_url,  # URL a llamar después del dial
-            method='POST'
-        )
+        # Realizar la llamada con callbacks de estado y grabación
+        dial_params = {
+            'caller_id': caller_id or self.phone_number,  # La librería convierte a callerId
+            'timeout': 30,
+            'action': status_callback_url,  # URL a llamar después del dial
+            'method': 'POST',
+            'record': 'record-from-answer-dual',  # 🎙️ Grabar ambos lados desde que contesta
+        }
+        
+        # Agregar statusCallback para recibir eventos en tiempo real
+        if status_callback_url:
+            dial_params['status_callback'] = status_callback_url  # La librería convierte a statusCallback
+            dial_params['status_callback_event'] = 'initiated ringing answered completed'  # Eventos
+            dial_params['status_callback_method'] = 'POST'  # La librería convierte a statusCallbackMethod
+        
+        # Agregar recording callback
+        if recording_callback_url:
+            dial_params['recording_status_callback'] = recording_callback_url  # URL para notificaciones de grabación
+            dial_params['recording_status_callback_method'] = 'POST'  # Método
+        
+        dial = Dial(**dial_params)
         dial.number(to_number)
         response.append(dial)
         

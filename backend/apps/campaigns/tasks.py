@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Constantes desde settings.py (configurables vía .env)
-MAX_INTENTOS = getattr(settings, 'MAX_INTENTOS', 3)
+MAX_INTENTOS = getattr(settings, 'MAX_INTENTOS', 1)
 TIEMPO_ESPERA_REASIGNACION = getattr(settings, 'TIEMPO_ESPERA_REASIGNACION', 30)
 
 
@@ -232,9 +232,9 @@ def procesar_llamada_automatica(self, cliente_id: int, agente_id: str, base_dato
                 twilio_status='pending'
             )
             
-            # Cambiar estado del agente a EN_LLAMADA DESPUÉS de crear el registro
-            # para asegurar que la llamada existe antes de cualquier webhook
-            IteracionService.cambiar_estado_agente(agente_id, 'EN_LLAMADA')
+            # ⚠️ NO cambiar estado del agente a EN_LLAMADA todavía
+            # El agente se cambiará a EN_LLAMADA cuando CONTESTE la llamada (webhook answered del child call)
+            # Por ahora el agente está DISPONIBLE y recibirá la llamada entrante
             
             # URL del webhook que manejará la llamada cuando el cliente conteste
             webhook_url = f"{settings.SITE_URL}/api/webhooks/twilio/handle-call/"
