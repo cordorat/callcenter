@@ -7,7 +7,8 @@ from .views import (
     FormularioVentaViewSet,
     VentaViewSet,
     ReporteLlamadaViewSet,
-    HistorialJefeCampanaViewSet
+    HistorialJefeCampanaViewSet,
+    ComisionViewSet
 )
 
 app_name = 'calls'
@@ -20,6 +21,7 @@ router.register(r'formularios', FormularioVentaViewSet, basename='formulario')
 router.register(r'ventas', VentaViewSet, basename='venta')
 router.register(r'historial-jefecampana', HistorialJefeCampanaViewSet, basename='historial-jefecampana')
 router.register(r'reportes', ReporteLlamadaViewSet, basename='reporte')
+router.register(r'comisiones', ComisionViewSet, basename='comision')
 
 urlpatterns = [
     path('', include(router.urls)),

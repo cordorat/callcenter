@@ -22,7 +22,7 @@ export const menuItems = [
     label: 'Dashboard',
     path: '/dashboard',
     icon: DashboardIcon, // Opcional, nombre del ícono de MUI
-    roles: ['ADMIN', 'AGENTE', 'JEFE_CENTRO', 'JEFE_CAMPANA', 'COORDINADOR', 'BACKOFFICE'] // Roles permitidos
+    roles: ['AGENTE', 'JEFE_CENTRO', 'JEFE_CAMPANA', 'COORDINADOR', 'BACKOFFICE'] // Roles permitidos
   },
   {
     label: 'Equipos',
@@ -80,9 +80,9 @@ export const menuItems = [
   },
   {
     label: 'Comisiones',
-    path: '/comisiones',
+    path: '/commissions',
     icon: AttachMoneyIcon,
-    roles: []
+    roles: ['AGENTE']
   },
   {
     label: 'Configuración',

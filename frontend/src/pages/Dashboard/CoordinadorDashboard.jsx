@@ -19,6 +19,16 @@ import IconButton from "@mui/material/IconButton";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import { useTheme } from "@mui/material/styles";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 const toLocalDateString = (date) => {
   const y = date.getFullYear();
@@ -43,6 +53,7 @@ export default function CoordinadorDashboard() {
 
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
+  const [agentsData, setAgentsData] = React.useState([]);
   const [kpi, setKpi] = React.useState({
     llamadasActivas: 0,
     agentesDisponibles: 0,
@@ -62,7 +73,7 @@ export default function CoordinadorDashboard() {
         fecha_hasta: range.fecha_hasta 
       });
 
-      // Mapear los valores del API al estado (nombres correctos del backend)
+      // Mapear los valores del API al estado
       const llamadasActivas = Number(data.llamadas_activas ?? 0);
       const agentesDisponibles = Number(data.agentes_disponibles ?? 0);
       const tiempoPromedioCalls = Number(data.tiempo_promedio_llamada ?? 0);
@@ -78,6 +89,17 @@ export default function CoordinadorDashboard() {
         ventasRealizadas,
         tasaConversion: tasaConvPct,
       });
+
+      // Procesar datos de agentes del ranking
+      if (data.ranking_agentes && Array.isArray(data.ranking_agentes)) {
+        const agentsChartData = data.ranking_agentes
+          .slice(0, 10) // Top 10
+          .map((agent) => ({
+            nombre: agent.agente_nombre || "Sin nombre",
+            ventas: Number(agent.ventas ?? 0) || 0,
+          }));
+        setAgentsData(agentsChartData);
+      }
     } catch (e) {
       console.error(e);
       setError(e);
@@ -91,7 +113,7 @@ export default function CoordinadorDashboard() {
   }, [load]);
 
   return (
-    <MainLayout title="Panel de Control">
+    <MainLayout title="Dashboard">
       <Box sx={{ width: "100%", p: 3 }}>
         {/* Header con título y botón refresh */}
         <Box
@@ -167,11 +189,11 @@ export default function CoordinadorDashboard() {
           </Box>
         ) : (
           <>
-            {/* KPI Cards Row */}
+            {/* KPI Cards Stack */}
             <Stack
               direction={{ xs: "column", sm: "row" }}
               spacing={3}
-              sx={{ mb: 4 }}
+              sx={{ mb: 4, flexWrap: "wrap" }}
             >
               {/* Tarjeta Llamadas Activas */}
               <Card
@@ -443,6 +465,100 @@ export default function CoordinadorDashboard() {
                 </CardContent>
               </Card>
             </Stack>
+
+            {/* Top 3 Agentes por Ventas - Gráfica */}
+            <Card
+              sx={{
+                width: "100%",
+                maxWidth: "100%",
+                backgroundColor: "background.paper",
+                borderRadius: 4,
+                boxShadow: isDark
+                  ? "0 6px 16px rgba(0,0,0,0.35)"
+                  : "0 6px 16px rgba(12,21,90,0.10)",
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  boxShadow: isDark
+                    ? "0 8px 18px rgba(0,0,0,0.45)"
+                    : "0 8px 18px rgba(12,21,90,0.18)",
+                  transform: "translateY(-4px)",
+                },
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <CardContent sx={{ p: 3, flexGrow: 1 }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                      fontWeight: 700,
+                      mb: 3,
+                      color: "text.primary",
+                    }}
+                >
+                  Top 3 Agentes
+                </Typography>
+                {agentsData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart
+                      data={agentsData.slice(0, 3)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke={isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
+                      />
+                      <XAxis
+                        type="number"
+                        stroke={isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)"}
+                        style={{ fontSize: "14px" }}
+                      />
+                      <YAxis
+                        dataKey="nombre"
+                        type="category"
+                        width={55}
+                        tick={{ fontSize: 14 }}
+                        stroke={isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)"}
+                      />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: isDark ? "#1e1e1e" : "#ffffff",
+                          border: isDark
+                            ? "1px solid rgba(255,255,255,0.1)"
+                            : "1px solid rgba(0,0,0,0.1)",
+                          borderRadius: "8px",
+                          color: isDark ? "#ffffff" : "#000000",
+                          fontSize: "12px",
+                        }}
+                        formatter={(value) => [`${value} ventas`, "Ventas"]}
+                      />
+                      <Bar
+                        dataKey="ventas"
+                        fill={isDark ? "#2A3B70" : "#0C155A"}
+                        name="Ventas"
+                        radius={[0, 4, 4, 0]}
+                        maxBarSize={70}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: 280,
+                      color: "text.secondary",
+                    }}
+                  >
+                    <Typography variant="body2">
+                      Sin datos
+                    </Typography>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
       </Box>

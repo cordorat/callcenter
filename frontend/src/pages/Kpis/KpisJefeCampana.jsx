@@ -1,11 +1,14 @@
 // PATH: src/pages/Kpis/KpisJefeCampana.jsx
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
-import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle, getAgentesJefeCampana, getAgenteKpiDetalleJefe } from "@/core/api/kpis";
+import { getCampanaKpiOverview, getEquiposJefeCampana, getEquipoKpiDetalle, exportarJefeCampanaKpisPDF,getAgentesJefeCampana, getAgenteKpiDetalleJefe } from "@/core/api/kpis";
 import { historialJefeService } from "@/core/api/historialJefeCampana";
+import { AGENT_STATUSES, mapBackendToFrontend } from '@/core/api/agentStates';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useTheme } from '@mui/material/styles';
+import ButtonTooltip from "@/components/campaing/ButtonTooltip";
 import PersonIcon from '@mui/icons-material/Person';
 import SearchIcon from '@mui/icons-material/Search';
 import GroupIcon from '@mui/icons-material/Group';
@@ -80,7 +83,7 @@ const monthRange = () => {
 };
 
 const fmtSecs = (s) => {
-    const n = Number(s || 0);
+    const n = Math.round(Number(s || 0)); // Redondear primero
     const m = Math.floor(n / 60);
     const ss = n % 60;
     return `${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")} min`;
@@ -137,6 +140,8 @@ export default function KpisJefeCampana() {
     const [dataEquipo, setDataEquipo] = React.useState(null);
     const [loadingEquipoDetalle, setLoadingEquipoDetalle] = React.useState(false);
     
+    // Estado para exportación
+    const [exportando, setExportando] = React.useState(false);
     // Estado de agentes
     const [agentes, setAgentes] = React.useState([]);
     const [loadingAgentes, setLoadingAgentes] = React.useState(false);
@@ -164,6 +169,13 @@ export default function KpisJefeCampana() {
                 // Si solo tiene una campaña, seleccionarla automáticamente
                 if (campanasData.length === 1) {
                     setCampanaSeleccionada(campanasData[0].id);
+                } else if (campanasData.length > 1) {
+                    // Validar que campanaSeleccionada actual esté en la lista
+                    // Si no está o no existe, seleccionar la primera campaña disponible
+                    const campanaActualValida = campanasData.some(c => c.id === campanaSeleccionada);
+                    if (!campanaActualValida) {
+                        setCampanaSeleccionada(campanasData[0].id);
+                    }
                 }
             } catch (error) {
                 console.error("Error al cargar campañas:", error);
@@ -286,6 +298,35 @@ export default function KpisJefeCampana() {
     const handleVolverALista = () => {
         setEquipoSeleccionado(null);
         setDataEquipo(null);
+    };
+
+    // Función para exportar KPIs a PDF
+    const handleExportarPDF = async () => {
+        setExportando(true);
+        try {
+            const response = await exportarJefeCampanaKpisPDF({
+                campana_id: campanaSeleccionada || (campanas.length === 1 ? campanas[0].id : null),
+                fecha_desde: from,
+                fecha_hasta: to,
+            });
+
+            // Crear un blob y descargar el archivo
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `KPIs_Campana_${from}_${to}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+        } catch (e) {
+            console.error(e);
+            setErrMsg("No se pudieron exportar los KPIs. Intenta nuevamente.");
+        } finally {
+            setExportando(false);
+        }
     };
 
     // Fetch lista de agentes
@@ -726,6 +767,23 @@ export default function KpisJefeCampana() {
                                                 fontWeight: 600,
                                                 fontSize: '0.75rem',
                                                 height: '24px',
+                                                backgroundColor: (() => {
+                                                    const frontendState = mapBackendToFrontend(agente.estado_actual);
+                                                    const status = AGENT_STATUSES.find(s => s.value === frontendState);
+                                                    const color = status?.color || '#9e9e9e';
+                                                    return isDark ? `${color}33` : `${color}1A`;
+                                                })(),
+                                                color: (() => {
+                                                    const frontendState = mapBackendToFrontend(agente.estado_actual);
+                                                    const status = AGENT_STATUSES.find(s => s.value === frontendState);
+                                                    return status?.color || '#9e9e9e';
+                                                })(),
+                                                border: (() => {
+                                                    const frontendState = mapBackendToFrontend(agente.estado_actual);
+                                                    const status = AGENT_STATUSES.find(s => s.value === frontendState);
+                                                    const color = status?.color || '#9e9e9e';
+                                                    return `1px solid ${isDark ? color + '4D' : color + '66'}`;
+                                                })(),
                                             }}
                                         />
                                     </TableCell>
@@ -861,6 +919,21 @@ export default function KpisJefeCampana() {
                                     Última actualización: {new Date(updatedAt).toLocaleString()}
                                 </span>
                             )}
+                            {!exportando ? (
+                                <ButtonTooltip
+                                    title="Exportar KPI"
+                                    icon={<PictureAsPdfIcon />}
+                                    onClick={handleExportarPDF}
+                                    color="error"
+                                />
+                            ) : (
+                                <ButtonTooltip
+                                    title="Exportando..."
+                                    icon={<CircularProgress size={24} sx={{ color: 'white' }} />}
+                                    onClick={() => {}}
+                                    color="error"
+                                />
+                            )}
                             <button 
                                 className="btn" 
                                 onClick={() => {
@@ -919,60 +992,62 @@ export default function KpisJefeCampana() {
                 {/* Mostrar filtros y contenido solo si hay campaña seleccionada */}
                 {(campanaSeleccionada || campanas.length === 1) && (
                     <>
-                        {/* Filtros de fecha */}
-                        <div className="kpi-filters">
-                            <div className="segmented">
-                                <button
-                                    className={mode === "day" ? "active" : ""}
-                                    onClick={() => setMode("day")}
-                                >
-                                    Día
-                                </button>
-                                <button
-                                    className={mode === "week" ? "active" : ""}
-                                    onClick={() => setMode("week")}
-                                >
-                                    Semana
-                                </button>
-                                <button
-                                    className={mode === "month" ? "active" : ""}
-                                    onClick={() => setMode("month")}
-                                >
-                                    Mes
-                                </button>
-                                <button
-                                    className={mode === "custom" ? "active" : ""}
-                                    onClick={() => setMode("custom")}
-                                >
-                                    Personalizado
-                                </button>
-                            </div>
+                        {/* Filtros de fecha - Solo visible en pestaña Campaña */}
+                        {tabValue === 0 && (
+                            <div className="kpi-filters">
+                                <div className="segmented">
+                                    <button
+                                        className={mode === "day" ? "active" : ""}
+                                        onClick={() => setMode("day")}
+                                    >
+                                        Día
+                                    </button>
+                                    <button
+                                        className={mode === "week" ? "active" : ""}
+                                        onClick={() => setMode("week")}
+                                    >
+                                        Semana
+                                    </button>
+                                    <button
+                                        className={mode === "month" ? "active" : ""}
+                                        onClick={() => setMode("month")}
+                                    >
+                                        Mes
+                                    </button>
+                                    <button
+                                        className={mode === "custom" ? "active" : ""}
+                                        onClick={() => setMode("custom")}
+                                    >
+                                        Personalizado
+                                    </button>
+                                </div>
 
-                            <div className="dates">
-                                <label>
-                                    Desde
-                                    <input
-                                        type="date"
-                                        value={from}
-                                        onChange={(e) => {
-                                            setFrom(e.target.value);
-                                            setMode("custom");
-                                        }}
-                                    />
-                                </label>
-                                <label>
-                                    Hasta
-                                    <input
-                                        type="date"
-                                        value={to}
-                                        onChange={(e) => {
-                                            setTo(e.target.value);
-                                            setMode("custom");
-                                        }}
-                                    />
-                                </label>
+                                <div className="dates">
+                                    <label>
+                                        Desde
+                                        <input
+                                            type="date"
+                                            value={from}
+                                            onChange={(e) => {
+                                                setFrom(e.target.value);
+                                                setMode("custom");
+                                            }}
+                                        />
+                                    </label>
+                                    <label>
+                                        Hasta
+                                        <input
+                                            type="date"
+                                            value={to}
+                                            onChange={(e) => {
+                                                setTo(e.target.value);
+                                                setMode("custom");
+                                            }}
+                                        />
+                                    </label>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {errMsg && (
                             <div style={{ marginBottom: 14 }}>

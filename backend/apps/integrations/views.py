@@ -467,6 +467,8 @@ def twilio_call_status_webhook(request, llamada_id=None):
         call_duration = params.get('CallDuration', 0)
         recording_url = params.get('RecordingUrl', '')
         recording_sid = params.get('RecordingSid', '')
+        answered_by = params.get('AnsweredBy', '')  # human, machine, fax, o vacío
+        dial_call_status = params.get('DialCallStatus', '')  # 🔥 Estado del Dial (answered, no-answer, busy, failed)
         
         # Log solo para estados importantes
         if call_status not in ['ringing', 'in-progress']:

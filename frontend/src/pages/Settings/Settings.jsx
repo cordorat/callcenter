@@ -39,6 +39,15 @@ export default function Settings() {
 
   const darkMode = mode === "dark";
 
+  // Generar iniciales del nombre completo
+  const getInitials = () => {
+    if (!user) return "?";
+    const firstName = user?.first_name || "";
+    const lastName = user?.last_name || "";
+    const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+    return initials || "?";
+  };
+
   const handleThemeToggle = () => toggleMode();
   const handleProfileClick = () => navigate("/perfil");
   const handleTermsClick = () =>
@@ -84,11 +93,14 @@ export default function Settings() {
                   width: 80,
                   height: 80,
                   fontSize: "2rem",
-                  bgcolor: "rgba(255,255,255,0.15)",
+                  bgcolor: "rgba(255,255,255,0.25)",
                   border: "2px solid rgba(255,255,255,0.3)",
+                  fontWeight: 700,
+                  color: "white",
                 }}
+                src={user?.foto_perfil || undefined}
               >
-                {user?.first_name?.charAt(0).toUpperCase() || "?"}
+                {getInitials()}
               </Avatar>
               <Box sx={{ flex: 1 }}>
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 0.5 }}>

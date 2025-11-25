@@ -102,9 +102,7 @@ const Calls = () => {
         
         // Solo actualizar si hay currentCallInfo disponible Y estamos en llamada
         if (currentCallInfo && isEnLlamadaOAfterCall) {
-            // Eliminar prefijo +57 del número para el teclado numérico
-            const cleanNumber = removePhonePrefix(currentCallInfo.telefono);
-            setPhoneNumber(cleanNumber);
+            // Actualizar información del cliente pero NO phoneNumber (se actualiza solo desde fullCallInfo)
             setCliente(prev => ({
                 ...prev, // Mantener datos anteriores por si acaso
                 id: currentCallInfo.cliente_id || prev.id, 
@@ -207,8 +205,8 @@ const Calls = () => {
                                 console.log('[Calls.jsx][FETCH] 📧 email:', otrosDatos.email);
                                 console.log('[Calls.jsx][FETCH] 🏠 direccion:', otrosDatos.direccion);
                                 
-                                // Actualizar también phoneNumber sin prefijo +57
-                                if (response.data.cliente_telefono) {
+                                // Actualizar también phoneNumber sin prefijo +57 SOLO si estamos en llamada
+                                if (response.data.cliente_telefono && isInCall) {
                                     const cleanNumber = removePhonePrefix(response.data.cliente_telefono);
                                     console.log('[Calls.jsx][FETCH] 📞 Actualizando phoneNumber desde fullCallInfo:', cleanNumber);
                                     setPhoneNumber(cleanNumber);

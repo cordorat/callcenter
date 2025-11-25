@@ -1698,6 +1698,7 @@ class HistorialJefeCampanaViewSet(viewsets.ReadOnlyModelViewSet):
         """
         Retorna las campañas asignadas al jefe de campaña.
         Útil para el selector de campaña en el frontend.
+        Solo devuelve campañas ACTIVAS.
         """
         user = request.user
         
@@ -1707,12 +1708,21 @@ class HistorialJefeCampanaViewSet(viewsets.ReadOnlyModelViewSet):
         
         from apps.campaigns.models import Campana
         
+        # Obtener estado ACTIVA
+        estado_activa = get_estado('ESTADO_CAMPANA', 'ACTIVA')
+        
         if es_admin:
-            # Admin ve todas las campañas
-            campanas = Campana.objects.all()
+            # Admin ve todas las campañas activas
+            if estado_activa:
+                campanas = Campana.objects.filter(estado=estado_activa)
+            else:
+                campanas = Campana.objects.all()
         else:
-            # Jefe solo ve sus campañas
-            campanas = Campana.objects.filter(jefe_campana=user)
+            # Jefe solo ve sus campañas activas
+            if estado_activa:
+                campanas = Campana.objects.filter(jefe_campana=user, estado=estado_activa)
+            else:
+                campanas = Campana.objects.filter(jefe_campana=user)
         
         # Serializar
         campanas_data = []
@@ -2008,4 +2018,146 @@ class ReporteLlamadaViewSet(viewsets.ModelViewSet):
         Asigna automáticamente el usuario que crea el reporte.
         """
         serializer.save(reportado_por=self.request.user)
+
+
+class ComisionViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para consulta de comisiones personales del agente.
+    
+    Solo permite lectura (GET). Los agentes solo pueden ver sus propias comisiones.
+    
+    Filtros disponibles:
+    - periodo: 'dia', 'semana', 'mes', 'personalizado' (default: 'mes')
+    - fecha_desde: Fecha inicial en formato YYYY-MM-DD (para periodo personalizado)
+    - fecha_hasta: Fecha final en formato YYYY-MM-DD (para periodo personalizado)
+    
+    Acciones especiales:
+    - resumen: GET api/calls/comisiones/resumen/ - Obtiene resumen de comisiones con totales y progreso
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """
+        Filtra comisiones solo del agente autenticado y de las campañas a las que pertenece.
+        """
+        from apps.calls.models import Comision
+        from apps.campaigns.models import EquipoAgenteDetalle
+        user = self.request.user
+        
+        # Obtener las campañas a las que pertenece el agente a través de sus equipos activos
+        campanas_ids = EquipoAgenteDetalle.objects.filter(
+            agente_id=user,
+            equipo_id__is_active=True
+        ).values_list('equipo_id__campana_id', flat=True).distinct()
+        
+        # Filtrar comisiones del agente que pertenezcan a sus campañas
+        queryset = Comision.objects.filter(
+            agente=user,
+            venta__campana_id__in=campanas_ids
+        ).select_related(
+            'agente', 'venta', 'venta__campana_id', 'producto'
+        )
+        
+        # Aplicar filtros de período
+        periodo = self.request.query_params.get('periodo', 'mes')
+        fecha_desde = self.request.query_params.get('fecha_desde')
+        fecha_hasta = self.request.query_params.get('fecha_hasta')
+        
+        if periodo == 'dia':
+            # Hoy
+            hoy = timezone.now().date()
+            queryset = queryset.filter(fecha__date=hoy)
+        elif periodo == 'semana':
+            # Últimos 7 días
+            hace_semana = timezone.now() - timezone.timedelta(days=7)
+            queryset = queryset.filter(fecha__gte=hace_semana)
+        elif periodo == 'mes':
+            # Mes actual
+            hoy = timezone.now()
+            inicio_mes = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            queryset = queryset.filter(fecha__gte=inicio_mes)
+        elif periodo == 'personalizado':
+            # Rango personalizado
+            if fecha_desde:
+                try:
+                    fecha_desde_dt = timezone.datetime.strptime(fecha_desde, '%Y-%m-%d')
+                    fecha_desde_dt = timezone.make_aware(fecha_desde_dt.replace(hour=0, minute=0, second=0))
+                    queryset = queryset.filter(fecha__gte=fecha_desde_dt)
+                except ValueError:
+                    pass
+            
+            if fecha_hasta:
+                try:
+                    fecha_hasta_dt = timezone.datetime.strptime(fecha_hasta, '%Y-%m-%d')
+                    fecha_hasta_dt = timezone.make_aware(fecha_hasta_dt.replace(hour=23, minute=59, second=59))
+                    queryset = queryset.filter(fecha__lte=fecha_hasta_dt)
+                except ValueError:
+                    pass
+        
+        return queryset.order_by('-fecha')
+    
+    def get_serializer_class(self):
+        """
+        Retorna el serializer apropiado.
+        """
+        from apps.calls.serializers import ComisionSerializer
+        return ComisionSerializer
+    
+    @action(detail=False, methods=['get'])
+    def resumen(self, request):
+        """
+        Obtiene resumen de comisiones del agente.
+        
+        GET /comisiones/resumen/?periodo=mes
+        
+        Retorna:
+        - total_comisiones: Monto total de comisiones en el período
+        - cantidad_ventas: Número de ventas realizadas
+        - meta_mensual: Meta de comisiones del mes (valor fijo de ejemplo)
+        - progreso_meta: Porcentaje de progreso hacia la meta
+        - ultima_actualizacion: Fecha/hora de última comisión generada
+        - promedio_comision: Promedio de comisión por venta
+        """
+        queryset = self.get_queryset()
+        
+        # Calcular totales
+        total_comisiones = queryset.aggregate(
+            total=django_models.Sum('cantidad')
+        )['total'] or 0
+        
+        cantidad_ventas = queryset.count()
+        
+        # Última actualización
+        ultima_comision = queryset.first()
+        ultima_actualizacion = ultima_comision.fecha if ultima_comision else None
+        
+        # Promedio de comisión
+        from decimal import Decimal
+        promedio_comision = total_comisiones / cantidad_ventas if cantidad_ventas > 0 else 0
+        
+        # Meta mensual (valor fijo de ejemplo, puede ser configurable)
+        meta_mensual = Decimal('50000.00')
+        
+        # Progreso hacia la meta
+        progreso_meta = (total_comisiones / meta_mensual * Decimal('100')) if meta_mensual > 0 else 0
+        progreso_meta = min(progreso_meta, 100)  # Cap at 100%
+        
+        # Obtener período para el mensaje
+        periodo = self.request.query_params.get('periodo', 'mes')
+        periodo_display = {
+            'dia': 'hoy',
+            'semana': 'esta semana',
+            'mes': 'este mes',
+            'personalizado': 'el período seleccionado'
+        }.get(periodo, 'el período')
+        
+        return Response({
+            'total_comisiones': float(total_comisiones),
+            'cantidad_ventas': cantidad_ventas,
+            'ultima_actualizacion': ultima_actualizacion,
+            'promedio_comision': round(float(promedio_comision), 2),
+            'periodo': periodo,
+            'periodo_display': periodo_display,
+            'mensaje': f'Comisiones de {periodo_display}' if cantidad_ventas > 0 else f'No se encontraron comisiones para {periodo_display}'
+        }, status=status.HTTP_200_OK)
 

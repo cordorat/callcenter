@@ -98,6 +98,13 @@ class Campana(models.Model):
         blank=True,
         help_text='Meta de ventas/conversiones'
     )
+    comision_porcentaje = models.DecimalField(
+        'Porcentaje de Comisión',
+        max_digits=5,
+        decimal_places=2,
+        default=10.00,
+        help_text='Porcentaje de comisión para ventas de esta campaña (ej: 15.00 = 15%)'
+    )
     
     created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
     updated_at = models.DateTimeField('Fecha de actualización', auto_now=True)

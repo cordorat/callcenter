@@ -3,26 +3,22 @@
 import { useState, useEffect } from 'react';
 import {
     Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
     Button,
     TextField,
     Box,
     Typography,
     Autocomplete,
-    Chip,
     Alert,
     CircularProgress,
-    FormHelperText,
-    Grid,
-    IconButton,
     Switch,
     FormControlLabel,
-    MenuItem
 } from '@mui/material';
 import {
     Search as SearchIcon,
-    Close as CloseIcon
 } from '@mui/icons-material';
-import { useTheme } from '@mui/material/styles';
 import {
     createCampaign,
     searchJefesCampana,
@@ -31,19 +27,8 @@ import {
 
 /**
  * Modal para crear nueva campaña
- * Cumple con todos los criterios de la HU:
- * - 2.1.1: Búsqueda de jefe de campaña en tiempo real
- * - 2.1.2: Nombre de campaña (5-50 caracteres, solo alfabéticos)
- * - 2.1.3: Código único automático (backend)
- * - 2.1.4: Descripción (máx 200 caracteres)
- * - 2.1.5: Estado inicial (switch Activa/Inactiva)
- * - 2.1.6-7: Fechas de inicio y fin
- * - 2.1.8: Selección de productos
- * - 2.2: Validaciones de campos obligatorios
- * - 3.1-3.2: Botones guardar y cancelar
  */
 const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
-    const theme = useTheme();
 
     // Estados del formulario
     const [nombre, setNombre] = useState('');
@@ -92,10 +77,6 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
 
         return () => clearTimeout(timeoutId);
     }, [searchJefes, open]);
-
-    /**
-     * Resetea el formulario
-     */
     const resetForm = () => {
         setNombre('');
         setDescripcion('');
@@ -272,358 +253,577 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
         <Dialog
             open={open}
             onClose={handleClose}
-            maxWidth={false}
-            sx={{
-                '& .MuiDialog-paper': {
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+                sx: {
                     borderRadius: 3,
-                    width: 'auto',
-                    maxWidth: '90vw',
-                    minWidth: '600px',
-                }
+                    backdropFilter: 'blur(4px)',
+                },
             }}
         >
-            <Box sx={{ position: 'relative' }}>
-                <IconButton
-                    onClick={handleClose}
-                    sx={{
-                        position: 'absolute',
-                        right: 8,
-                        top: 8,
-                        zIndex: 1,
-                        backgroundColor: theme.palette.mode === 'light' ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
-                        '&:hover': {
-                            backgroundColor: theme.palette.mode === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)',
-                        }
-                    }}
-                >
-                    <CloseIcon />
-                </IconButton>
-            </Box>
+            <DialogTitle
+                sx={{
+                    fontWeight: 700,
+                    fontSize: '1.25rem',
+                    background: (theme) =>
+                        theme.palette.mode === 'light'
+                            ? 'linear-gradient(135deg, #0C155A 0%, #1A2E7A 100%)'
+                            : 'linear-gradient(135deg, #1A2E7A 0%, #0F1F4A 100%)',
+                    color: 'white',
+                    borderRadius: '12px 12px 0 0',
+                }}
+            >
+                Crear Nueva Campaña
+            </DialogTitle>
 
-            <Box sx={{ p: 4 }}>
-                {/* Criterio 3.2: Mensaje de éxito */}
-                {successMessage && (
+            <DialogContent dividers sx={{ py: 3 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {successMessage && (
+                        <Box
+                            sx={{
+                                p: 2,
+                                bgcolor: 'success.light',
+                                borderLeft: '4px solid',
+                                borderColor: 'success.main',
+                                borderRadius: 1,
+                            }}
+                        >
+                            <Typography color="success.main" variant="body2" sx={{ fontWeight: 600 }}>
+                                {successMessage}
+                            </Typography>
+                        </Box>
+                    )}
+
+                    {errors.general && (
+                        <Box
+                            sx={{
+                                p: 2,
+                                bgcolor: 'error.light',
+                                borderLeft: '4px solid',
+                                borderColor: 'error.main',
+                                borderRadius: 1,
+                            }}
+                        >
+                            <Typography color="error" variant="body2">
+                                {errors.general}
+                            </Typography>
+                        </Box>
+                    )}
+
+                    {/* Nombre de la campaña */}
+                    <Box>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.5,
+                                color: 'text.secondary',
+                                mb: 2,
+                                display: 'block',
+                            }}
+                        >
+                            Nombre de la Campaña
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            label="Ej: Campaña Navidad 2025"
+                            value={nombre}
+                            onChange={(e) => setNombre(e.target.value)}
+                            error={!!errors.nombre}
+                            helperText={errors.nombre || `${nombre.length}/50 caracteres`}
+                            disabled={loading || !!successMessage}
+                            inputProps={{ maxLength: 50 }}
+                            variant="outlined"
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '10px',
+                                    backgroundColor: (theme) =>
+                                        theme.palette.mode === 'light'
+                                            ? '#EBF5FE'
+                                            : 'rgba(255, 255, 255, 0.05)',
+                                    '& fieldset': {
+                                        borderColor: (theme) =>
+                                            theme.palette.mode === 'light'
+                                                ? 'rgba(12, 21, 90, 0.15)'
+                                                : 'rgba(255, 255, 255, 0.15)',
+                                        borderWidth: '1.5px',
+                                    },
+                                    '&:hover fieldset': {
+                                        borderColor: (theme) =>
+                                            theme.palette.mode === 'light'
+                                                ? 'rgba(12, 21, 90, 0.3)'
+                                                : 'rgba(255, 255, 255, 0.3)',
+                                    },
+                                    '&.Mui-focused fieldset': {
+                                        borderColor: (theme) => theme.palette.primary.main,
+                                        borderWidth: '2px',
+                                    },
+                                },
+                            }}
+                        />
+                    </Box>
+
+                    {/* Descripción */}
+                    <Box>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.5,
+                                color: 'text.secondary',
+                                mb: 2,
+                                display: 'block',
+                            }}
+                        >
+                            Descripción
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            multiline
+                            minRows={3}
+                            label="Describe los objetivos y características de la campaña"
+                            value={descripcion}
+                            onChange={(e) => setDescripcion(e.target.value)}
+                            error={!!errors.descripcion}
+                            helperText={errors.descripcion || `${descripcion.length}/200 caracteres`}
+                            disabled={loading || !!successMessage}
+                            inputProps={{ maxLength: 200 }}
+                            variant="outlined"
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '10px',
+                                    backgroundColor: (theme) =>
+                                        theme.palette.mode === 'light'
+                                            ? '#EBF5FE'
+                                            : 'rgba(255, 255, 255, 0.05)',
+                                    '& fieldset': {
+                                        borderColor: (theme) =>
+                                            theme.palette.mode === 'light'
+                                                ? 'rgba(12, 21, 90, 0.15)'
+                                                : 'rgba(255, 255, 255, 0.15)',
+                                        borderWidth: '1.5px',
+                                    },
+                                    '&:hover fieldset': {
+                                        borderColor: (theme) =>
+                                            theme.palette.mode === 'light'
+                                                ? 'rgba(12, 21, 90, 0.3)'
+                                                : 'rgba(255, 255, 255, 0.3)',
+                                    },
+                                    '&.Mui-focused fieldset': {
+                                        borderColor: (theme) => theme.palette.primary.main,
+                                        borderWidth: '2px',
+                                    },
+                                },
+                            }}
+                        />
+                    </Box>
+
+                    {/* Jefe de campaña */}
+                    <Box>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.5,
+                                color: 'text.secondary',
+                                mb: 2,
+                                display: 'block',
+                            }}
+                        >
+                            Jefe de Campaña
+                        </Typography>
+                        <Autocomplete
+                            options={jefesCampana}
+                            getOptionLabel={(option) => option.nombre_completo || ''}
+                            value={jefeCampanaSeleccionado}
+                            onChange={(event, newValue) => {
+                                setJefeCampanaSeleccionado(newValue);
+                                setErrors(prev => ({ ...prev, jefe_campana: null }));
+                            }}
+                            inputValue={searchJefes}
+                            onInputChange={(event, newInputValue) => {
+                                setSearchJefes(newInputValue);
+                            }}
+                            onOpen={() => {
+                                if (jefesCampana.length === 0 && !loadingJefes) {
+                                    loadJefesCampana('a');
+                                }
+                            }}
+                            loading={loadingJefes}
+                            disabled={loading || !!successMessage}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    placeholder="Buscar por nombre o código"
+                                    error={!!errors.jefe_campana}
+                                    helperText={errors.jefe_campana}
+                                    variant="outlined"
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            borderRadius: '10px',
+                                            backgroundColor: (theme) =>
+                                                theme.palette.mode === 'light'
+                                                    ? '#EBF5FE'
+                                                    : 'rgba(255, 255, 255, 0.05)',
+                                            '& fieldset': {
+                                                borderColor: (theme) =>
+                                                    theme.palette.mode === 'light'
+                                                        ? 'rgba(12, 21, 90, 0.15)'
+                                                        : 'rgba(255, 255, 255, 0.15)',
+                                                borderWidth: '1.5px',
+                                            },
+                                            '&:hover fieldset': {
+                                                borderColor: (theme) =>
+                                                    theme.palette.mode === 'light'
+                                                        ? 'rgba(12, 21, 90, 0.3)'
+                                                        : 'rgba(255, 255, 255, 0.3)',
+                                            },
+                                            '&.Mui-focused fieldset': {
+                                                borderColor: (theme) => theme.palette.primary.main,
+                                                borderWidth: '2px',
+                                            },
+                                        },
+                                    }}
+                                    InputProps={{
+                                        ...params.InputProps,
+                                        startAdornment: (
+                                            <>
+                                                <SearchIcon sx={{ ml: 0, mr: 0.5, color: 'text.secondary', flexShrink: 0 }} />
+                                                {params.InputProps.startAdornment}
+                                            </>
+                                        ),
+                                        endAdornment: (
+                                            <>
+                                                {loadingJefes ? <CircularProgress size={20} /> : null}
+                                                {params.InputProps.endAdornment}
+                                            </>
+                                        ),
+                                    }}
+                                />
+                            )}
+                            renderOption={(props, option) => (
+                                <li {...props}>
+                                    <Box>
+                                        <Typography variant="body2">{option.nombre_completo}</Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {option.email} • Código: {option.codigo}
+                                        </Typography>
+                                    </Box>
+                                </li>
+                            )}
+                            noOptionsText={
+                                loadingJefes
+                                    ? "Cargando..."
+                                    : searchJefes
+                                        ? "No se encontraron jefes de campaña"
+                                        : "No hay jefes disponibles"
+                            }
+                        />
+                    </Box>
+
+                    {/* Fecha de inicio */}
+                    <Box>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.5,
+                                color: 'text.secondary',
+                                mb: 2,
+                                display: 'block',
+                            }}
+                        >
+                            Fecha de Inicio
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            type="date"
+                            value={fechaInicio}
+                            onChange={(e) => setFechaInicio(e.target.value)}
+                            error={!!errors.fecha_inicio}
+                            helperText={errors.fecha_inicio}
+                            disabled={loading || !!successMessage}
+                            InputLabelProps={{ shrink: true }}
+                            variant="outlined"
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '10px',
+                                    backgroundColor: (theme) =>
+                                        theme.palette.mode === 'light'
+                                            ? '#EBF5FE'
+                                            : 'rgba(255, 255, 255, 0.05)',
+                                    '& fieldset': {
+                                        borderColor: (theme) =>
+                                            theme.palette.mode === 'light'
+                                                ? 'rgba(12, 21, 90, 0.15)'
+                                                : 'rgba(255, 255, 255, 0.15)',
+                                        borderWidth: '1.5px',
+                                    },
+                                    '&:hover fieldset': {
+                                        borderColor: (theme) =>
+                                            theme.palette.mode === 'light'
+                                                ? 'rgba(12, 21, 90, 0.3)'
+                                                : 'rgba(255, 255, 255, 0.3)',
+                                    },
+                                    '&.Mui-focused fieldset': {
+                                        borderColor: (theme) => theme.palette.primary.main,
+                                        borderWidth: '2px',
+                                    },
+                                },
+                            }}
+                        />
+                    </Box>
+
+                    {/* Fecha de fin */}
+                    <Box>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.5,
+                                color: 'text.secondary',
+                                mb: 2,
+                                display: 'block',
+                            }}
+                        >
+                            Fecha de Fin
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            type="date"
+                            value={fechaFin}
+                            onChange={(e) => setFechaFin(e.target.value)}
+                            error={!!errors.fecha_fin}
+                            helperText={errors.fecha_fin}
+                            disabled={loading || !!successMessage}
+                            InputLabelProps={{ shrink: true }}
+                            variant="outlined"
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '10px',
+                                    backgroundColor: (theme) =>
+                                        theme.palette.mode === 'light'
+                                            ? '#EBF5FE'
+                                            : 'rgba(255, 255, 255, 0.05)',
+                                    '& fieldset': {
+                                        borderColor: (theme) =>
+                                            theme.palette.mode === 'light'
+                                                ? 'rgba(12, 21, 90, 0.15)'
+                                                : 'rgba(255, 255, 255, 0.15)',
+                                        borderWidth: '1.5px',
+                                    },
+                                    '&:hover fieldset': {
+                                        borderColor: (theme) =>
+                                            theme.palette.mode === 'light'
+                                                ? 'rgba(12, 21, 90, 0.3)'
+                                                : 'rgba(255, 255, 255, 0.3)',
+                                    },
+                                    '&.Mui-focused fieldset': {
+                                        borderColor: (theme) => theme.palette.primary.main,
+                                        borderWidth: '2px',
+                                    },
+                                },
+                            }}
+                        />
+                    </Box>
+
+                    {/* Productos a vender */}
+                    <Box>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.5,
+                                color: 'text.secondary',
+                                mb: 2,
+                                display: 'block',
+                            }}
+                        >
+                            Productos a Vender
+                        </Typography>
+                        <Autocomplete
+                            multiple
+                            options={productos}
+                            getOptionLabel={(option) => option.nombre || ''}
+                            value={productosSeleccionados}
+                            onChange={(event, newValue) => {
+                                setProductosSeleccionados(newValue);
+                                setErrors(prev => ({ ...prev, productos: null }));
+                            }}
+                            loading={loadingProductos}
+                            disabled={loading || !!successMessage}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    placeholder="Selecciona uno o varios productos"
+                                    error={!!errors.productos}
+                                    variant="outlined"
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            borderRadius: '10px',
+                                            backgroundColor: (theme) =>
+                                                theme.palette.mode === 'light'
+                                                    ? '#EBF5FE'
+                                                    : 'rgba(255, 255, 255, 0.05)',
+                                            '& fieldset': {
+                                                borderColor: (theme) =>
+                                                    theme.palette.mode === 'light'
+                                                        ? 'rgba(12, 21, 90, 0.15)'
+                                                        : 'rgba(255, 255, 255, 0.15)',
+                                                borderWidth: '1.5px',
+                                            },
+                                            '&:hover fieldset': {
+                                                borderColor: (theme) =>
+                                                    theme.palette.mode === 'light'
+                                                        ? 'rgba(12, 21, 90, 0.3)'
+                                                        : 'rgba(255, 255, 255, 0.3)',
+                                            },
+                                            '&.Mui-focused fieldset': {
+                                                borderColor: (theme) => theme.palette.primary.main,
+                                                borderWidth: '2px',
+                                            },
+                                        },
+                                    }}
+                                    InputProps={{
+                                        ...params.InputProps,
+                                        endAdornment: (
+                                            <>
+                                                {loadingProductos ? <CircularProgress size={20} /> : null}
+                                                {params.InputProps.endAdornment}
+                                            </>
+                                        ),
+                                    }}
+                                />
+                            )}
+                            renderOption={(props, option) => (
+                                <li {...props}>
+                                    <Box sx={{ width: '100%' }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography variant="body2">{option.nombre}</Typography>
+                                            <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>
+                                                ${parseFloat(option.precio).toLocaleString('es-CO')}
+                                            </Typography>
+                                        </Box>
+                                        {option.descripcion && (
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                                {option.descripcion}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                </li>
+                            )}
+                            noOptionsText="No hay productos disponibles"
+                        />
+                        {errors.productos && (
+                            <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block', ml: 2 }}>
+                                {errors.productos}
+                            </Typography>
+                        )}
+                    </Box>
+
+                    {/* Estado - Switch */}
                     <Box
                         sx={{
                             p: 2,
-                            mb: 3,
-                            borderRadius: 2,
-                            backgroundColor: '#e6f4ea',
-                            border: '1px solid #2e7d32',
-                            color: '#2e7d32',
-                            fontWeight: 600,
-                            textAlign: 'center',
+                            backgroundColor: (theme) =>
+                                theme.palette.mode === 'light'
+                                    ? 'rgba(12, 21, 90, 0.03)'
+                                    : 'rgba(255, 255, 255, 0.05)',
+                            borderRadius: '10px',
+                            border: '1.5px solid',
+                            borderColor: (theme) =>
+                                theme.palette.mode === 'light'
+                                    ? 'rgba(12, 21, 90, 0.1)'
+                                    : 'rgba(255, 255, 255, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
                         }}
                     >
-                        {successMessage}
-                    </Box>
-                )}
-
-                {/* Error general */}
-                {errors.general && (
-                    <Alert severity="error" sx={{ mb: 3 }}>
-                        {errors.general}
-                    </Alert>
-                )}
-
-                <Typography variant="h5" fontWeight="bold" mb={4} textAlign="center">
-                    Crear Nueva Campaña
-                </Typography>
-
-                <Box component="form" sx={{ maxWidth: '900px', mx: 'auto' }}>
-                    <Grid container spacing={3}>
-                        {/* Criterio 2.1.2: Nombre de la campaña */}
-                        <Grid item xs={12} sx={{ mb: 1 }}>
-                            <TextField
-                                fullWidth
-                                label="Nombre de la Campaña"
-                                value={nombre}
-                                onChange={(e) => setNombre(e.target.value)}
-                                error={!!errors.nombre}
-                                helperText={errors.nombre || `${nombre.length}/50 caracteres`}
-                                placeholder="Ej: Campaña Navidad 2025"
-                                disabled={loading || !!successMessage}
-                                required
-                                inputProps={{ maxLength: 50 }}
-                            />
-                        </Grid>
-
-                        {/* Criterio 2.1.4: Descripción */}
-                        <Grid item xs={12} sx={{ mb: 1 }}>
-                            <TextField
-                                fullWidth
-                                multiline
-                                rows={3}
-                                label="Descripción"
-                                value={descripcion}
-                                onChange={(e) => setDescripcion(e.target.value)}
-                                error={!!errors.descripcion}
-                                helperText={errors.descripcion || `${descripcion.length}/200 caracteres`}
-                                placeholder="Describe los objetivos y características de la campaña"
-                                disabled={loading || !!successMessage}
-                                required
-                                inputProps={{ maxLength: 200 }}
-                            />
-                        </Grid>
-
-                        {/* Criterio 2.1.1: Elegir jefe de campaña */}
-                        <Grid item xs={12} sx={{ mb: 1.5 }}>
-                            <Autocomplete
-                                options={jefesCampana}
-                                getOptionLabel={(option) => option.nombre_completo || ''}
-                                value={jefeCampanaSeleccionado}
-                                onChange={(event, newValue) => {
-                                    setJefeCampanaSeleccionado(newValue);
-                                    setErrors(prev => ({ ...prev, jefe_campana: null }));
-                                }}
-                                inputValue={searchJefes}
-                                onInputChange={(event, newInputValue) => {
-                                    setSearchJefes(newInputValue);
-                                }}
-                                onOpen={() => {
-                                    // Cargar jefes al abrir si aún no hay datos
-                                    if (jefesCampana.length === 0 && !loadingJefes) {
-                                        loadJefesCampana('a'); // Buscar con 'a' para obtener todos los que contengan 'a'
-                                    }
-                                }}
-                                loading={loadingJefes}
-                                disabled={loading || !!successMessage}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Jefe de Campaña"
-                                        placeholder="Buscar por nombre o código..."
-                                        error={!!errors.jefe_campana}
-                                        helperText={errors.jefe_campana}
-                                        required
-                                        sx={{
-                                            '& .MuiInputBase-root': {
-                                                paddingRight: '65px !important',
-                                                paddingLeft: '14px !important',
-                                            },
-                                            '& .MuiInputBase-input': {
-                                                paddingLeft: '8px !important',
-                                                width: '230px !important',
-                                                flex: '1 1 auto !important',
-                                            },
-                                            '& .MuiInputLabel-root': {               
-                                                paddingX: 0.5,
-                                            }
-                                        }}
-                                        InputProps={{
-                                            ...params.InputProps,
-                                            startAdornment: (
-                                                <>
-                                                    <SearchIcon sx={{ ml: 0, mr: 0.5, color: 'text.secondary', flexShrink: 0 }} />
-                                                    {params.InputProps.startAdornment}
-                                                </>
-                                            ),
-                                            endAdornment: (
-                                                <>
-                                                    {loadingJefes ? <CircularProgress size={20} /> : null}
-                                                    {params.InputProps.endAdornment}
-                                                </>
-                                            ),
-                                        }}
-                                    />
-                                )}
-                                renderOption={(props, option) => (
-                                    <li {...props}>
-                                        <Box>
-                                            <Typography variant="body2">{option.nombre_completo}</Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                {option.email} • Código: {option.codigo}
-                                            </Typography>
-                                        </Box>
-                                    </li>
-                                )}
-                                noOptionsText={
-                                    loadingJefes
-                                        ? "Cargando..."
-                                        : searchJefes
-                                            ? "No se encontraron jefes de campaña"
-                                            : "No hay jefes disponibles"
-                                }
-                            />
-                        </Grid>
-
-                        {/* Criterio 2.1.8: Productos a vender */}
-                        <Grid item xs={12} sx={{ mb: 1.5 }}>
-                            <Autocomplete
-                                multiple
-                                options={productos}
-                                getOptionLabel={(option) => option.nombre || ''}
-                                value={productosSeleccionados}
-                                onChange={(event, newValue) => {
-                                    setProductosSeleccionados(newValue);
-                                    setErrors(prev => ({ ...prev, productos: null }));
-                                }}
-                                loading={loadingProductos}
-                                disabled={loading || !!successMessage}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Productos a Vender"
-                                        placeholder="Selecciona productos..."
-                                        error={!!errors.productos}
-                                        required
-                                        sx={{
-                                            '& .MuiInputBase-root': {
-                                                paddingRight: '65px !important',
-                                            },
-                                            '& .MuiInputBase-input': {
-                                                width: '180px !important',
-                                                flex: '1 1 auto !important',
-                                            },
-                                            '& .MuiInputLabel-root': {
-                                                paddingX: 0.5,
-                                            }
-                                        }}
-                                        InputProps={{
-                                            ...params.InputProps,
-                                            endAdornment: (
-                                                <>
-                                                    {loadingProductos ? <CircularProgress size={20} /> : null}
-                                                    {params.InputProps.endAdornment}
-                                                </>
-                                            ),
-                                        }}
-                                    />
-                                )}
-                                renderOption={(props, option) => (
-                                    <li {...props}>
-                                        <Box sx={{ width: '100%' }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Typography variant="body2">{option.nombre}</Typography>
-                                                <Typography variant="body2" color="primary" fontWeight="bold">
-                                                    ${parseFloat(option.precio).toLocaleString('es-CO')}
-                                                </Typography>
-                                            </Box>
-                                            {option.descripcion && (
-                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                                    {option.descripcion}
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    </li>
-                                )}
-                                renderTags={(value, getTagProps) =>
-                                    value.map((option, index) => (
-                                        <Chip
-                                            label={`${option.nombre} ($${parseFloat(option.precio).toLocaleString('es-CO')})`}
-                                            {...getTagProps({ index })}
-                                            size="small"
-                                            deleteIcon={<CloseIcon />}
-                                        />
-                                    ))
-                                }
-                                noOptionsText="No hay productos disponibles"
-                            />
-                            {errors.productos && (
-                                <FormHelperText error sx={{ mt: 0.5, ml: 2 }}>
-                                    {errors.productos}
-                                </FormHelperText>
-                            )}
-                            {productosSeleccionados.length > 0 && (
-                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', ml: 2 }}>
-                                    {productosSeleccionados.length} {productosSeleccionados.length === 1 ? 'producto seleccionado' : 'productos seleccionados'}
+                        <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 600, color: 'text.primary' }}
+                        >
+                            Estado de la Campaña
+                        </Typography>
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    checked={estadoActivo}
+                                    onChange={(e) => setEstadoActivo(e.target.checked)}
+                                    disabled={loading || !!successMessage}
+                                    color="primary"
+                                />
+                            }
+                            label={
+                                <Typography
+                                    variant="body2"
+                                    sx={{
+                                        fontWeight: 600,
+                                        color: estadoActivo
+                                            ? 'success.main'
+                                            : 'text.secondary',
+                                    }}
+                                >
+                                    {estadoActivo ? 'Activa' : 'Inactiva'}
                                 </Typography>
-                            )}
-                        </Grid>
-
-                        {/* Criterio 2.1.6: Fecha de inicio */}
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                type="date"
-                                label="Fecha de Inicio"
-                                value={fechaInicio}
-                                onChange={(e) => setFechaInicio(e.target.value)}
-                                error={!!errors.fecha_inicio}
-                                helperText={errors.fecha_inicio}
-                                disabled={loading || !!successMessage}
-                                required
-                                InputLabelProps={{ shrink: true }}
-                            />
-                        </Grid>
-
-                        {/* Criterio 2.1.7: Fecha de fin */}
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                type="date"
-                                label="Fecha de Fin"
-                                value={fechaFin}
-                                onChange={(e) => setFechaFin(e.target.value)}
-                                error={!!errors.fecha_fin}
-                                helperText={errors.fecha_fin}
-                                disabled={loading || !!successMessage}
-                                required
-                                InputLabelProps={{ shrink: true }}
-                            />
-                        </Grid>
-
-                        {/* Criterio 2.1.5: Estado inicial (switch) */}
-                        <Grid item xs={12}>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={estadoActivo}
-                                        onChange={(e) => setEstadoActivo(e.target.checked)}
-                                        disabled={loading || !!successMessage}
-                                        color="success"
-                                    />
-                                }
-                                label={
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Typography variant="body1">
-                                            Estado:
-                                        </Typography>
-                                        <Chip
-                                            label={estadoActivo ? 'Activa' : 'Inactiva'}
-                                            color={estadoActivo ? 'success' : 'default'}
-                                            size="small"
-                                        />
-                                    </Box>
-                                }
-                            />
-                        </Grid>
-                    </Grid>
-
-                    {/* Criterio 3: Botones Guardar y Cancelar */}
-                    <Box sx={{ display: 'flex', gap: 2, mt: 4, justifyContent: 'center' }}>
-                        <Button
-                            variant="outlined"
-                            onClick={handleClose}
-                            disabled={loading || !!successMessage}
-                            sx={{
-                                minWidth: 150,
-                                borderRadius: 2,
-                                py: 1.5,
-                                fontSize: '1rem',
-                                fontWeight: 'bold',
-                            }}
-                        >
-                            Cancelar
-                        </Button>
-
-                        <Button
-                            variant="contained"
-                            onClick={handleSubmit}
-                            disabled={loading || !!successMessage}
-                            sx={{
-                                minWidth: 150,
-                                borderRadius: 2,
-                                py: 1.5,
-                                fontSize: '1rem',
-                                fontWeight: 'bold',
-                            }}
-                        >
-                            {loading ? <CircularProgress size={24} color="inherit" /> : 'Guardar'}
-                        </Button>
+                            }
+                            sx={{ m: 0 }}
+                        />
                     </Box>
                 </Box>
-            </Box>
+            </DialogContent>
+
+            <DialogActions
+                sx={{
+                    p: 2,
+                    gap: 1,
+                    backgroundColor: (theme) =>
+                        theme.palette.mode === 'light'
+                            ? 'rgba(0, 0, 0, 0.02)'
+                            : 'rgba(255, 255, 255, 0.02)',
+                }}
+            >
+                <Button
+                    onClick={handleClose}
+                    color="inherit"
+                    disabled={loading || !!successMessage}
+                    sx={{
+                        textTransform: 'none',
+                        fontWeight: 600,
+                    }}
+                >
+                    Cancelar
+                </Button>
+                <Button
+                    onClick={handleSubmit}
+                    variant="contained"
+                    disabled={loading || !!successMessage}
+                    sx={{
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        borderRadius: '8px',
+                        background: (theme) =>
+                            theme.palette.mode === 'light'
+                                ? 'linear-gradient(135deg, #0C155A 0%, #1A2E7A 100%)'
+                                : 'linear-gradient(135deg, #1A2E7A 0%, #0F1F4A 100%)',
+                        boxShadow: '0 4px 12px rgba(12, 21, 90, 0.25)',
+                        '&:hover': {
+                            boxShadow: '0 6px 16px rgba(12, 21, 90, 0.35)',
+                            transform: 'translateY(-2px)',
+                        },
+                    }}
+                >
+                    {loading ? 'Guardando...' : 'Crear Campaña'}
+                </Button>
+            </DialogActions>
         </Dialog>
     );
 };

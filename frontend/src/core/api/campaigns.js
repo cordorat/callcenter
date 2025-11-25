@@ -106,7 +106,7 @@ export const getProductosActivos = async () => {
 export const getActiveCampaigns = async () => {
   try {
     const response = await apiClient.get(
-      '/campaigns/campanas/equipos/campanas-activas/'
+      '/campaigns/equipos/campanas-activas/'
     );
     return response.data;
   } catch (error) {
@@ -225,7 +225,7 @@ export const programarIteracionBase = async (baseId, payload) => {
  */
 export const eliminarBaseDatos = async (baseId) => {
   try {
-    const response = await apiClient.delete(`/campaigns/campanas/base-datos/${baseId}/eliminar/`);
+    const response = await apiClient.delete(`/campaigns/base-datos/${baseId}/eliminar/`);
     return response.data;
   } catch (error) {
     console.error('[campaigns.js] Error al eliminar base de datos:', error);

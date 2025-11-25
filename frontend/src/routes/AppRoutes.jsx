@@ -19,6 +19,8 @@ import AgentesPage from '../pages/Kpis/AgentesPage';
 import AgentDetailPage from '../pages/Kpis/AgentDetailPage';
 import HistorialLlamadas from '@/pages/Historial/HistorialLlamadas';
 import ProfilePage from '@/pages/Profile/ProfilePage';
+import AgentCommissions from '../pages/commissions/AgentCommissions';
+
 
 // Componente que decide qué página de KPIs mostrar según el rol
 const KpisRouter = () => {
@@ -42,6 +44,20 @@ const KpisRouter = () => {
   // Por defecto (AGENTE), mostrar KPIs de agente
   return <Kpis />;
 };
+
+// Componente que redirige según el rol del usuario
+const RootRouter = () => {
+  const { user } = useAuth();
+
+  // Si es ADMIN, redirigir a usuarios
+  if (user?.role === 'ADMIN') {
+    return <Navigate to="/usuarios" replace />;
+  }
+
+  // Por defecto, redirigir a dashboard
+  return <Navigate to="/dashboard" replace />;
+};
+
 import CoordinadorCallHistoryAgents from '@/pages/Historial/CoordinadorCallHistoryAgents';
 import BackofficeCallsList from '@/pages/Backoffice/BackofficeCallsList';
 import CallDetailPage from '@/pages/Backoffice/CallDetailPage';
@@ -55,7 +71,7 @@ const AppRoutes = () => {
         {/* Ruta pública: Login */}
         <Route
           path="/"
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
+          element={isAuthenticated ? <RootRouter /> : <Login />}
         />
 
         {/* Ruta pública: Reset Password */}
@@ -150,6 +166,16 @@ const AppRoutes = () => {
             </PrivateRoute>
           }
         />
+       {/* Ruta Comisiones - Agente ve sus comisiones personales */}
+        <Route
+          path="/commissions"
+          element={
+            <PrivateRoute>
+              <AgentCommissions />
+            </PrivateRoute>
+          }
+        />
+
 
         {/* Rutas de Campaña */}
         <Route path="/campana" element={

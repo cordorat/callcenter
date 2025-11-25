@@ -17,12 +17,12 @@ def create_agents():
     
     agentes = [
         {
-            'email': 'backoffice@callcenter.com',
-            'password': 'backoffice123@',
-            'first_name': 'x',
-            'last_name': 'x',
+            'email': 'jefecampana1@callcenter.com',
+            'password': 'jefecampana123@',
+            'first_name': 'lucas',
+            'last_name': 'saldarriaga',
             'phone': '+573001234567',
-            'documento_id': '1'
+            'documento_id': '2'
         },
     ]
     
@@ -30,7 +30,7 @@ def create_agents():
     print("CREANDO USUARIOS AGENTES")
     print("=" * 70)
     
-    rol_agente = get_estado('ROL_USUARIO', 'BACKOFFICE')
+    rol_agente = get_estado('ROL_USUARIO', 'JEFE_CAPMANA')
     
     for data in agentes:
         email = data['email']

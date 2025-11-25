@@ -20,6 +20,12 @@ urlpatterns = [
     path('coordinador/exportar-pdf/', KPIViewSet.as_view({'get': 'exportar_kpis_pdf'}), name='coordinador-exportar-pdf'),
     path('jefe-campana/equipos/', KPIViewSet.as_view({'get': 'equipos_campana_list'}), name='jefe-campana-equipos-list'),
     path('jefe-campana/equipos/<int:equipo_id>/detalle/', KPIViewSet.as_view({'get': 'equipo_detalle_kpis'}), name='jefe-campana-equipo-detalle'),
+    # Endpoint unificado para dashboard de agente
+    path('agente-dashboard/', KPIViewSet.as_view({'get': 'agente_dashboard'}), name='agente-dashboard'),
+    # Endpoint para dashboard de jefe de centro
+    path('jefe-centro/dashboard/', KPIViewSet.as_view({'get': 'jefe_centro_dashboard'}), name='jefe-centro-dashboard'),
+    path('jefe-campana/exportar-pdf/', KPIViewSet.as_view({'get': 'exportar_kpis_campana_pdf'}), name='jefe-campana-exportar-pdf'),
+    path('jefe-centro/exportar-pdf/', KPIViewSet.as_view({'get': 'exportar_kpis_centro_pdf'}), name='jefe-centro-exportar-pdf'),
     path('jefe-campana/agentes/', KPIViewSet.as_view({'get': 'agentes_campana_list'}), name='jefe-campana-agentes-list'),
     path('jefe-campana/agentes/<str:documento_id>/detalle/', KPIViewSet.as_view({'get': 'agente_campana_detalle_kpis'}), name='jefe-campana-agente-detalle'),
     path('jefe-centro/campanas/', KPIViewSet.as_view({'get': 'campanas_jefe_centro'}), name='jefe-centro-campanas'),

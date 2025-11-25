@@ -136,7 +136,7 @@ export default function BackOfficeDashboard() {
       : 0;
 
   return (
-    <MainLayout title="Dashboard de Auditoría">
+    <MainLayout title="Dashboard">
       <Box sx={{ p: { xs: 2, md: 3 }, pb: 6 }}>
         {/* Header con título y botón refresh */}
         <Box

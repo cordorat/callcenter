@@ -26,6 +26,7 @@ import {
     TableRow,
     IconButton,
     Tooltip,
+    Stack,
 } from "@mui/material";
 
 import {
@@ -80,7 +81,7 @@ const monthRange = () => {
 };
 
 const fmtSecs = (s) => {
-    const n = Number(s || 0);
+    const n = Math.round(Number(s || 0)); // Redondear primero
     const m = Math.floor(n / 60);
     const ss = n % 60;
     return `${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")} min`;
@@ -268,24 +269,77 @@ export default function KpisCoordinador() {
                                 Última actualización: {new Date(updatedAt).toLocaleString()}
                             </span>
                         )}
-                        <button className="btn" onClick={fetchData} disabled={loading}>
-                            {loading ? <RefreshIcon fontSize="small" className="spinning" /> : <RefreshIcon fontSize="small" />}
-                        </button>
-                        {!exportando ? (
-                            <ButtonTooltip
-                                title="Exportar KPI"
-                                icon={<PictureAsPdfIcon />}
-                                onClick={handleExportarPDF}
-                                color="error"
-                            />
-                        ) : (
-                            <ButtonTooltip
-                                title="Exportando..."
-                                icon={<CircularProgress size={24} sx={{ color: 'white' }} />}
-                                onClick={() => {}}
-                                color="error"
-                            />
-                        )}
+                        <Stack direction="row" spacing={1}>
+                            <Tooltip title="Actualizar">
+                                <IconButton
+                                    onClick={fetchData}
+                                    disabled={loading}
+                                    size="large"
+                                    sx={{
+                                        backgroundColor: isDark ? "#2A3B70" : "#0C155A",
+                                        color: "#fff",
+                                        "&:hover": {
+                                            backgroundColor: isDark ? "#1F2E57" : "#0A1147",
+                                            transform: "rotate(180deg)",
+                                        },
+                                        "&.Mui-disabled": {
+                                            backgroundColor: isDark
+                                                ? "rgba(42, 59, 112, 0.5)"
+                                                : "rgba(12, 21, 90, 0.5)",
+                                            color: "#fff",
+                                        },
+                                        transition: "all 0.3s ease",
+                                    }}
+                                >
+                                    <RefreshIcon />
+                                </IconButton>
+                            </Tooltip>
+                            {!exportando ? (
+                                <Tooltip title="Exportar KPI a PDF">
+                                    <IconButton
+                                        onClick={handleExportarPDF}
+                                        disabled={loading}
+                                        size="large"
+                                        sx={{
+                                            backgroundColor: isDark ? "#7B2D2D" : "#C41C3B",
+                                            color: "#fff",
+                                            "&:hover": {
+                                                backgroundColor: isDark ? "#5A1F1F" : "#A01529",
+                                                transform: "scale(1.05)",
+                                            },
+                                            "&.Mui-disabled": {
+                                                backgroundColor: isDark
+                                                    ? "rgba(123, 45, 45, 0.5)"
+                                                    : "rgba(196, 28, 59, 0.5)",
+                                                color: "#fff",
+                                            },
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    >
+                                        <PictureAsPdfIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            ) : (
+                                <Tooltip title="Exportando...">
+                                    <IconButton
+                                        disabled
+                                        size="large"
+                                        sx={{
+                                            backgroundColor: isDark ? "#7B2D2D" : "#C41C3B",
+                                            color: "#fff",
+                                            "&.Mui-disabled": {
+                                                backgroundColor: isDark
+                                                    ? "rgba(123, 45, 45, 0.5)"
+                                                    : "rgba(196, 28, 59, 0.5)",
+                                                color: "#fff",
+                                            },
+                                        }}
+                                    >
+                                        <CircularProgress size={24} sx={{ color: 'white' }} />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                        </Stack>
                     </div>
                 </div>
 

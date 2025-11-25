@@ -229,7 +229,8 @@ def procesar_llamada_automatica(self, cliente_id: int, agente_id: str, base_dato
                 telefono_origen=twilio_client.phone_number,
                 telefono_destino=cliente.telefono,
                 twilio_call_sid='pending',  # Temporal
-                twilio_status='pending'
+                twilio_status='pending',
+                fue_contestada=False  # Se actualizará cuando Twilio envíe in-progress
             )
             
             # ⚠️ NO cambiar estado del agente a EN_LLAMADA todavía
