@@ -3,13 +3,15 @@ import {
   Box,
   Button,
   Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   TextField,
   Typography,
-  Grid,
   CircularProgress,
-  IconButton,
+  Alert,
+  Divider,
 } from "@mui/material";
-import { Close as CloseIcon } from "@mui/icons-material";
 import { useTheme } from "@mui/material/styles";
 import { useState } from "react";
 import { createProduct } from "@/core/api/products";
@@ -51,7 +53,7 @@ export default function CreateProductModal({ open, onClose }) {
     return Object.keys(newErrors).length === 0;
   };
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     if (!validateForm()) return;
     setLoading(true);
     setErrors({});
@@ -78,166 +80,111 @@ export default function CreateProductModal({ open, onClose }) {
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       PaperProps={{
+        elevation: 2,
         sx: {
-          borderRadius: 2,
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+          borderRadius: 3,
         },
       }}
     >
-      <Box sx={{ position: "relative" }}>
-        <IconButton
-          onClick={onClose}
-          sx={{
-            position: "absolute",
-            right: 8,
-            top: 8,
-            zIndex: 1,
-            backgroundColor:
-              theme.palette.mode === "light"
-                ? "rgba(0,0,0,0.04)"
-                : "rgba(255,255,255,0.08)",
-            "&:hover": {
-              backgroundColor:
-                theme.palette.mode === "light"
-                  ? "rgba(0,0,0,0.08)"
-                  : "rgba(255,255,255,0.12)",
-            },
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </Box>
+      <DialogTitle sx={{ pb: 1 }}>Crear Producto</DialogTitle>
 
-      <Box sx={{ p: 4 }}>
-        {successMessage && (
-          <Box
-            sx={{
-              p: 2,
-              mb: 3,
-              borderRadius: 2,
-              backgroundColor: "#e6f4ea",
-              border: "1px solid #2e7d32",
-              color: "#2e7d32",
-              fontWeight: 600,
-              textAlign: "center",
-            }}
-          >
-            {successMessage}
-          </Box>
-        )}
-
-        <Typography variant="h5" fontWeight="bold" mb={3} textAlign="center">
-          Crear Producto
-        </Typography>
-
-        <Box component="form" onSubmit={handleSubmit}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
-            {/* Fila 1: Nombre */}
-            <TextField
-              label="Nombre"
-              name="nombre"
-              value={formData.nombre}
-              onChange={handleChange}
-              error={!!errors.nombre}
-              helperText={errors.nombre}
-              disabled={loading || !!successMessage}
-              variant="outlined"
+      <DialogContent dividers sx={{ py: 2 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {successMessage && (
+            <Box
               sx={{
-                width: "500px",
-                "& .MuiOutlinedInput-root": {
-                  height: "60px",
-                },
+                p: 2,
+                bgcolor: "success.light",
+                borderLeft: "4px solid",
+                borderColor: "success.main",
+                borderRadius: 1,
               }}
-            />
+            >
+              <Typography
+                color="success.main"
+                variant="body2"
+                sx={{ fontWeight: 600 }}
+              >
+                {successMessage}
+              </Typography>
+            </Box>
+          )}
 
-            {/* Fila 2: Descripción */}
-            <TextField
-              label="Descripción"
-              name="descripcion"
-              value={formData.descripcion}
-              onChange={handleChange}
-              error={!!errors.descripcion}
-              helperText={errors.descripcion}
-              disabled={loading || !!successMessage}
-              variant="outlined"
-              multiline
-              rows={3}
+          {/* SECCIÓN: Información del producto */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Typography
+              variant="subtitle2"
               sx={{
-                width: "500px",
+                fontWeight: 600,
+                fontSize: "0.8rem",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                color: "text.secondary",
               }}
-            />
+            >
+              Información del Producto
+            </Typography>
+            <Divider />
 
-            {/* Fila 3: Precio */}
-            <TextField
-              label="Precio"
-              name="precio"
-              type="number"
-              value={formData.precio}
-              onChange={handleChange}
-              error={!!errors.precio}
-              helperText={errors.precio}
-              disabled={loading || !!successMessage}
-              variant="outlined"
-              sx={{
-                width: "500px",
-                "& .MuiOutlinedInput-root": {
-                  height: "60px",
-                },
-              }}
-            />
-          </Box>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+              {/* Nombre */}
+              <TextField
+                label="Nombre del producto"
+                name="nombre"
+                value={formData.nombre}
+                onChange={handleChange}
+                error={!!errors.nombre}
+                helperText={errors.nombre}
+                disabled={loading || !!successMessage}
+                fullWidth
+              />
 
-          {/* Botones */}
-          <Box sx={{ pt: 2, alignItems: "center", textAlign: "center" }}>
-            <Box sx={{ display: "flex", gap: 1.5, mt: 2.5, justifyContent: "center" }}>
-              <Grid item xs={12} md={6} textAlign="center">
-                <Button
-                  type="button"
-                  size="large"
-                  variant="contained"
-                  onClick={onClose}
-                  disabled={loading || !!successMessage}
-                  sx={{
-                    width: "100%",
-                    borderRadius: 2,
-                    py: 1.5,
-                    fontSize: "1rem",
-                    fontWeight: "bold",
-                    backgroundColor: theme.palette.primary.secondary,
-                  }}
-                >
-                  Cancelar
-                </Button>
-              </Grid>
-              <Grid item xs={12} md={6} textAlign="center">
-                <Button
-                  type="submit"
-                  variant="contained"
-                  size="large"
-                  disabled={loading || !!successMessage}
-                  sx={{
-                    width: "100%",
-                    borderRadius: 2,
-                    py: 1.5,
-                    fontSize: "1rem",
-                    fontWeight: "bold",
-                    backgroundColor: theme.palette.primary.main,
-                  }}
-                >
-                  {loading ? (
-                    <CircularProgress size={24} color="inherit" />
-                  ) : (
-                    "Guardar"
-                  )}
-                </Button>
-              </Grid>
+              {/* Descripción */}
+              <TextField
+                label="Descripción"
+                name="descripcion"
+                value={formData.descripcion}
+                onChange={handleChange}
+                error={!!errors.descripcion}
+                helperText={errors.descripcion}
+                disabled={loading || !!successMessage}
+                fullWidth
+                multiline
+                minRows={2}
+              />
+
+              {/* Precio */}
+              <TextField
+                label="Precio"
+                name="precio"
+                type="number"
+                value={formData.precio}
+                onChange={handleChange}
+                error={!!errors.precio}
+                helperText={errors.precio}
+                disabled={loading || !!successMessage}
+                fullWidth
+              />
             </Box>
           </Box>
         </Box>
-      </Box>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, py: 1.5 }}>
+        <Button onClick={onClose} color="inherit" disabled={loading || !!successMessage}>
+          Cancelar
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading || !!successMessage}
+        >
+          {loading ? "Guardando..." : "Crear Producto"}
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 }

@@ -32,7 +32,7 @@ export default function EditCampaignModal({
   onClose,
   campaign,
   onCampaignUpdated,
-  maxWidth = "md", // Valores: "xs", "sm", "md", "lg", "xl"
+  maxWidth = "md", 
 }) {
   const [formValues, setFormValues] = useState({
     jefeSeleccionado: null,
@@ -57,7 +57,7 @@ export default function EditCampaignModal({
   const [productosOptions, setProductosOptions] = useState([]);
   const [productosLoading, setProductosLoading] = useState(false);
 
-  // 🔹 Resetear estados cuando se cierra el modal
+  // Resetear estados cuando se cierra el modal
   useEffect(() => {
     if (!open) {
       // Resetear el flag de jefes cargados para que vuelva a cargar al abrir
@@ -65,7 +65,7 @@ export default function EditCampaignModal({
     }
   }, [open]);
 
-  // 🔹 1) Al abrir el modal, cargamos el DETALLE completo de la campaña
+  // 1) Al abrir el modal, cargamos el DETALLE completo de la campaña
   useEffect(() => {
     const loadDetalle = async () => {
       if (!open || !campaign?.id) return;
@@ -122,7 +122,7 @@ export default function EditCampaignModal({
     loadDetalle();
   }, [open, campaign]);
 
-  // 🔹 2) Cargar productos activos para el Autocomplete
+  // 2) Cargar productos activos para el Autocomplete
   useEffect(() => {
     const loadProductos = async () => {
       if (!open) return;
@@ -163,7 +163,7 @@ export default function EditCampaignModal({
     }));
   };
 
-  // 🔹 Cargar todos los jefes al abrir el dropdown
+  // Cargar todos los jefes al abrir el dropdown
   const loadAllJefes = async () => {
     if (jefesLoaded) return; // No recargar si ya se cargaron
     
@@ -189,7 +189,7 @@ export default function EditCampaignModal({
     }
   };
 
-  // 🔹 Búsqueda en tiempo real de jefes
+  // Búsqueda en tiempo real de jefes
   const handleJefeInputChange = async (_, value, reason) => {
     // Si se borró el texto (clear o user cleared input), recargar todos los jefes
     if (!value || value.trim().length === 0) {
@@ -354,6 +354,7 @@ export default function EditCampaignModal({
       maxWidth={maxWidth}
       fullWidth
       PaperProps={{
+        elevation: 2,
         sx: {
           borderRadius: 3,
         },
@@ -362,7 +363,7 @@ export default function EditCampaignModal({
       <DialogTitle sx={{ pb: 1 }}>Editar campaña</DialogTitle>
 
       <DialogContent dividers sx={{ py: 2 }}>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {apiError && (
             <Typography color="error" variant="body2">
               {apiError}
@@ -370,16 +371,7 @@ export default function EditCampaignModal({
           )}
 
           {/* SECCIÓN 1: Información general */}
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 1.5,
-              borderRadius: 2,
-              display: "flex",
-              flexDirection: "column",
-              gap: 1,
-            }}
-          >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Typography
               variant="subtitle2"
               sx={{
@@ -394,7 +386,7 @@ export default function EditCampaignModal({
             </Typography>
             <Divider />
 
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 3.51, mt: 1.5 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
               {/* 2.1.1 Jefe de campaña */}
               <Autocomplete
                 fullWidth
@@ -467,19 +459,10 @@ export default function EditCampaignModal({
                 </Typography>
               </Box>
             </Box>
-          </Paper>
+          </Box>
 
           {/* SECCIÓN 2: Fechas de campaña */}
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 1.5,
-              borderRadius: 2,
-              display: "flex",
-              flexDirection: "column",
-              gap: 1,
-            }}
-          >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Typography
               variant="subtitle2"
               sx={{
@@ -492,9 +475,9 @@ export default function EditCampaignModal({
             >
               Fechas de campaña
             </Typography>
-            <Divider sx={{ mb: 1.5 }} />
+            <Divider />
 
-            <Grid container spacing={1.5} sx={{ mt: 0 }}>
+            <Grid container spacing={1.5} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
                 <TextField
                   label="Fecha inicio"
@@ -521,19 +504,10 @@ export default function EditCampaignModal({
                 />
               </Grid>
             </Grid>
-          </Paper>
+          </Box>
 
           {/* SECCIÓN 3: Servicios / productos */}
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 1.5,
-              borderRadius: 2,
-              display: "flex",
-              flexDirection: "column",
-              gap: 1,
-            }}
-          >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Typography
               variant="subtitle2"
               sx={{
@@ -546,7 +520,7 @@ export default function EditCampaignModal({
             >
               Servicios o productos a vender
             </Typography>
-            <Divider sx={{ mb: 1.5 }} />
+            <Divider />
 
             <Autocomplete
               multiple
@@ -571,7 +545,7 @@ export default function EditCampaignModal({
                 />
               )}
             />
-          </Paper>
+          </Box>
         </Box>
       </DialogContent>
 
