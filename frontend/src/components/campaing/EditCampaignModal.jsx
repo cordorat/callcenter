@@ -354,8 +354,10 @@ export default function EditCampaignModal({
       maxWidth={maxWidth}
       fullWidth
       PaperProps={{
+        elevation: 2,
         sx: {
           borderRadius: 3,
+          backdropFilter: 'blur(4px)',
         },
       }}
     >

@@ -11,6 +11,7 @@ import {
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import SearchIcon from '@mui/icons-material/Search';
 import { useTheme } from '@mui/material/styles';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import ButtonTooltip from "@/components/campaing/ButtonTooltip";
@@ -39,6 +40,9 @@ import {
     Stack,
     TablePagination,
     Button,
+    Pagination,
+    TextField,
+    InputAdornment,
 } from "@mui/material";
 
 // Función helper para convertir Date a formato YYYY-MM-DD en zona horaria local
@@ -118,6 +122,10 @@ export default function KpisJefeCentro() {
     const [rowsPerPage, setRowsPerPage] = React.useState(10);
     const [totalEquipos, setTotalEquipos] = React.useState(0);
     
+    // Estado de paginación de campañas
+    const [pageCampanas, setPageCampanas] = React.useState(0);
+    const [rowsPerPageCampanas, setRowsPerPageCampanas] = React.useState(10);
+    
     // Estado de detalle de equipo
     const [equipoSeleccionado, setEquipoSeleccionado] = React.useState(null);
     const [dataEquipo, setDataEquipo] = React.useState(null);
@@ -125,6 +133,10 @@ export default function KpisJefeCentro() {
     
     // Estado para exportación
     const [exportando, setExportando] = React.useState(false);
+    
+    // Estados de búsqueda
+    const [searchEquipos, setSearchEquipos] = React.useState('');
+    const [searchCampanas, setSearchCampanas] = React.useState('');
 
     // Actualizar rango de fechas según modo
     React.useEffect(() => {
@@ -263,6 +275,22 @@ export default function KpisJefeCentro() {
         setPage(0);
     };
 
+    // Manejar cambio de página en tabla de campañas
+    const handleChangePageCampanas = (event, newPage) => {
+        setPageCampanas(newPage - 1);
+    };
+
+    // Handlers de búsqueda
+    const handleSearchEquipos = (event) => {
+        setSearchEquipos(event.target.value);
+        setPage(0); // Resetear a primera página
+    };
+
+    const handleSearchCampanas = (event) => {
+        setSearchCampanas(event.target.value);
+        setPageCampanas(0); // Resetear a primera página
+    };
+
     // Recargar equipos cuando cambia la paginación
     React.useEffect(() => {
         if (tabValue === 1 && !equipoSeleccionado) {
@@ -274,6 +302,24 @@ export default function KpisJefeCentro() {
     const campanas = data?.campanas || [];
     const totalCampanasActivas = data?.total_campanas_activas || 0;
     const centroNombre = data?.centro_nombre || "";
+
+    // Filtrar equipos por búsqueda
+    const equiposFiltrados = React.useMemo(() => {
+        if (!searchEquipos) return equipos;
+        return equipos.filter(equipo =>
+            equipo.nombre?.toLowerCase().includes(searchEquipos.toLowerCase()) ||
+            equipo.coordinador_nombre?.toLowerCase().includes(searchEquipos.toLowerCase()) ||
+            equipo.campana_nombre?.toLowerCase().includes(searchEquipos.toLowerCase())
+        );
+    }, [equipos, searchEquipos]);
+
+    // Filtrar campañas por búsqueda
+    const campanasFiltradas = React.useMemo(() => {
+        if (!searchCampanas) return campanas;
+        return campanas.filter(campana =>
+            campana.campana_nombre?.toLowerCase().includes(searchCampanas.toLowerCase())
+        );
+    }, [campanas, searchCampanas]);
 
     // Lista de campañas para el filtro
     const campanasParaFiltro = React.useMemo(() => {
@@ -366,7 +412,7 @@ export default function KpisJefeCentro() {
             );
         }
 
-        if (equipos.length === 0) {
+        if (equiposFiltrados.length === 0 && equipos.length === 0) {
             return (
                 <Alert severity="info" icon={<CampaignIcon />}>
                     No hay equipos disponibles en el centro
@@ -375,6 +421,50 @@ export default function KpisJefeCentro() {
         }
 
         return (
+            <>
+                {/* Barra de búsqueda para equipos */}
+                <Box sx={{ mb: 4 }}>
+                    <TextField
+                        fullWidth
+                        placeholder="Buscar por nombre de equipo, coordinador o campaña..."
+                        value={searchEquipos}
+                        onChange={handleSearchEquipos}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ color: 'primary.main' }} />
+                                </InputAdornment>
+                            ),
+                        }}
+                        sx={{
+                            maxWidth: 600,
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: 3,
+                                bgcolor: 'background.paper',
+                                boxShadow: theme.palette.mode === 'light'
+                                    ? '0 2px 8px rgba(0,0,0,0.08)'
+                                    : '0 2px 8px rgba(0,0,0,0.3)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    boxShadow: theme.palette.mode === 'light'
+                                        ? '0 4px 12px rgba(0,0,0,0.12)'
+                                        : '0 4px 12px rgba(0,0,0,0.4)',
+                                },
+                                '&.Mui-focused': {
+                                    boxShadow: theme.palette.mode === 'light'
+                                        ? '0 4px 16px rgba(102, 126, 234, 0.25)'
+                                        : '0 4px 16px rgba(102, 126, 234, 0.15)',
+                                }
+                            }
+                        }}
+                    />
+                </Box>
+
+                {equiposFiltrados.length === 0 ? (
+                    <Alert severity="warning">
+                        No se encontraron equipos con ese criterio de búsqueda
+                    </Alert>
+                ) : (
             <Paper 
                 elevation={0}
                 sx={{ 
@@ -399,7 +489,7 @@ export default function KpisJefeCentro() {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {equipos.map((equipo, index) => (
+                            {equiposFiltrados.slice(page * rowsPerPage, (page + 1) * rowsPerPage).map((equipo, index) => (
                                 <TableRow
                                     key={equipo.equipo_id}
                                     hover
@@ -441,18 +531,22 @@ export default function KpisJefeCentro() {
                         </Table>
                     </TableContainer>
                 </Box>
-                <TablePagination
-                    rowsPerPageOptions={[5, 10, 25, 50]}
-                    component="div"
-                    count={totalEquipos}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    labelRowsPerPage="Equipos por página:"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-                />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, backgroundColor: theme.palette.background.paper }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Mostrando {equiposFiltrados.slice(page * rowsPerPage, (page + 1) * rowsPerPage).length} de {equiposFiltrados.length} equipos
+                  </Typography>
+                  <Pagination
+                    count={Math.ceil(equiposFiltrados.length / rowsPerPage)}
+                    page={page + 1}
+                    onChange={(event, value) => handleChangePage(event, value - 1)}
+                    color="primary"
+                    shape="rounded"
+                    size="medium"
+                  />
+                </Box>
             </Paper>
+                )}
+            </>
         );
     };
 
@@ -462,7 +556,6 @@ export default function KpisJefeCentro() {
 
         return (
             <>
-                {/* Header del equipo mejorado */}
                 <Box
                     sx={{
                         background: theme.palette.mode === 'light'
@@ -865,7 +958,7 @@ export default function KpisJefeCentro() {
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (
-                                                    campanas.map((campana, index) => (
+                                                    campanasFiltradas.slice(pageCampanas * rowsPerPageCampanas, (pageCampanas + 1) * rowsPerPageCampanas).map((campana, index) => (
                                                         <TableRow
                                                             key={campana.campana_id}
                                                             hover
@@ -942,6 +1035,19 @@ export default function KpisJefeCentro() {
                                             </TableBody>
                                             </Table>
                                         </TableContainer>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, backgroundColor: theme.palette.background.paper }}>
+                                      <Typography variant="body2" color="text.secondary">
+                                        Mostrando {campanasFiltradas.slice(pageCampanas * rowsPerPageCampanas, (pageCampanas + 1) * rowsPerPageCampanas).length} de {campanasFiltradas.length} campañas
+                                      </Typography>
+                                      <Pagination
+                                        count={Math.ceil(campanasFiltradas.length / rowsPerPageCampanas)}
+                                        page={pageCampanas + 1}
+                                        onChange={handleChangePageCampanas}
+                                        color="primary"
+                                        shape="rounded"
+                                        size="medium"
+                                      />
                                     </Box>
                                 </Paper>
                             </>
