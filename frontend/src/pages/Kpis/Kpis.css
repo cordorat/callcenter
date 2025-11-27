@@ -84,7 +84,6 @@
 }
 
 .update-badge::before {
-  content: "🕐";
   font-size: 14px;
 }
 
