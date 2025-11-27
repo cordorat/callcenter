@@ -585,19 +585,29 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                             : 'rgba(255, 255, 255, 0.02)',
                 }}
             >
-                <Button
-                    onClick={handleClose}
-                    color="inherit"
+                <Button 
+                    onClick={handleClose} 
                     disabled={loading || !!successMessage}
                     sx={{
+                        backgroundColor: (theme) => theme.palette.primary.secondary,
+                        color: 'white',
                         textTransform: 'none',
                         fontWeight: 600,
+                        '&:hover': {
+                          backgroundColor: (theme) => theme.palette.primary.secondary,
+                          opacity: 0.9
+                        }
                     }}
                 >
                     Cancelar
                 </Button>
-                <Button onClick={handleSubmit} variant="contained" disabled={loading || !!successMessage}>
-                    {loading ? "Guardando..." : "Guardar cambios"}
+                <Button 
+                    onClick={handleSubmit} 
+                    variant="contained" 
+                    disabled={loading || !!successMessage}
+                    sx={{ textTransform: 'none' }}
+                >
+                    {loading ? "Guardando..." : "Guardar"}
                 </Button>
             </DialogActions>
         </Dialog>

@@ -210,12 +210,18 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={handleClose}
-      maxWidth="md"
-      fullWidth
-    >
+    <Dialog
+          open={open}
+          onClose={onClose}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            elevation: 2,
+            sx: {
+              borderRadius: 3,
+            },
+          }}
+        >
       <DialogTitle>
         <Typography variant="h6" sx={{ fontWeight: 600 }}>
           Editar Equipo
@@ -271,6 +277,7 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
                 helperText={errors.campana}
                 required
                 InputProps={{
+
                   ...params.InputProps,
                   endAdornment: (
                     <>
@@ -389,8 +396,17 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
         <Button 
           onClick={handleClose}
           disabled={loading || !!successMessage}
-          variant="outlined"
-        >
+          sx={{
+              backgroundColor: (theme) => theme.palette.primary.secondary,
+              color: 'white',
+              textTransform: 'none',
+              fontWeight: 600,
+              '&:hover': {
+                backgroundColor: (theme) => theme.palette.primary.secondary,
+                opacity: 0.9
+              }
+            }}
+          >
           {successMessage ? 'Cerrar' : 'Cancelar'}
         </Button>
         
@@ -399,6 +415,7 @@ const EditTeamModal = ({ open, onClose, onTeamUpdated, equipo }) => {
             variant="contained"
             onClick={handleSubmit}
             disabled={loading}
+            sx={{ textTransform: 'none' }}
             startIcon={loading && <CircularProgress size={20} />}
           >
             {loading ? 'Guardando...' : 'Guardar Cambios'}

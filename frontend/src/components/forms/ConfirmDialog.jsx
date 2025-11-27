@@ -6,7 +6,8 @@ import {
   DialogContentText,
   DialogActions,
   Button,
-  Zoom
+  Zoom,
+  CircularProgress
 } from '@mui/material';
 
 // Transición personalizada para el diálogo
@@ -40,7 +41,8 @@ const ConfirmDialog = ({
   confirmColor = (theme) => theme.palette.primary.main,
   cancelColor = (theme) => theme.palette.primary.secondary,
   disableBackdropClick = true,
-  disableEscapeKeyDown = true
+  disableEscapeKeyDown = true,
+  loading = false
 }) => {
   const handleClose = (event, reason) => {
     // Bloquear cierre con ESC o click fuera si está habilitado
@@ -65,9 +67,11 @@ const ConfirmDialog = ({
       TransitionComponent={Transition}
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-description"
+      maxWidth="md"
       PaperProps={{
         sx: {
-          borderRadius: 2,
+          elevation: 2,
+          borderRadius: 3,
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
         }
       }}
@@ -89,6 +93,7 @@ const ConfirmDialog = ({
       <DialogActions>
         <Button
           onClick={onClose}
+          disabled={loading}
           sx={{
             backgroundColor: (theme) => typeof cancelColor === 'function' ? cancelColor(theme) : cancelColor,
             color: 'white',
@@ -103,6 +108,7 @@ const ConfirmDialog = ({
         </Button>
         <Button
           onClick={handleConfirm}
+          disabled={loading}
           sx={{
             backgroundColor: (theme) => typeof confirmColor === 'function' ? confirmColor(theme) : confirmColor,
             color: 'white',
@@ -114,6 +120,7 @@ const ConfirmDialog = ({
           }}
           variant="contained"
           autoFocus
+          startIcon={loading && <CircularProgress size={20} />}
         >
           {confirmText}
         </Button>

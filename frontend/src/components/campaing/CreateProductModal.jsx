@@ -174,15 +174,28 @@ export default function CreateProductModal({ open, onClose }) {
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 1.5 }}>
-        <Button onClick={onClose} color="inherit" disabled={loading || !!successMessage}>
+        <Button 
+          onClick={onClose} 
+          disabled={loading || !!successMessage}
+          sx={{
+            backgroundColor: (theme) => theme.palette.primary.secondary,
+            color: 'white',
+            textTransform: 'none',
+            '&:hover': {
+              backgroundColor: (theme) => theme.palette.primary.secondary,
+              opacity: 0.9
+            }
+          }}
+        >
           Cancelar
         </Button>
         <Button
           onClick={handleSubmit}
           variant="contained"
           disabled={loading || !!successMessage}
+          sx={{ textTransform: 'none' }}
         >
-          {loading ? "Guardando..." : "Crear Producto"}
+          {loading ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
     </Dialog>

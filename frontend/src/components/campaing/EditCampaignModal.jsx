@@ -354,7 +354,6 @@ export default function EditCampaignModal({
       maxWidth={maxWidth}
       fullWidth
       PaperProps={{
-        elevation: 2,
         sx: {
           borderRadius: 3,
         },
@@ -550,11 +549,26 @@ export default function EditCampaignModal({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 1.5 }}>
-        <Button onClick={onClose} color="inherit" disabled={saving}>
+        <Button onClick={onClose} disabled={saving}
+        sx={{
+                        backgroundColor: (theme) => theme.palette.primary.secondary,
+                        color: 'white',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        '&:hover': {
+                          backgroundColor: (theme) => theme.palette.primary.secondary,
+                          opacity: 0.9
+                        }
+                    }}>
           Cancelar
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
-          {saving ? "Guardando..." : "Guardar cambios"}
+        <Button 
+          onClick={handleSave} 
+          variant="contained" 
+          disabled={saving}
+          sx={{ textTransform: 'none' }}
+        >
+          {saving ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
     </Dialog>
