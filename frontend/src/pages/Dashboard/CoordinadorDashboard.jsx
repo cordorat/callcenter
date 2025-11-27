@@ -141,15 +141,15 @@ export default function CoordinadorDashboard() {
               aria-label="Actualizar"
               size="large"
               sx={{
-                backgroundColor: isDark ? "#2A3B70" : "#0C155A",
+                backgroundColor: theme.palette.primary.main,
                 color: "#fff",
                 transition: "all 0.3s ease",
-                '&:hover': {
-                  backgroundColor: isDark ? "#1F2E57" : "#0A1147",
+                "&:hover": {
+                  backgroundColor: theme.palette.primary.dark,
                   transform: "rotate(180deg)",
                 },
-                '&.Mui-disabled': {
-                  backgroundColor: isDark ? "rgba(42, 59, 112, 0.5)" : "rgba(12, 21, 90, 0.5)",
+                "&.Mui-disabled": {
+                  backgroundColor: theme.palette.action.disabled,
                   color: "rgba(255, 255, 255, 0.5)",
                 },
               }}
