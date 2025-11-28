@@ -41,6 +41,7 @@ import {
     TextField,
     InputAdornment,
     Button,
+    Tooltip
 } from "@mui/material";
 
 // Función helper para convertir Date a formato YYYY-MM-DD en zona horaria local
@@ -418,6 +419,13 @@ export default function KpisJefeCampana() {
         }
     };
 
+    // Cambiar campaña
+    const handleCampanaChange = (value) => {
+        setCampanaSeleccionada(value);
+        setPage(0);
+        setPageAgentes(0);
+    };
+
     // Manejar cambio de página en tabla de equipos
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -497,40 +505,49 @@ export default function KpisJefeCampana() {
 
         // Si tiene múltiples campañas, mostrar selector
         return (
-            <Paper elevation={2} sx={{ p: 2, width: 'fit-content', minWidth: 400 }}>
-                <FormControl fullWidth>
-                    <InputLabel id="campana-label">Selecciona una campaña</InputLabel>
-                    <Select
-                        labelId="campana-label"
-                        value={campanaSeleccionada}
-                        label="Selecciona una campaña"
-                        onChange={(e) => setCampanaSeleccionada(e.target.value)}
-                    >
-                        <MenuItem value="" disabled>
-                            -- Selecciona una campaña --
-                        </MenuItem>
-                        {campanas.map((camp) => (
-                            <MenuItem key={camp.id} value={camp.id}>
-                                <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
-                                    <Typography sx={{ flex: 1 }}>{camp.nombre}</Typography>
-                                    {camp.estado && (
-                                        <Chip
-                                            label={formatEstadoLabel(camp.estado)}
-                                            size="small"
-                                            color={camp.estado === 'ACTIVA' ? 'success' : camp.estado === 'PAUSADA' ? 'warning' : 'default'}
-                                            sx={{
-                                                height: 20,
-                                                fontSize: '0.7rem',
-                                                fontWeight: 600,
-                                            }}
-                                        />
-                                    )}
-                                </Stack>
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-            </Paper>
+            <FormControl sx={{maxWidth: 400 }} fullWidth>
+                <InputLabel id="campana-select-label">Selecciona una campaña</InputLabel>
+                <Select
+                    labelId="campana-select-label"
+                    value={campanaSeleccionada}
+                    onChange={(e) => handleCampanaChange(e.target.value)}
+                    disabled={loadingCampanas}
+                    label="Selecciona una campaña"
+                    sx={{
+                    backgroundColor: 'var(--campaign-filter-bg, #F8FAFB)',
+                    height: '56px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--segmented-border, rgba(12, 21, 90, 0.12))',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-main, #0C155A)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-main, #0C155A)',
+                    },
+                    }}  
+                >
+                {campanas.map((camp) => (
+                    <MenuItem key={camp.id} value={camp.id}>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                            <Typography sx={{ flex: 1 }}>{camp.nombre}</Typography>
+                            {camp.estado && (
+                                <Chip
+                                    label={camp.estado}
+                                    size="small"
+                                    color={camp.estado === 'ACTIVA' ? 'success' : camp.estado === 'PAUSADA' ? 'warning' : 'default'}
+                                    sx={{
+                                        height: 20,
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                    }}
+                                />
+                            )}
+                        </Stack>
+                    </MenuItem>
+                ))}
+                </Select>
+            </FormControl>
         );
     };
 
@@ -894,6 +911,7 @@ export default function KpisJefeCampana() {
                     '--background-paper': theme.palette.background.paper,
                     '--primary-main': theme.palette.primary.main,
                     '--primary-dark': isDark ? theme.palette.primary.dark : '#1a2b7a',
+                    '--campaign-filter-bg': isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFB',
                     '--segmented-bg': isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F4F8',
                     '--segmented-border': isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(12, 21, 90, 0.12)',
                     '--segmented-hover': isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(12, 21, 90, 0.05)',
@@ -934,24 +952,47 @@ export default function KpisJefeCampana() {
                                     color="error"
                                 />
                             )}
-                            <button 
-                                className="btn" 
-                                onClick={() => {
-                                    if (tabValue === 0) {
-                                        fetchData();
-                                    } else if (equipoSeleccionado) {
-                                        fetchEquipoDetalle(equipoSeleccionado);
-                                    } else {
-                                        fetchEquipos();
-                                    }
-                                }} 
-                                disabled={loading || loadingEquipos || loadingEquipoDetalle}
-                            >
-                                {(loading || loadingEquipos || loadingEquipoDetalle) ? 
-                                    <RefreshIcon fontSize="small" className="spinning" /> : 
-                                    <RefreshIcon fontSize="small" />
-                                }
-                            </button>
+                            <Tooltip title="Actualizar">
+                              <span>
+                                <IconButton
+                                  onClick={() => {
+                                      if (tabValue === 0) {
+                                          fetchData();
+                                      } else if (equipoSeleccionado) {
+                                          fetchEquipoDetalle(equipoSeleccionado);
+                                      } else {
+                                          fetchEquipos();
+                                      }
+                                  }}
+                                  disabled={loading || loadingEquipos || loadingEquipoDetalle}
+                                  size="large"
+                                  sx={{
+                                    backgroundColor: theme.palette.primary.main,
+                                    color: "#fff",
+                                    transition: "all 0.3s ease",
+                                    '&:hover': {
+                                      backgroundColor: theme.palette.primary.dark,
+                                      transform: "rotate(180deg)",
+                                    },
+                                    '&.Mui-disabled': {
+                                      backgroundColor: theme.palette.action.disabled,
+                                      color: "rgba(255, 255, 255, 0.5)",
+                                    },
+                                  }}
+                                >
+                                  <RefreshIcon
+                                    sx={{
+                                      transition: "transform 0.6s ease",
+                                      animation: (loading || loadingEquipos || loadingEquipoDetalle) ? "spin 1s linear infinite" : "none",
+                                      "@keyframes spin": {
+                                        "0%": { transform: "rotate(0deg)" },
+                                        "100%": { transform: "rotate(360deg)" },
+                                      },
+                                    }}
+                                  />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                         </div>
                     )}
                 </div>

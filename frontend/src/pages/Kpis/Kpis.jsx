@@ -4,6 +4,7 @@ import { getKpiOverview } from "@/core/api/kpis";
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LoopIcon from '@mui/icons-material/Loop';
 import { useTheme } from '@mui/material/styles';
+import { IconButton} from '@mui/material';
 
 import "./Kpis.css"; 
 
@@ -265,6 +266,7 @@ export default function Kpis() {
           '--primary-main': theme.palette.primary.main,
           '--primary-dark': isDark ? theme.palette.primary.dark : '#1a2b7a',
           '--appbar-default': theme.palette.appBar.default,
+          '--campaign-filter-bg': isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFB',
           '--kpi-highlight-bg': isDark 
             ? 'linear-gradient(135deg, #1E2A3F 0%, #2A3B5C 100%)' 
             : 'linear-gradient(135deg, #EFF6FB 0%, #E0EDF9 100%)',
@@ -296,9 +298,40 @@ export default function Kpis() {
                 Última actualización: {new Date(updatedAt).toLocaleString()}
               </span>
             )}
-            <button className="btn" onClick={fetchData} disabled={loading}>
-              {loading ? <RefreshIcon fontSize="small" className="spinning" /> : <RefreshIcon fontSize="small" />}
-            </button>
+            <Tooltip title="Actualizar">
+              <span>
+                <IconButton
+                  onClick={fetchData}
+                  disabled={loading}
+                  aria-label="Actualizar"
+                  size="large"
+                  sx={{
+                    backgroundColor: theme.palette.primary.main,
+                    color: "#fff",
+                    transition: "all 0.3s ease",
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.dark,
+                      transform: "rotate(180deg)",
+                    },
+                    '&.Mui-disabled': {
+                      backgroundColor: theme.palette.action.disabled,
+                      color: "rgba(255, 255, 255, 0.5)",
+                    },
+                  }}
+                >
+                  <RefreshIcon
+                    sx={{
+                      transition: "transform 0.6s ease",
+                      animation: loading ? "spin 1s linear infinite" : "none",
+                      "@keyframes spin": {
+                        "0%": { transform: "rotate(0deg)" },
+                        "100%": { transform: "rotate(360deg)" },
+                      },
+                    }}
+                  />
+                </IconButton>
+              </span>
+            </Tooltip>
           </div>
         </div>
 

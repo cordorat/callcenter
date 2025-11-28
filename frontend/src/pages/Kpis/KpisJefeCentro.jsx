@@ -37,12 +37,11 @@ import {
     Chip,
     Box,
     IconButton,
-    Stack,
-    TablePagination,
     Button,
     Pagination,
     TextField,
     InputAdornment,
+    Tooltip
 } from "@mui/material";
 
 // Función helper para convertir Date a formato YYYY-MM-DD en zona horaria local
@@ -670,6 +669,7 @@ export default function KpisJefeCentro() {
                     '--background-paper': theme.palette.background.paper,
                     '--primary-main': theme.palette.primary.main,
                     '--primary-dark': isDark ? theme.palette.primary.dark : '#1a2b7a',
+                    '--campaign-filter-bg': isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFB',
                     '--segmented-bg': isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F4F8',
                     '--segmented-border': isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(12, 21, 90, 0.12)',
                     '--segmented-hover': isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(12, 21, 90, 0.05)',
@@ -711,26 +711,49 @@ export default function KpisJefeCentro() {
                                 color="error"
                             />
                         )}
-                        <button 
-                            className="btn" 
-                            onClick={() => {
-                                if (tabValue === 0) {
-                                    fetchData();
-                                } else {
-                                    if (equipoSeleccionado) {
-                                        fetchEquipoDetalle(equipoSeleccionado);
-                                    } else {
-                                        fetchEquipos();
-                                    }
-                                }
-                            }} 
-                            disabled={loading || loadingEquipos || loadingEquipoDetalle}
-                        >
-                            {(loading || loadingEquipos || loadingEquipoDetalle) ? 
-                                <RefreshIcon fontSize="small" className="spinning" /> : 
-                                <RefreshIcon fontSize="small" />
-                            }
-                        </button>
+                        <Tooltip title="Actualizar">
+                          <span>
+                            <IconButton
+                              onClick={() => {
+                                  if (tabValue === 0) {
+                                      fetchData();
+                                  } else {
+                                      if (equipoSeleccionado) {
+                                          fetchEquipoDetalle(equipoSeleccionado);
+                                      } else {
+                                          fetchEquipos();
+                                      }
+                                  }
+                              }}
+                              disabled={loading || loadingEquipos || loadingEquipoDetalle}
+                              size="large"
+                              sx={{
+                                backgroundColor: theme.palette.primary.main,
+                                color: "#fff",
+                                transition: "all 0.3s ease",
+                                '&:hover': {
+                                  backgroundColor: theme.palette.primary.dark,
+                                  transform: "rotate(180deg)",
+                                },
+                                '&.Mui-disabled': {
+                                  backgroundColor: theme.palette.action.disabled,
+                                  color: "rgba(255, 255, 255, 0.5)",
+                                },
+                              }}
+                            >
+                              <RefreshIcon
+                                sx={{
+                                  transition: "transform 0.6s ease",
+                                  animation: (loading || loadingEquipos || loadingEquipoDetalle) ? "spin 1s linear infinite" : "none",
+                                  "@keyframes spin": {
+                                    "0%": { transform: "rotate(0deg)" },
+                                    "100%": { transform: "rotate(360deg)" },
+                                  },
+                                }}
+                              />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                     </div>
                 </div>
 

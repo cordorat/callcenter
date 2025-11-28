@@ -133,10 +133,13 @@ export default function CampaingJefeCampana() {
       const response = await getMisCampanasJefe();
       console.log('Response mis campañas:', response); // Debug
       console.log('Campañas recibidas:', response.campanas); // Debug detallado
-      setCampaigns(response.campanas || []);
+      const campaignsList = response.campanas || [];
+      setCampaigns(campaignsList);
       
-      // NO seleccionar automáticamente ninguna campaña
-      // El usuario debe elegir manualmente
+      // Preseleccionar automáticamente la primera campaña
+      if (campaignsList.length > 0) {
+        setSelectedCampaign(String(campaignsList[0].id));
+      }
     } catch (error) {
       console.error('Error al cargar campañas:', error);
       setSnackbar({
@@ -338,8 +341,7 @@ export default function CampaingJefeCampana() {
           {/* Lado izquierdo: Selector de campaña y meta de ventas */}
           <div className="campaign-left-controls">
             {/* Selector de campaña */}
-            <Paper elevation={2} sx={{ p: 2, minWidth: 400 }}>
-              <FormControl fullWidth>
+              <FormControl sx={{minWidth: 400 }} fullWidth>
                 <InputLabel id="campana-select-label">Selecciona una campaña</InputLabel>
                 <Select
                   labelId="campana-select-label"
@@ -347,10 +349,20 @@ export default function CampaingJefeCampana() {
                   onChange={(e) => setSelectedCampaign(e.target.value)}
                   disabled={loadingCampaigns}
                   label="Selecciona una campaña"
+                  sx={{
+                    backgroundColor: 'var(--campaign-filter-bg, #F8FAFB)',
+                    height: '56px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--segmented-border, rgba(12, 21, 90, 0.12))',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-main, #0C155A)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-main, #0C155A)',
+                    },
+                  }}  
                 >
-                  <MenuItem value="">
-                    <em style={{ fontStyle: 'normal' }}>-- Selecciona una campaña --</em>
-                  </MenuItem>
                   {campaigns.map((campaign) => {
                     const chipProps = getEstadoChipProps(campaign.estado_nombre);
                     return (
@@ -369,7 +381,6 @@ export default function CampaingJefeCampana() {
                   })}
                 </Select>
               </FormControl>
-            </Paper>
 
             {/* Meta de ventas - Solo visible si hay campaña seleccionada */}
             {selectedCampaign && (
@@ -406,7 +417,7 @@ export default function CampaingJefeCampana() {
             )}
           </div>
           
-          {/* Lado derecho: Botones de acción - Solo visible si hay campaña seleccionada */}
+          {/* Lado derecho: Botones de acción */}
           {selectedCampaign && (
           <div className="campaign-actions">
             <Tooltip
@@ -470,7 +481,7 @@ export default function CampaingJefeCampana() {
           )}
         </div>
 
-        {/* Pestañas segmentadas - Solo visible si hay campaña seleccionada */}
+        {/* Pestañas segmentadas */}
         {selectedCampaign && (
         <div 
           className="kpi-filters" 
