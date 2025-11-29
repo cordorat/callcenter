@@ -22,7 +22,9 @@ import {
   Tooltip,
   Pagination,
   Dialog,
-  DialogContent
+  DialogContent,
+  TextField,
+  InputAdornment
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -30,7 +32,8 @@ import {
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   Close as CloseIcon,
-  Person
+  Person,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { usersService } from '@/core/api/users';
 import { useTheme } from '@mui/material/styles';
@@ -41,6 +44,7 @@ import GroupIcon from '@mui/icons-material/Group';
 export default function Usuarios() {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]); // Todos los usuarios sin paginar
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -51,6 +55,7 @@ export default function Usuarios() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const pageSize = 6;
   const theme = useTheme();
 
@@ -84,9 +89,54 @@ export default function Usuarios() {
     }
   };
 
+  // Cargar todos los usuarios cuando hay búsqueda
+  const fetchAllUsers = async () => {
+    try {
+      const data = await usersService.getUsers({ page: 1, page_size: 1000 }); // Cargar muchos
+      setAllUsers(data.results || []);
+    } catch (err) {
+      console.error('Error al cargar todos los usuarios:', err);
+      setAllUsers([]);
+    }
+  };
+
   const handleCreateUser = () => setOpenModal(true);
   const handleCloseModal = () => setOpenModal(false);
   const handlePageChange = (event, value) => setPage(value);
+
+  const handleSearchChange = (event) => {
+    const newSearch = event.target.value;
+    setSearchTerm(newSearch);
+    setPage(1);
+    
+    // Si hay búsqueda, cargar todos los usuarios
+    if (newSearch && allUsers.length === 0) {
+      fetchAllUsers();
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setPage(1);
+    setAllUsers([]);
+  };
+
+  // Filtrar usuarios: usar allUsers si hay búsqueda, sino users
+  const usuariosFiltrados = (searchTerm ? allUsers : users).filter(user => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      (user.first_name && user.first_name.toLowerCase().includes(searchLower)) ||
+      (user.last_name && user.last_name.toLowerCase().includes(searchLower)) ||
+      (user.email && user.email.toLowerCase().includes(searchLower)) ||
+      (user.documento_id && user.documento_id.toLowerCase().includes(searchLower))
+    );
+  });
+
+  // Paginar los resultados filtrados
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const usuariosPaginados = usuariosFiltrados.slice(startIndex, endIndex);
+  const totalPaginasFiltradas = Math.ceil(usuariosFiltrados.length / pageSize);
 
   const handleUserCreated = () => {
     setOpenModal(false);
@@ -206,6 +256,44 @@ export default function Usuarios() {
           </Alert>
         )}
 
+        {/* Buscador */}
+        <Box sx={{ mb: 4 }}>
+          <TextField
+            fullWidth
+            placeholder="Buscar por nombre, email o documento..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'primary.main' }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              maxWidth: 600,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 3,
+                bgcolor: 'background.paper',
+                boxShadow: theme.palette.mode === 'light'
+                  ? '0 2px 8px rgba(0,0,0,0.08)'
+                  : '0 2px 8px rgba(0,0,0,0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  boxShadow: theme.palette.mode === 'light'
+                    ? '0 4px 12px rgba(0,0,0,0.12)'
+                    : '0 4px 12px rgba(0,0,0,0.4)',
+                },
+                '&.Mui-focused': {
+                  boxShadow: theme.palette.mode === 'light'
+                    ? '0 4px 16px rgba(102, 126, 234, 0.25)'
+                    : '0 4px 16px rgba(102, 126, 234, 0.15)',
+                }
+              }
+            }}
+          />
+        </Box>
+
         <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', backgroundColor: theme.palette.background.paper }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
@@ -231,6 +319,26 @@ export default function Usuarios() {
                 Crear Primer Usuario
               </Button>
             </Box>
+          ) : usuariosFiltrados.length === 0 ? (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: 400,
+                gap: 2,
+                backgroundColor: theme.palette.background.paper,
+                borderRadius: 2,
+              }}
+            >
+              <Typography variant="h6" color="text.secondary">
+                No se encontraron usuarios con ese criterio de búsqueda
+              </Typography>
+              <Button variant="text" onClick={handleClearSearch}>
+                Limpiar búsqueda
+              </Button>
+            </Box>
           ) : (
             <>
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -247,7 +355,7 @@ export default function Usuarios() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {users.map((user, index) => (
+                    {usuariosPaginados.map((user, index) => (
                       <TableRow
                         key={user.id}
                         hover
@@ -322,10 +430,10 @@ export default function Usuarios() {
               {/* Paginación */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                  Mostrando {users.length} de {totalCount} usuarios
+                  Mostrando {usuariosPaginados.length} de {usuariosFiltrados.length} usuarios
                 </Typography>
                 <Pagination
-                  count={totalPages}
+                  count={totalPaginasFiltradas}
                   page={page}
                   onChange={handlePageChange}
                   color="primary"
