@@ -121,8 +121,8 @@ export default function Usuarios() {
       'ADMIN': theme.palette.error.main,
       'COORDINADOR': theme.palette.primary.main,
       'AGENTE': theme.palette.success.main,
-      'JEFE DE CAMPAÑA': theme.palette.warning.main,
-      'JEFE DE CENTRO': theme.palette.info.main,
+      'JEFE_CAMPAÑA': theme.palette.warning.main,
+      'JEFE_CENTRO': theme.palette.info.main,
       'BACKOFFICE': theme.palette.secondary.main
     };
     return colors[role] || theme.palette.text.primary;
@@ -295,46 +295,21 @@ export default function Usuarios() {
                         </TableCell>
                         <TableCell align="center" sx={{ borderBottom: theme.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
                           <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
-                            <Tooltip title="Ver detalles">
-                              <IconButton
-                                size="small"
-                                sx={{
-                                  transition: 'all 0.2s',
-                                  borderRadius: '50%',
-                                  bgcolor: theme.palette.mode === 'light' ? 'grey.200' : 'grey.800',
-                                  color: theme.palette.mode === 'light' ? 'grey.700' : 'grey.300',
-                                  boxShadow: theme.palette.mode === 'light' ? '0 2px 8px rgba(102,126,234,0.10)' : '0 2px 8px rgba(0,0,0,0.25)',
-                                  '&:hover': {
-                                    bgcolor: theme.palette.primary.main,
-                                    color: 'white',
-                                    transform: 'scale(1.15)',
-                                    boxShadow: theme.palette.mode === 'light' ? '0 4px 16px rgba(102,126,234,0.18)' : '0 4px 16px rgba(0,0,0,0.35)',
-                                  }
-                                }}
-                              >
-                                <VisibilityIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
                             <Tooltip title="Editar">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleEditUser(user)}
-                                sx={{
-                                  transition: 'all 0.2s',
-                                  borderRadius: '50%',
-                                  bgcolor: theme.palette.mode === 'light' ? 'grey.200' : 'grey.800',
-                                  color: theme.palette.mode === 'light' ? 'grey.700' : 'grey.300',
-                                  boxShadow: theme.palette.mode === 'light' ? '0 2px 8px rgba(102,126,234,0.10)' : '0 2px 8px rgba(0,0,0,0.25)',
-                                  '&:hover': {
-                                    bgcolor: theme.palette.primary.main,
-                                    color: 'white',
-                                    transform: 'scale(1.15)',
-                                    boxShadow: theme.palette.mode === 'light' ? '0 4px 16px rgba(102,126,234,0.18)' : '0 4px 16px rgba(0,0,0,0.35)',
-                                  }
-                                }}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleEditUser(user)}
+                                  sx={{
+                                    color: 'primary.main',
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(47, 118, 230, 0.1)',
+                                    },
+                                  }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </span>
                             </Tooltip>                 
                           </Box>
                         </TableCell>

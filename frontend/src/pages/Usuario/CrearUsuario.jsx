@@ -5,18 +5,20 @@ import {
   Box,
   TextField,
   FormControl,
-  FormControlLabel,
   InputLabel,
   Select,
   MenuItem,
   Button,
-  Checkbox,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   IconButton,
   InputAdornment,
-  Grid,
-  Paper,
   Typography,
-  CircularProgress
+  CircularProgress,
+  Alert,
+  FormHelperText
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { usersService } from '@/core/api/users';
@@ -27,6 +29,7 @@ export default function CrearUsuario({ onCancel, onUserCreated }) {
   const theme = useTheme();
   // Permite cerrar el modal si se pasa como prop
   const isModal = typeof onUserCreated === 'function';
+  const [showDialog, setShowDialog] = useState(isModal);
   const [formData, setFormData] = useState({
     documento_id: "",
     first_name: "",
@@ -157,241 +160,407 @@ export default function CrearUsuario({ onCancel, onUserCreated }) {
     setShowPassword((prev) => !prev);
   };
 
-  return (
-      <Box sx={{ p: 4 }}>
-        {successMessage && (
-          <Box
-            sx={{
-              p: 2,
-              mb: 3,
-              borderRadius: 2,
-              backgroundColor: '#e6f4ea',
-              border: '1px solid #2e7d32',
-              color: '#2e7d32',
-              fontWeight: 600,
-              textAlign: 'center',
-            }}
-          >
-            {successMessage}
-          </Box>
-        )}
-          <Typography variant="h5" fontWeight="bold" mb={3} textAlign="center">
+  if (isModal) {
+    return (
+      <Dialog
+        open={showDialog}
+        onClose={handleCancel}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          elevation: 2,
+          sx: {
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Crear Nuevo Usuario
           </Typography>
+        </DialogTitle>
 
-          <Box component="form" onSubmit={handleSubmit}>
-            <Grid
-              container
-              spacing={2}
-              justifyContent="center"
+        <DialogContent dividers sx={{ py: 2 }}>
+          {successMessage && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              {successMessage}
+            </Alert>
+          )}
+
+          {/* Documento */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Número de documento *"
+              name="documento_id"
+              type="number"
+              value={formData.documento_id}
+              onChange={handleChange}
+              error={!!errors.documento_id}
+              helperText={errors.documento_id}
+              disabled={loading}
+            />
+          </Box>
+
+          {/* Nombre */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Nombre *"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              error={!!errors.first_name}
+              helperText={errors.first_name}
+              disabled={loading}
+            />
+          </Box>
+
+          {/* Apellido */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Apellido *"
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              error={!!errors.last_name}
+              helperText={errors.last_name}
+              disabled={loading}
+            />
+          </Box>
+
+          {/* Email */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Correo electrónico *"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              error={!!errors.email}
+              helperText={errors.email}
+              disabled={loading}
+            />
+          </Box>
+
+          {/* Teléfono */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Número de teléfono *"
+              name="phone"
+              type="number"
+              value={formData.phone}
+              onChange={handleChange}
+              error={!!errors.phone}
+              helperText={errors.phone}
+              disabled={loading}
+            />
+          </Box>
+
+          {/* Contraseña */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Contraseña *"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={handleChange}
+              error={!!errors.password}
+              helperText={errors.password || "8-16 caracteres (M,m,9-0,@$!%*?&)"}
+              disabled={loading}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleTogglePassword} edge="end" size="small">
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </Box>
+
+          {/* Confirmar Contraseña */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Confirmar Contraseña *"
+              name="password_confirm"
+              type={showPassword ? "text" : "password"}
+              value={formData.password_confirm}
+              onChange={handleChange}
+              error={!!errors.password_confirm}
+              helperText={errors.password_confirm}
+              disabled={loading}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleTogglePassword} edge="end" size="small">
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </Box>
+
+          {/* Rol */}
+          <Box sx={{ mb: 3 }}>
+            <FormControl fullWidth error={!!errors.role}>
+              <InputLabel>Rol *</InputLabel>
+              <Select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                label="Rol *"
+                disabled={loading}
+              >
+                <MenuItem value="ADMIN">ADMIN</MenuItem>
+                <MenuItem value="COORDINADOR">COORDINADOR</MenuItem>
+                <MenuItem value="AGENTE">AGENTE</MenuItem>
+                <MenuItem value="JEFE_CAMPANA">JEFE DE CAMPAÑA</MenuItem>
+                <MenuItem value="JEFE_CENTRO">JEFE DE CENTRO</MenuItem>
+                <MenuItem value="BACKOFFICE">BACKOFFICE</MenuItem>
+              </Select>
+              {errors.role && (
+                <FormHelperText>{errors.role}</FormHelperText>
+              )}
+            </FormControl>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
+          <Button
+            onClick={handleCancel}
+            disabled={loading}
+            sx={{
+              backgroundColor: theme.palette.primary.secondary,
+              color: 'white',
+              textTransform: 'none',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.secondary,
+                opacity: 0.9
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading}
+            sx={{
+              textTransform: 'none',
+            }}
+            onClick={handleSubmit}
+          >
+            {loading ? <CircularProgress size={20} /> : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
+
+  return (
+    <MainLayout>
+      <Box>
+        {successMessage && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            {successMessage}
+          </Alert>
+        )}
+
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, textAlign: 'center' }}>
+          Crear Nuevo Usuario
+        </Typography>
+
+        <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 500, mx: 'auto' }}>
+          {/* Documento */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Número de documento *"
+              name="documento_id"
+              type="number"
+              value={formData.documento_id}
+              onChange={handleChange}
+              error={!!errors.documento_id}
+              helperText={errors.documento_id}
+              disabled={loading}
+            />
+          </Box>
+
+          {/* Nombre */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Nombre *"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              error={!!errors.first_name}
+              helperText={errors.first_name}
+              disabled={loading}
+            />
+          </Box>
+
+          {/* Apellido */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Apellido *"
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              error={!!errors.last_name}
+              helperText={errors.last_name}
+              disabled={loading}
+            />
+          </Box>
+
+          {/* Email */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Correo electrónico *"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              error={!!errors.email}
+              helperText={errors.email}
+              disabled={loading}
+            />
+          </Box>
+
+          {/* Teléfono */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Número de teléfono *"
+              name="phone"
+              type="number"
+              value={formData.phone}
+              onChange={handleChange}
+              error={!!errors.phone}
+              helperText={errors.phone}
+              disabled={loading}
+            />
+          </Box>
+
+          {/* Contraseña */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Contraseña *"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={handleChange}
+              error={!!errors.password}
+              helperText={errors.password || "8-16 caracteres (M,m,9-0,@$!%*?&)"}
+              disabled={loading}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleTogglePassword} edge="end" size="small">
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </Box>
+
+          {/* Confirmar Contraseña */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Confirmar Contraseña *"
+              name="password_confirm"
+              type={showPassword ? "text" : "password"}
+              value={formData.password_confirm}
+              onChange={handleChange}
+              error={!!errors.password_confirm}
+              helperText={errors.password_confirm}
+              disabled={loading}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleTogglePassword} edge="end" size="small">
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </Box>
+
+          {/* Rol */}
+          <Box sx={{ mb: 4 }}>
+            <FormControl fullWidth error={!!errors.role}>
+              <InputLabel>Rol *</InputLabel>
+              <Select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                label="Rol *"
+                disabled={loading}
+              >
+                <MenuItem value="ADMIN">ADMIN</MenuItem>
+                <MenuItem value="COORDINADOR">COORDINADOR</MenuItem>
+                <MenuItem value="AGENTE">AGENTE</MenuItem>
+                <MenuItem value="JEFE_CAMPANA">JEFE DE CAMPAÑA</MenuItem>
+                <MenuItem value="JEFE_CENTRO">JEFE DE CENTRO</MenuItem>
+                <MenuItem value="BACKOFFICE">BACKOFFICE</MenuItem>
+              </Select>
+              {errors.role && (
+                <FormHelperText>{errors.role}</FormHelperText>
+              )}
+            </FormControl>
+          </Box>
+
+          {/* Botones */}
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Button
+              type="button"
+              onClick={handleCancel}
+              disabled={loading}
               sx={{
-                '& .MuiTextField-root, & .MuiFormControl-root': {
-                  width: '300px',
-                },
-                '& .MuiOutlinedInput-root': {
-                  height: '60px',
-                },
-                '& .MuiSelect-select': {
-                  display: 'flex',
-                  alignItems: 'center',
+                textTransform: 'none',
+                backgroundColor: theme.palette.primary.secondary,
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: theme.palette.primary.secondary,
+                  opacity: 0.9
                 }
               }}
             >
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Número de documento"
-                  name="documento_id"
-                  type="number"
-                  value={formData.documento_id}
-                  onChange={handleChange}
-                  variant="outlined"
-                  error={!!errors.documento_id}
-                  helperText={errors.documento_id}
-                  disabled={loading}
-                  
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Nombre"
-                  name="first_name"
-                  value={formData.first_name}
-                  onChange={handleChange}
-                  variant="outlined"
-                  error={!!errors.first_name}
-                  helperText={errors.first_name}
-                  disabled={loading}
-                  
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Apellido"
-                name="last_name"
-                value={formData.last_name}
-                onChange={handleChange}
-                variant="outlined"
-                error={!!errors.last_name}
-                helperText={errors.last_name}
-                disabled={loading}
-                
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Correo electrónico"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                variant="outlined"
-                error={!!errors.email}
-                helperText={errors.email}
-                disabled={loading}
-                
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Número de teléfono"
-                name="phone"
-                type="number"
-                value={formData.phone}
-                onChange={handleChange}
-                variant="outlined"
-                error={!!errors.phone}
-                helperText={errors.phone}
-                disabled={loading}
-                
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Contraseña"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                value={formData.password}
-                onChange={handleChange}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={handleTogglePassword} edge="end">
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                variant="outlined"
-                error={!!errors.password}
-                helperText={errors.password || "8-16 caracteres (M,m,9-0,@$!%*?&)"}
-                disabled={loading}
-                
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Confirmar Contraseña"
-                name="password_confirm"
-                type={showPassword ? "text" : "password"}
-                value={formData.password_confirm}
-                onChange={handleChange}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={handleTogglePassword} edge="end">
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                variant="outlined"
-                error={!!errors.password_confirm}
-                helperText={errors.password_confirm}
-                disabled={loading}
-                
-              />
-            </Grid>
-            <Grid item xs={12} md={6} sx={{ fontSize: '1.2rem', minWidth: '250px' }}>
-              <FormControl fullWidth error={!!errors.role}>
-                <InputLabel>Rol</InputLabel>
-                <Select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  label="Rol"
-                  disabled={loading}
-                  
-                >
-                  <MenuItem value="ADMIN">ADMIN</MenuItem>
-                  <MenuItem value="COORDINADOR">COORDINADOR</MenuItem>
-                  <MenuItem value="AGENTE">AGENTE</MenuItem>
-                  <MenuItem value="JEFE_CAMPAÑA">JEFE DE CAMPAÑA</MenuItem>
-                  <MenuItem value="JEFE_CENTRO">JEFE DE CENTRO</MenuItem>
-                  <MenuItem value="BACKOFFICE">BACKOFFICE</MenuItem>
-                </Select>
-                {errors.role && (
-                  <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>
-                    {errors.role}
-                  </Typography>
-                )}
-              </FormControl>
-            </Grid>
-          </Grid>
-          
-        <Box sx={{ pt: 2, alignItems: 'center', textAlign: 'center' }}>
-          <FormControlLabel
-            control={<Checkbox name="activo" checked={true} size="small" />}
-            label="Usuario activo"
-            sx={{ fontSize: '0.9rem', mb: 2 }}
-          />
-            <Box sx={{ display: 'flex', gap: 1.5, mt: 2.5, justifyContent: 'center' }}>
-              <Grid item xs={12} md={6} textAlign="center">
-                <Button 
-                  type="button" 
-                  size="large"
-                  variant="contained" 
-                  onClick={handleCancel}
-                  disabled={loading}
-                  sx={{
-                    width:"100%",
-                    borderRadius:2,
-                    py: 1.5, 
-                    fontSize: '1rem',
-                    fontWeight: "bold",
-                    backgroundColor: theme.palette.primary.secondary
-                  }}
-                >
-                  Cancelar
-                </Button>
-              </Grid>            
-              <Grid item xs={12} md={6} textAlign="center">
-                <Button 
-                  type="submit" 
-                  variant="contained" 
-                  size="large" 
-                  disabled={loading}
-                  sx={{
-                    width:"100%",
-                    borderRadius:2,
-                    py: 1.5, 
-                    fontSize: '1rem',
-                    fontWeight: "bold",
-                    backgroundColor: theme.palette.primary.main
-                  }}
-                >
-                  {loading ? <CircularProgress size={24} color="inherit" /> : 'Guardar'}
-                </Button>
-              </Grid>
-            </Box>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loading}
+              sx={{
+                textTransform: 'none',
+              }}
+            >
+              {loading ? <CircularProgress size={20} /> : 'Guardar'}
+            </Button>
           </Box>
         </Box>
       </Box>
+    </MainLayout>
   );
 }
