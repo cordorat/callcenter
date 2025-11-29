@@ -1,15 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
-* {
+.login-container,
+.login-container * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   font-family: 'Poppins', sans-serif;
 }
 
-body {
-  background-color: #c9d6ff;
-  background: linear-gradient(to right, #e2e2e2, #c9d6ff);
+.login-container {
+  background-color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,7 +22,7 @@ body {
 
 /* ======= CONTAINER PRINCIPAL ======= */
 .login-container {
-  background-color: #fff;
+  background-color: #ffffff;
   border-radius: 0;
   box-shadow: none;
   position: relative;
@@ -35,7 +35,6 @@ body {
 
 /* ======= FORMULARIOS ======= */
 .login-form {
-  background-color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -130,7 +129,7 @@ body {
 /* ======= ESTADOS DE ERROR ======= */
 .input.has-error,
 .form-group input.has-error {
-  background-color: #ffe6e6 !important;
+  background-color: #ffe6e6;
   border: 1px solid #e55353;
 }
 
@@ -303,20 +302,17 @@ body {
   content: "";
   position: absolute;
   top: 0;
-  left: -100%;
-  width: 200%;
+  left: 0;
+  width: 100%;
   height: 100%;
-  background: linear-gradient(to right, #62A1D5, #2D77B4);
+  background: linear-gradient(135deg, #62A1D5 0%, #4C80BA 50%, #2D5A8C 100%);
   z-index: -1;
   transition: all 0.6s ease-in-out;
-  border-radius: 150px 0 0 100px;
 }
 
 .login-container.recover-mode .welcome-section::before {
   left: auto;
-  right: -100%;
-  border-radius: 0 150px 100px 0;
-  transform: translateX(0);
+  right: auto;
 }
 
 .semi-circle {
@@ -424,3 +420,101 @@ body {
     padding: 0 24px;
   }
 }
+
+/* ======= MODO OSCURO ======= */
+.login-container.dark-mode {
+  background-color: #182030;
+}
+
+.login-container.dark-mode .login-form {
+  background-color: #182030;
+}
+
+.login-container.dark-mode .login-form h2 {
+  color: #E6E9EF;
+}
+
+.login-container.dark-mode .form-group input,
+.login-container.dark-mode .input {
+  background-color: #2a3d4f;
+  border: 1px solid #3d5568;
+  color: #E6E9EF;
+}
+
+.login-container.dark-mode .form-group input:focus,
+.login-container.dark-mode .input:focus {
+  background-color: #354a62;
+  border-color: #4A8FE7;
+}
+
+.login-container.dark-mode .form-group input::placeholder {
+  color: #7A8087;
+}
+
+.login-container.dark-mode .input.has-error,
+.login-container.dark-mode .form-group input.has-error {
+  background-color: #4a2a2a !important;
+  border: 1px solid #d13b3b;
+}
+
+.login-container.dark-mode .form-group .field-error {
+  color: #ff6b6b;
+}
+
+.login-container.dark-mode .login-btn {
+  background-color: #4A8FE7;
+  color: #fff;
+}
+
+.login-container.dark-mode .login-btn:hover {
+  background-color: #3a6fb5;
+}
+
+.login-container.dark-mode .forgot-password,
+.login-container.dark-mode .back-to-login {
+  color: #4A8FE7;
+}
+
+.login-container.dark-mode .forgot-password:hover,
+.login-container.dark-mode .back-to-login:hover {
+  color: #6ba3f5;
+}
+
+.login-container.dark-mode .login-form p {
+  color: #B0B5C0;
+}
+
+.login-container.dark-mode .login-form span {
+  color: #7A8087;
+}
+
+.login-container.dark-mode .success-message-box {
+  background: #2a4a3a;
+  border: 1px solid #4a8a5a;
+  color: #7ed9a3;
+}
+
+.login-container.dark-mode .success-subtext {
+  color: #B0B5C0;
+}
+
+.login-container.dark-mode .reset-instructions {
+  color: #B0B5C0;
+}
+
+.login-container.dark-mode .password-hint {
+  color: #7A8087;
+}
+
+.login-container.dark-mode .toggle-password {
+  color: #7A8087;
+}
+
+.login-container.dark-mode .toggle-password:hover {
+  color: #E6E9EF;
+}
+
+.login-container.dark-mode .welcome-section {
+  background-color: #182030;
+}
+

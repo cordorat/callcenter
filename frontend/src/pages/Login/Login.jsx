@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/core/context/AuthContext';
+import { useThemeMode } from '@/core/context/ThemeModeContext';
 import { requestPasswordReset, validateResetToken, confirmPasswordReset } from '@/core/api/passwordReset';
 import './Login.css';
 
 const Login = () => {
   const { login } = useAuth();
+  const { mode } = useThemeMode();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -281,7 +283,7 @@ const Login = () => {
   };
 
   return (
-    <div className={`login-container ${view !== 'login' ? 'recover-mode' : ''}`}>
+    <div className={`login-container ${view !== 'login' ? 'recover-mode' : ''} ${mode === 'dark' ? 'dark-mode' : ''}`}>
       <div className={`login-form sign-in ${view === 'login' ? 'active' : ''}`}>
         <h2>
           {view === 'login' && 'Iniciar sesión'}
@@ -544,17 +546,8 @@ const Login = () => {
         <div className="semi-circle toggle-left">
           <h1>¿Problemas con tu contraseña?</h1>
           <p>
-            {view === 'login' && '¡Bienvenido!'}
-            {(view === 'request-reset' || view === 'confirm-reset') && 'Te ayudaremos a recuperar tu contraseña de forma segura. Sigue las instrucciones para restablecerla.'}
+            'Te ayudaremos a recuperar tu contraseña de forma segura. Sigue las instrucciones para restablecerla.'
           </p>
-          {view === 'login' && (
-            <button 
-              className="hidden" 
-              onClick={handlePasswordReset}
-            >
-              Recuperar Contraseña
-            </button>
-          )}
         </div>
 
         <div className="semi-circle toggle-right">
@@ -562,14 +555,6 @@ const Login = () => {
           <p>
             Accede a nuestro aplicativo CallCenter ingresando tus credenciales y disfruta de todas sus funcionalidades.
           </p>
-          {view !== 'login' && (
-            <button 
-              className="hidden" 
-              onClick={handleBackToLogin}
-            >
-              Volver al Login
-            </button>
-          )}
         </div>
       </div>
     </div>
