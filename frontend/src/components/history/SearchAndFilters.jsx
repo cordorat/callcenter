@@ -87,7 +87,7 @@ export default function FiltrosyBusqueda({
             }}
             sx={{
               "& .MuiOutlinedInput-root": {
-                borderRadius: "14px",
+                borderRadius: "8px",
                 backgroundColor:
                   theme.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                 "& fieldset": {
@@ -109,16 +109,11 @@ export default function FiltrosyBusqueda({
             <InputLabel
               id="estado-label"
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                backgroundColor:
-                  theme.palette.mode === "light" ? "#FFFFFF" : "rgba(255,255,255,0.04)",
                 px: 0.5,
                 zIndex: 1,
               }}
             >
-              <FilterAltIcon fontSize="small" sx={{ mr: 1 }} /> Estado
+              Estado
             </InputLabel>
             <Select
               labelId="estado-label"
@@ -132,6 +127,21 @@ export default function FiltrosyBusqueda({
                 if (selected === "COMPLETADA") return "Contestada";
                 if (selected === "NO_CONTESTADA") return "No contestada";
                 return selected;
+              }}
+              sx={{
+                borderRadius: "8px",
+                backgroundColor:
+                  theme.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor:
+                    theme.palette.mode === "light"
+                      ? "rgba(12,21,90,0.16)"
+                      : "rgba(255,255,255,0.18)",
+                  borderWidth: 2,
+                },
+                "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: theme.palette.primary.main },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: theme.palette.primary.main },
+                height: 44,
               }}
             >
               <MenuItem value="">Todos</MenuItem>
@@ -156,7 +166,7 @@ export default function FiltrosyBusqueda({
               sx={{
                 minWidth: 190,
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: "14px",
+                  borderRadius: "8px",
                   backgroundColor:
                     theme.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                   "& fieldset": {
@@ -174,7 +184,7 @@ export default function FiltrosyBusqueda({
             />
           ))} 
 
-          <Button variant="text" onClick={onClear}>
+          <Button variant="outlined" onClick={onClear} sx={{ borderRadius: "8px", borderWidth: 2 }}>
             LIMPIAR
           </Button>
         </Stack>

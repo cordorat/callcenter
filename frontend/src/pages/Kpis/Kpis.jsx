@@ -4,7 +4,7 @@ import { getKpiOverview } from "@/core/api/kpis";
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LoopIcon from '@mui/icons-material/Loop';
 import { useTheme } from '@mui/material/styles';
-import { IconButton} from '@mui/material';
+import { IconButton, Tooltip as MuiTooltip } from '@mui/material';
 
 import "./Kpis.css"; 
 
@@ -298,7 +298,7 @@ export default function Kpis() {
                 Última actualización: {new Date(updatedAt).toLocaleString()}
               </span>
             )}
-            <Tooltip title="Actualizar">
+            <MuiTooltip title="Actualizar">
               <span>
                 <IconButton
                   onClick={fetchData}
@@ -331,7 +331,7 @@ export default function Kpis() {
                   />
                 </IconButton>
               </span>
-            </Tooltip>
+            </MuiTooltip>
           </div>
         </div>
 

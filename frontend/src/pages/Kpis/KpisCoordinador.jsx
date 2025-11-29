@@ -34,7 +34,6 @@ import {
     Bar,
     XAxis,
     YAxis,
-    Tooltip as RechartsTooltip,
     ResponsiveContainer,
     PieChart,
     Pie,
@@ -209,37 +208,6 @@ export default function KpisCoordinador() {
         }));
     }, [estadosEquipo]);
 
-    // Tooltip personalizado para gráfica de estados
-    const CustomEstadosTooltip = ({ active, payload }) => {
-        if (active && payload && payload.length) {
-            const data = payload[0].payload;
-            const porcentaje = totalAgentes > 0 
-                ? ((data.value / totalAgentes) * 100).toFixed(1) 
-                : 0;
-
-            return (
-                <div style={{
-                    background: theme.palette.background.paper,
-                    padding: '10px 14px',
-                    border: `2px solid ${ESTADO_COLORS[data.estado] || '#9e9e9e'}`,
-                    borderRadius: '8px',
-                    boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.15)',
-                }}>
-                    <p style={{ margin: 0, fontWeight: 'bold', color: theme.palette.text.primary }}>
-                        {data.name}
-                    </p>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '16px', fontWeight: '700', color: ESTADO_COLORS[data.estado] }}>
-                        {data.value} agente{data.value !== 1 ? 's' : ''}
-                    </p>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: theme.palette.text.secondary }}>
-                        {porcentaje}% del equipo
-                    </p>
-                </div>
-            );
-        }
-        return null;
-    };
-
     return (
         <MainLayout title="KPIs del Equipo">
             <div
@@ -276,19 +244,17 @@ export default function KpisCoordinador() {
                                     disabled={loading}
                                     size="large"
                                     sx={{
-                                        backgroundColor: isDark ? "#2A3B70" : "#0C155A",
+                                        backgroundColor: theme.palette.primary.main,
                                         color: "#fff",
-                                        "&:hover": {
-                                            backgroundColor: isDark ? "#1F2E57" : "#0A1147",
+                                        transition: "all 0.3s ease",
+                                        '&:hover': {
+                                            backgroundColor: theme.palette.primary.dark,
                                             transform: "rotate(180deg)",
                                         },
-                                        "&.Mui-disabled": {
-                                            backgroundColor: isDark
-                                                ? "rgba(42, 59, 112, 0.5)"
-                                                : "rgba(12, 21, 90, 0.5)",
-                                            color: "#fff",
+                                        '&.Mui-disabled': {
+                                            backgroundColor: theme.palette.action.disabled,
+                                            color: "rgba(255, 255, 255, 0.5)",
                                         },
-                                        transition: "all 0.3s ease",
                                     }}
                                 >
                                     <RefreshIcon />
@@ -301,19 +267,17 @@ export default function KpisCoordinador() {
                                         disabled={loading}
                                         size="large"
                                         sx={{
-                                            backgroundColor: isDark ? "#7B2D2D" : "#C41C3B",
+                                            backgroundColor: theme.palette.error.main,
                                             color: "#fff",
-                                            "&:hover": {
-                                                backgroundColor: isDark ? "#5A1F1F" : "#A01529",
+                                            transition: "all 0.3s ease",
+                                            '&:hover': {
+                                                backgroundColor: theme.palette.error.dark,
                                                 transform: "scale(1.05)",
                                             },
-                                            "&.Mui-disabled": {
-                                                backgroundColor: isDark
-                                                    ? "rgba(123, 45, 45, 0.5)"
-                                                    : "rgba(196, 28, 59, 0.5)",
-                                                color: "#fff",
+                                            '&.Mui-disabled': {
+                                                backgroundColor: theme.palette.action.disabled,
+                                                color: "rgba(255, 255, 255, 0.5)",
                                             },
-                                            transition: "all 0.3s ease",
                                         }}
                                     >
                                         <PictureAsPdfIcon />
@@ -325,13 +289,11 @@ export default function KpisCoordinador() {
                                         disabled
                                         size="large"
                                         sx={{
-                                            backgroundColor: isDark ? "#7B2D2D" : "#C41C3B",
+                                            backgroundColor: theme.palette.error.main,
                                             color: "#fff",
-                                            "&.Mui-disabled": {
-                                                backgroundColor: isDark
-                                                    ? "rgba(123, 45, 45, 0.5)"
-                                                    : "rgba(196, 28, 59, 0.5)",
-                                                color: "#fff",
+                                            '&.Mui-disabled': {
+                                                backgroundColor: theme.palette.action.disabled,
+                                                color: "rgba(255, 255, 255, 0.5)",
                                             },
                                         }}
                                     >
@@ -489,11 +451,6 @@ export default function KpisCoordinador() {
                                                 />
                                             ))}
                                         </Pie>
-                                        <RechartsTooltip
-                                            content={<CustomEstadosTooltip />}
-                                            animationDuration={0}
-                                            isAnimationActive={false}
-                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
                             )}
