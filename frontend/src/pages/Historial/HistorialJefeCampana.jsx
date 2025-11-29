@@ -434,7 +434,7 @@ export default function HistorialJefeCampana() {
                 {(campanaSeleccionada || campanas.length === 1) && (
                     <>
                         {/* Filtros */}
-                        <Paper elevation={2} sx={(t) => cardSx(t)}>
+                        <Paper elevation={0} sx={(t) => cardSx(t)}>
                             <Grid container spacing={2}>
                                 {/* Buscar por Agente */}
                                 <Grid item xs={12} md={3}>
@@ -608,7 +608,7 @@ export default function HistorialJefeCampana() {
                         </Paper>
 
                         {/* Tabla */}
-                        <Paper elevation={2} sx={(t) => ({ ...cardSx(t), mb: 2, p: 0, overflow: "hidden" })}>
+                        <Paper elevation={0} sx={(t) => ({ ...cardSx(t), mb: 2, p: 0, overflow: "hidden" })}>
                             <TableContainer>
                                 <Table size="small">
                                     <TableHead>

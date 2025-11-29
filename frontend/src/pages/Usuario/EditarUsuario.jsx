@@ -42,31 +42,28 @@ export default function EditarUsuario({ user, onUserUpdated, onCancel }) {
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
 
-    // Mapeo de roles del backend al frontend
-    const rolesMap = {
+    // Mapeo de roles del backend al frontend (para display)
+    const rolesDisplayMap = {
         'ADMIN': 'ADMIN',
         'COORDINADOR': 'COORDINADOR',
         'AGENTE': 'AGENTE',
         'JEFE_CAMPANA': 'JEFE DE CAMPAÑA',
-        'JEFE DE CAMPAÑA': 'JEFE_CAMPANA',
         'JEFE_CENTRO': 'JEFE DE CENTRO',
-        'JEFE DE CENTRO': 'JEFE_CENTRO',
         'BACKOFFICE': 'BACKOFFICE'
     };
 
     // Cargar datos del usuario al montar el componente
     useEffect(() => {
         if (user) {
-            // Determinar el rol correcto
+            // Determinar el rol correcto - mantener el formato del backend
             const userRole = user.role || user.rol?.valor || '';
-            const mappedRole = rolesMap[userRole] || userRole;
-
+            
             setFormData({
                 first_name: user.first_name || "",
                 last_name: user.last_name || "",
                 email: user.email || "",
                 phone: user.phone || "",
-                role: mappedRole,
+                role: userRole,
                 is_active: user.is_active !== undefined ? user.is_active : true,
                 password: "" // Siempre vacío al inicio
             });

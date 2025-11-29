@@ -119,6 +119,8 @@ export default function Settings() {
                       ? "Jefe de Campaña"
                       : user?.role === "JEFE_CENTRO"
                       ? "Jefe de Centro"
+                      : user?.role === "BACKOFFICE"
+                      ? "Backoffice"
                       : "Agente"
                   }
                   sx={{
