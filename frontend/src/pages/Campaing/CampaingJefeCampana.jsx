@@ -654,31 +654,25 @@ export default function CampaingJefeCampana() {
         maxWidth="sm"
         fullWidth
         PaperProps={{
+          elevation: 2,
           sx: {
-            borderRadius: '16px',
-            padding: '8px',
-            backgroundColor: theme.palette.background.paper,
-          }
+            borderRadius: 3,
+          },
         }}
       >
-        <DialogTitle
-          sx={{
-            fontSize: '1.25rem',
-            fontWeight: 700,
-            color: theme.palette.text.primary,
-            paddingBottom: '8px',
-          }}
-        >
-          Programar Iteración de Base de Datos
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Programar Iteración de Base de Datos
+          </Typography>
         </DialogTitle>
         
-        <DialogContent sx={{ paddingTop: '16px !important' }}>
+        <DialogContent dividers sx={{ py: 2 }}>
           <Box sx={{ mb: 3 }}>
-            <Alert severity="info" sx={{ mb: 2, borderRadius: '10px' }}>
+            <Alert severity="info" sx={{ mb: 3 }}>
               Selecciona la fecha y hora en la que deseas iniciar la iteración de la base de datos.
             </Alert>
             
-            <div 
+            <Box
               className="dates" 
               style={{
                 '--text-primary': theme.palette.text.primary,
@@ -712,23 +706,21 @@ export default function CampaingJefeCampana() {
                   }}
                 />
               </label>
-            </div>
+            </Box>
           </Box>
         </DialogContent>
 
-        <DialogActions sx={{ padding: '16px 24px', gap: '12px' }}>
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
           <Button
             onClick={handleCloseIteracionModal}
             disabled={iniciandoIteracion}
             sx={{
-              color: theme.palette.text.secondary,
-              fontWeight: 600,
-              borderRadius: '8px',
-              padding: '8px 20px',
+              backgroundColor: theme.palette.primary.secondary,
+              color: 'white',
               textTransform: 'none',
-              fontSize: '0.95rem',
               '&:hover': {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(12, 21, 90, 0.05)',
+                backgroundColor: theme.palette.primary.secondary,
+                opacity: 0.9
               }
             }}
           >
@@ -739,26 +731,7 @@ export default function CampaingJefeCampana() {
             disabled={iniciandoIteracion}
             variant="contained"
             sx={{
-              backgroundColor: theme.palette.primary.main,
-              color: 'white',
-              fontWeight: 600,
-              borderRadius: '8px',
-              padding: '8px 24px',
               textTransform: 'none',
-              fontSize: '0.95rem',
-              boxShadow: isDark 
-                ? '0 2px 8px rgba(0, 0, 0, 0.5)' 
-                : '0 2px 8px rgba(12, 21, 90, 0.2)',
-              '&:hover': {
-                backgroundColor: theme.palette.primary.dark,
-                boxShadow: isDark 
-                  ? '0 4px 12px rgba(0, 0, 0, 0.7)' 
-                  : '0 4px 12px rgba(12, 21, 90, 0.3)',
-              },
-              '&:disabled': {
-                backgroundColor: theme.palette.action.disabledBackground,
-                color: theme.palette.action.disabled,
-              }
             }}
           >
             {iniciandoIteracion ? 'Programando...' : 'Programar Iteración'}

@@ -3,9 +3,9 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions,
   Button,
+  Typography,
   Zoom,
   CircularProgress
 } from '@mui/material';
@@ -69,28 +69,30 @@ const ConfirmDialog = ({
       aria-describedby="confirm-dialog-description"
       maxWidth="md"
       PaperProps={{
+        elevation: 2,
         sx: {
-          elevation: 2,
           borderRadius: 3,
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
         }
       }}
     >
-      <DialogTitle 
-        id="confirm-dialog-title" 
-        sx={{ fontFamily: 'poppins', fontWeight: '600' }}
-      >
-        {title}
+      <DialogTitle>
+        <Typography 
+          id="confirm-dialog-title" 
+          variant="h6" 
+          sx={{ fontWeight: 600 }}
+        >
+          {title}
+        </Typography>
       </DialogTitle>
-      <DialogContent>
-        <DialogContentText 
+      <DialogContent dividers sx={{ py: 2 }}>
+        <Typography 
           id="confirm-dialog-description" 
-          sx={{ fontFamily: 'arimo, sans-serif', fontWeight: 500 }}
+          sx={{ fontWeight: 500 }}
         >
           {message}
-        </DialogContentText>
+        </Typography>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ px: 3, py: 1.5 }}>
         <Button
           onClick={onClose}
           disabled={loading}

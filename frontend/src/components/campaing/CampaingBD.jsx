@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useEffect, useState, useCallback } from "react";
-import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Pagination } from '@mui/material';
+import { Box, Typography, Grid, Paper, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Snackbar, Alert, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button, Pagination } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useAuth } from '@/core/context/AuthContext';
 import apiClient from '@/core/api/apiClient';
@@ -519,49 +519,39 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
         maxWidth="sm"
         fullWidth
         PaperProps={{
+          elevation: 2,
           sx: {
-            borderRadius: '16px',
-            padding: '8px',
-            backgroundColor: theme.palette.background.paper,
+            borderRadius: 3,
           }
         }}
       >
-        <DialogTitle
-          sx={{
-            fontSize: '1.25rem',
-            fontWeight: 700,
-            color: theme.palette.text.primary,
-            paddingBottom: '8px',
-          }}
-        >
-          Confirmar Eliminación
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Confirmar Eliminación
+          </Typography>
         </DialogTitle>
         
-        <DialogContent sx={{ paddingTop: '16px !important' }}>
-          <Alert severity="warning" sx={{ mb: 2, borderRadius: '10px' }}>
+        <DialogContent dividers sx={{ py: 2 }}>
+          <Alert severity="warning" sx={{ mb: 3 }}>
             Esta acción no se puede deshacer. Todos los registros de clientes asociados a esta base de datos serán eliminados permanentemente.
           </Alert>
           
-          <DialogContentText sx={{ color: theme.palette.text.primary, fontSize: '0.95rem' }}>
+          <Typography>
             ¿Estás seguro de que deseas eliminar la base de datos <strong>"{baseToDelete?.nombre_bd}"</strong>?
-          </DialogContentText>
+          </Typography>
         </DialogContent>
 
-        <DialogActions sx={{ padding: '16px 24px', gap: '12px' }}>
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
           <Button
             onClick={handleDeleteCancel}
             disabled={deleting}
             sx={{
-              color: theme.palette.text.secondary,
-              fontWeight: 600,
-              borderRadius: '8px',
-              padding: '8px 20px',
+              backgroundColor: theme.palette.primary.secondary,
+              color: 'white',
               textTransform: 'none',
-              fontSize: '0.95rem',
               '&:hover': {
-                backgroundColor: theme.palette.mode === 'dark' 
-                  ? 'rgba(255, 255, 255, 0.08)' 
-                  : 'rgba(12, 21, 90, 0.05)',
+                backgroundColor: theme.palette.primary.secondary,
+                opacity: 0.9
               }
             }}
           >
@@ -574,23 +564,9 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
             sx={{
               backgroundColor: '#d32f2f',
               color: 'white',
-              fontWeight: 600,
-              borderRadius: '8px',
-              padding: '8px 24px',
               textTransform: 'none',
-              fontSize: '0.95rem',
-              boxShadow: theme.palette.mode === 'dark' 
-                ? '0 2px 8px rgba(0, 0, 0, 0.5)' 
-                : '0 2px 8px rgba(211, 47, 47, 0.3)',
               '&:hover': {
                 backgroundColor: '#b71c1c',
-                boxShadow: theme.palette.mode === 'dark' 
-                  ? '0 4px 12px rgba(0, 0, 0, 0.7)' 
-                  : '0 4px 12px rgba(211, 47, 47, 0.4)',
-              },
-              '&:disabled': {
-                backgroundColor: theme.palette.action.disabledBackground,
-                color: theme.palette.action.disabled,
               }
             }}
           >
