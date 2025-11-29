@@ -409,23 +409,39 @@ export default function Usuarios() {
                           />
                         </TableCell>
                         <TableCell align="center" sx={{ borderBottom: theme.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
-                          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
-                            <Tooltip title="Editar">
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleEditUser(user)}
-                                  sx={{
-                                    color: 'primary.main',
-                                    '&:hover': {
-                                      backgroundColor: 'rgba(47, 118, 230, 0.1)',
-                                    },
-                                  }}
-                                >
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </span>
-                            </Tooltip>                 
+                          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                            <Tooltip title="Editar usuario" arrow>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleEditUser(user)}
+                                sx={{
+                                  bgcolor: 'action.hover',
+                                  '&:hover': {
+                                    bgcolor: 'primary.main',
+                                    color: 'white',
+                                  },
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Eliminar usuario" arrow>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteUser(user)}
+                                sx={{
+                                  bgcolor: 'action.hover',
+                                  '&:hover': {
+                                    bgcolor: 'error.main',
+                                    color: 'white',
+                                  },
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                           </Box>
                         </TableCell>
                       </TableRow>

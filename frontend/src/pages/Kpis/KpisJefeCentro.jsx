@@ -219,6 +219,7 @@ export default function KpisJefeCentro() {
             });
             setEquipos(resp.results || []);
             setTotalEquipos(resp.count || 0);
+            setUpdatedAt(new Date().toISOString());
         } catch (e) {
             console.error(e);
             setErrMsg("No se pudieron cargar los equipos. Intenta nuevamente.");
@@ -238,6 +239,7 @@ export default function KpisJefeCentro() {
                 fecha_hasta: to,
             });
             setDataEquipo(resp || null);
+            setUpdatedAt(new Date().toISOString());
         } catch (e) {
             console.error(e);
             setErrMsg("No se pudieron cargar los KPIs del equipo. Intenta nuevamente.");
@@ -515,21 +517,21 @@ export default function KpisJefeCentro() {
                                     </TableCell>
                                     <TableCell>{equipo.campana_nombre}</TableCell>
                                     <TableCell align="center">
-                                        <Tooltip title="Ver KPIs">
-                                            <span>
-                                                <IconButton
-                                                    onClick={() => fetchEquipoDetalle(equipo)}
-                                                    size="small"
-                                                    sx={{
-                                                        color: 'primary.main',
-                                                        '&:hover': {
-                                                            backgroundColor: 'rgba(47, 118, 230, 0.1)',
-                                                        },
-                                                    }}
-                                                >
-                                                    <BarChartIcon fontSize="small" />
-                                                </IconButton>
-                                            </span>
+                                        <Tooltip title="Ver KPIs" arrow>
+                                            <IconButton
+                                                onClick={() => fetchEquipoDetalle(equipo)}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'action.hover',
+                                                    '&:hover': {
+                                                        bgcolor: 'primary.main',
+                                                        color: 'white',
+                                                    },
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <BarChartIcon fontSize="small" />
+                                            </IconButton>
                                         </Tooltip>
                                     </TableCell>
                                 </TableRow>
@@ -729,6 +731,7 @@ export default function KpisJefeCentro() {
                                       if (equipoSeleccionado) {
                                           fetchEquipoDetalle(equipoSeleccionado);
                                       } else {
+                                          setPage(0); // Resetear a primera página al refresh
                                           fetchEquipos();
                                       }
                                   }

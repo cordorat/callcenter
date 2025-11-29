@@ -555,10 +555,18 @@ export default function KpisCoordinador() {
                                                         {agente.ventas}
                                                     </TableCell>
                                                     <TableCell align="center">
-                                                        <Tooltip title="Ver detalles">
+                                                        <Tooltip title="Ver detalles" arrow>
                                                             <IconButton
                                                                 size="small"
                                                                 onClick={() => navigate(`/kpis/agentes/${agente.agente_id}`)}
+                                                                sx={{
+                                                                  bgcolor: 'action.hover',
+                                                                  '&:hover': {
+                                                                    bgcolor: 'primary.main',
+                                                                    color: 'white',
+                                                                  },
+                                                                  transition: 'all 0.2s'
+                                                                }}
                                                             >
                                                                 <PersonIcon fontSize="small" />
                                                             </IconButton>

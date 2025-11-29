@@ -684,21 +684,21 @@ export default function KpisJefeCampana() {
                                         </Typography>
                                     </TableCell>
                                     <TableCell align="center">
-                                        <Tooltip title="Ver KPIs">
-                                            <span>
-                                                <IconButton
-                                                    onClick={() => fetchEquipoDetalle(equipo)}
-                                                    size="small"
-                                                    sx={{
-                                                        color: 'primary.main',
-                                                        '&:hover': {
-                                                            backgroundColor: 'rgba(47, 118, 230, 0.1)',
-                                                        },
-                                                    }}
-                                                >
-                                                    <BarChartIcon fontSize="small" />
-                                                </IconButton>
-                                            </span>
+                                        <Tooltip title="Ver KPIs" arrow>
+                                            <IconButton
+                                                onClick={() => fetchEquipoDetalle(equipo)}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'action.hover',
+                                                    '&:hover': {
+                                                        bgcolor: 'primary.main',
+                                                        color: 'white',
+                                                    },
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <BarChartIcon fontSize="small" />
+                                            </IconButton>
                                         </Tooltip>
                                     </TableCell>
                                 </TableRow>
@@ -945,21 +945,21 @@ export default function KpisJefeCampana() {
                                         />
                                     </TableCell>
                                     <TableCell align="center">
-                                        <Tooltip title="Ver KPIs">
-                                            <span>
-                                                <IconButton
-                                                    onClick={() => fetchAgenteDetalle(agente)}
-                                                    size="small"
-                                                    sx={{
-                                                        color: 'primary.main',
-                                                        '&:hover': {
-                                                            backgroundColor: 'rgba(47, 118, 230, 0.1)',
-                                                        },
-                                                    }}
-                                                >
-                                                    <BarChartIcon fontSize="small" />
-                                                </IconButton>
-                                            </span>
+                                        <Tooltip title="Ver KPIs" arrow>
+                                            <IconButton
+                                                onClick={() => fetchAgenteDetalle(agente)}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'action.hover',
+                                                    '&:hover': {
+                                                        bgcolor: 'primary.main',
+                                                        color: 'white',
+                                                    },
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <BarChartIcon fontSize="small" />
+                                            </IconButton>
                                         </Tooltip>
                                     </TableCell>
                                 </TableRow>

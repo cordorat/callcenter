@@ -291,21 +291,21 @@ export default function AgentesPage() {
                         />
                       </TableCell>
                       <TableCell align="center" sx={{ borderBottom: theme.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)' }}>
-                        <Tooltip title="Ver KPIs">
-                          <span>
-                            <IconButton
-                              onClick={() => navigate(`/kpis/agentes/${agente.id}`, { state: { agente } })}
-                              size="small"
-                              sx={{
-                                color: 'primary.main',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(47, 118, 230, 0.1)',
-                                },
-                              }}
-                            >
-                              <BarChartIcon fontSize="small" />
-                            </IconButton>
-                          </span>
+                        <Tooltip title="Ver KPIs" arrow>
+                          <IconButton
+                            onClick={() => navigate(`/kpis/agentes/${agente.id}`, { state: { agente } })}
+                            size="small"
+                            sx={{
+                              bgcolor: 'action.hover',
+                              '&:hover': {
+                                bgcolor: 'primary.main',
+                                color: 'white',
+                              },
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <BarChartIcon fontSize="small" />
+                          </IconButton>
                         </Tooltip>
                       </TableCell>
                     </TableRow>

@@ -9,7 +9,7 @@ import { useAuth } from '@/core/context/AuthContext';
 import apiClient from '@/core/api/apiClient';
 import { ENDPOINTS } from '@/core/api/endpoints';
 import { listarBasesDatos, eliminarBaseDatos } from '@/core/api/campaigns';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ClientesBaseDatosModal from './ClientesBaseDatosModal';
 
@@ -450,39 +450,41 @@ export default function Campaing({ selectedFile = null, onClearFile = null, onSe
                             : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
                       >
-                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                           {/* Botón para ver clientes */}
-                          <Tooltip title="Ver clientes" arrow placement="left">
+                          <Tooltip title="Ver clientes" arrow>
                             <IconButton
                               onClick={(e) => handleViewClientes(e, b)}
                               size="small"
                               sx={{
-                                color: theme.palette.primary.main,
+                                bgcolor: 'action.hover',
                                 '&:hover': {
-                                  backgroundColor: theme.palette.mode === 'light'
-                                    ? 'rgba(12, 21, 90, 0.08)'
-                                    : 'rgba(47, 118, 230, 0.08)',
-                                }
+                                  bgcolor: 'primary.main',
+                                  color: 'white',
+                                },
+                                transition: 'all 0.2s'
                               }}
                             >
-                              <VisibilityIcon />
+                              <VisibilityIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                           
                           {/* Botón para eliminar (solo admin) */}
                           {isAdmin && (
-                            <Tooltip title="Eliminar base de datos" arrow placement="right">
+                            <Tooltip title="Eliminar base de datos" arrow>
                               <IconButton
                                 onClick={(e) => handleDeleteClick(e, b)}
                                 size="small"
                                 sx={{
-                                  color: '#d32f2f',
+                                  bgcolor: 'action.hover',
                                   '&:hover': {
-                                    backgroundColor: 'rgba(211, 47, 47, 0.08)',
-                                  }
+                                    bgcolor: 'error.main',
+                                    color: 'white',
+                                  },
+                                  transition: 'all 0.2s'
                                 }}
                               >
-                                <DeleteOutlineIcon />
+                                <DeleteIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                           )}

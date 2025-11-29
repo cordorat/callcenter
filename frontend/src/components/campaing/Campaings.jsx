@@ -384,38 +384,32 @@ export default function CampaignsComponent({
 
                 {/* Acciones */}
                 {showActions && (
-                  <TableCell align="center">
-                    <Tooltip title="Editar campaña" arrow placement="top">
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          console.log('[Campaings] click editar', campana);
-                          if (onEditCampaign) {
-                            onEditCampaign(campana);
-                          } else if (onEditTeam) {
-                            onEditTeam(campana);
-                          }
-                        }}
-                        sx={{
-                          bgcolor: theme.palette.mode === 'light' 
-                            ? 'rgba(66, 165, 245, 0.1)' 
-                            : 'rgba(66, 165, 245, 0.2)',
-                          '&:href': {
-                            bgcolor: 'primary.main',
-                            color: 'white',
-                            transform: 'scale(1.1)',
-                          },
-                          '&:hover': {
-                            bgcolor: 'primary.main',
-                            color: 'white',
-                            transform: 'scale(1.1)',
-                          },
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                  <TableCell align="center" sx={{ borderBottom: theme.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
+                    <Stack direction="row" spacing={0.5} justifyContent="center">
+                      <Tooltip title="Editar campaña" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            console.log('[Campaings] click editar', campana);
+                            if (onEditCampaign) {
+                              onEditCampaign(campana);
+                            } else if (onEditTeam) {
+                              onEditTeam(campana);
+                            }
+                          }}
+                          sx={{
+                            bgcolor: 'action.hover',
+                            '&:hover': {
+                              bgcolor: 'primary.main',
+                              color: 'white',
+                            },
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
                   </TableCell>
                 )}
               </TableRow>
