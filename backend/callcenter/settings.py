@@ -344,3 +344,8 @@ CELERY_TASK_ROUTES = {
 # Configuración para almacenar resultados en la DB (opcional)
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_CACHE_BACKEND = 'django-cache'
+
+# =============================================================================
+# ASSEMBLYAI - Transcripción de Llamadas
+# =============================================================================
+ASSEMBLYAI_API_KEY = config('ASSEMBLYAI_API_KEY', default=None)

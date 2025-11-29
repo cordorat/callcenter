@@ -1519,6 +1519,147 @@ class LlamadaViewSet(viewsets.ModelViewSet):
                 {'error': f'Error al obtener reportes: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    @action(detail=True, methods=['get'], url_path='recording-proxy')
+    def recording_proxy(self, request, pk=None):
+        """
+        Proxy para obtener grabaciones de Twilio con autenticación.
+        Permite reproducir grabaciones sin exponer credenciales en el frontend.
+        
+        GET /api/calls/llamadas/{id}/recording-proxy/
+        
+        Response:
+        - Redirige al audio con credenciales de autenticación en los headers
+        - O retorna el stream del audio directamente
+        """
+        try:
+            from django.http import HttpResponse
+            import requests
+            from django.conf import settings
+            
+            llamada = self.get_object()
+            
+            # Verificar permisos
+            user = request.user
+            if not (user.is_backoffice() or user.is_admin() or llamada.agente == user):
+                if user.is_coordinador():
+                    from apps.campaigns.models import Equipo
+                    equipos = Equipo.objects.filter(coordinador=user, is_active=True)
+                    if equipos.exists():
+                        agentes_equipo = User.objects.filter(equipos__in=equipos).distinct()
+                        if llamada.agente not in agentes_equipo:
+                            return Response(
+                                {'error': 'No tiene permisos para acceder a esta grabación'},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        return Response(
+                            {'error': 'No tiene permisos para acceder a esta grabación'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                else:
+                    return Response(
+                        {'error': 'No tiene permisos para acceder a esta grabación'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            
+            # Obtener URL de la grabación
+            recording_url = llamada.twilio_recording_url or llamada.grabacion_url
+            
+            if not recording_url:
+                return Response(
+                    {'error': 'No hay grabación disponible para esta llamada'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Hacer petición a Twilio con autenticación básica
+            twilio_auth = (settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+            
+            logger.info(f"[RECORDING_PROXY] Obteniendo grabación para llamada {llamada.id}: {recording_url}")
+            
+            # Solicitar el archivo con autenticación
+            response = requests.get(recording_url, auth=twilio_auth, stream=True)
+            
+            if response.status_code != 200:
+                logger.error(f"[RECORDING_PROXY] Error al obtener grabación: {response.status_code}")
+                return Response(
+                    {'error': f'Error al obtener la grabación: {response.status_code}'},
+                    status=status.HTTP_502_BAD_GATEWAY
+                )
+            
+            # Retornar el stream de audio
+            django_response = HttpResponse(
+                response.content,
+                content_type=response.headers.get('Content-Type', 'audio/mpeg')
+            )
+            django_response['Content-Disposition'] = f'inline; filename="recording_{llamada.id}.mp3"'
+            django_response['Cache-Control'] = 'private, max-age=3600'
+            
+            logger.info(f"[RECORDING_PROXY] Grabación entregada exitosamente para llamada {llamada.id}")
+            
+            return django_response
+            
+        except Exception as e:
+            logger.error(f"[RECORDING_PROXY] Error al procesar grabación de llamada {pk}: {str(e)}")
+            return Response(
+                {'error': f'Error al obtener la grabación: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['post'], url_path='generar-transcripcion')
+    def generar_transcripcion(self, request, pk=None):
+        """
+        Genera transcripción de una llamada manualmente usando AssemblyAI.
+        
+        Útil para:
+        - Transcribir llamadas antiguas que no tienen transcripción
+        - Re-transcribir una llamada si hubo error
+        - Generar transcripción bajo demanda desde el backoffice
+        
+        URL: POST /api/calls/llamadas/{id}/generar-transcripcion/
+        
+        Respuesta:
+        {
+            "message": "Transcripción iniciada",
+            "task_id": "abc123-def456",
+            "llamada_id": 42
+        }
+        """
+        llamada = self.get_object()
+        
+        # Validar que hay grabación
+        if not llamada.twilio_recording_url and not llamada.grabacion_url:
+            return Response(
+                {'error': 'Esta llamada no tiene grabación disponible'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Informar si ya tiene transcripción
+        if llamada.transcipcion:
+            return Response(
+                {
+                    'message': 'Esta llamada ya tiene transcripción',
+                    'transcripcion': llamada.transcipcion,
+                    'puede_regenerar': True
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        # Disparar tarea asíncrona
+        from apps.calls.tasks import generar_transcripcion as generar_transcripcion_task
+        task = generar_transcripcion_task.apply_async(args=[llamada.id])
+        
+        logger.info(f"[TRANSCRIPCIÓN] Tarea manual iniciada para llamada {llamada.id} (task_id: {task.id})")
+        
+        return Response(
+            {
+                'message': 'Transcripción iniciada. El proceso puede tomar varios minutos.',
+                'task_id': task.id,
+                'llamada_id': llamada.id,
+                'estimado_segundos': llamada.duracion * 0.3 if llamada.duracion else 60  # ~30% del tiempo del audio
+            },
+            status=status.HTTP_202_ACCEPTED
+        )
 
 class HistorialJefeCampanaViewSet(viewsets.ReadOnlyModelViewSet):
     """

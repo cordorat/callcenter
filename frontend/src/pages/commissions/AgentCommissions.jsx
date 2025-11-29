@@ -222,7 +222,7 @@ export default function AgentCommissions() {
           >
             Mis comisiones
           </Typography>
-          
+
           <Tooltip title="Actualizar">
             <IconButton
               onClick={handleRefresh}
@@ -769,8 +769,8 @@ export default function AgentCommissions() {
                                   row.status === "CONFIRMADA"
                                     ? "success"
                                     : row.status === "PENDIENTE"
-                                    ? "warning"
-                                    : "default"
+                                      ? "warning"
+                                      : "default"
                                 }
                                 variant={
                                   row.status === "ANULADA" ? "outlined" : "filled"

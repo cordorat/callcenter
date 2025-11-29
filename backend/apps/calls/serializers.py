@@ -420,7 +420,7 @@ class HistorialLlamadaSerializer(serializers.ModelSerializer):
             'telefono_origen', 'telefono_destino',
             'fecha_hora_inicio', 'fecha_hora_fin', 'duracion',
             'duracion_total_formateada', 'tiene_grabacion', 'grabacion_url',
-            'twilio_call_sid', 'twilio_recording_url', 'fue_contestada',
+            'twilio_call_sid', 'twilio_recording_url', 'transcipcion', 'fue_contestada',
             'estado_llamada', 'estado_llamada_valor',
             'estado_venta', 'estado_venta_valor', 'es_venta',
             'estado_reportada', 'estado_reportada_valor',

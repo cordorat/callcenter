@@ -892,6 +892,15 @@ def twilio_recording_webhook(request):
                     llamada.twilio_recording_url = recording_url
                     llamada.grabacion_url = recording_url
                     llamada.save(update_fields=['twilio_recording_sid', 'twilio_recording_url', 'grabacion_url'])
+                    
+                    # 🔥 Disparar tarea de transcripción automática
+                    if recording_status == 'completed':
+                        from apps.calls.tasks import generar_transcripcion
+                        generar_transcripcion.apply_async(
+                            args=[llamada.id],
+                            countdown=10  # Esperar 10s para asegurar que grabación esté disponible
+                        )
+                        logger.info(f"[RECORDING] Tarea de transcripción programada para llamada {llamada.id}")
             else:
                 logger.error(f"[RECORDING] Llamada no encontrada - CallSID={call_sid}")
                 

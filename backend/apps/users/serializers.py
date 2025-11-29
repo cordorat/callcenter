@@ -3,6 +3,109 @@ from django.contrib.auth.password_validation import validate_password
 from .models import User, TiposParametros
 from common.estados_helper import get_estado
 import re
+import base64
+
+
+# =============================================================================
+# Funciones auxiliares para manejo de imágenes base64
+# =============================================================================
+
+def convert_image_to_base64(image_input):
+    """
+    Convierte una imagen a formato base64.
+    
+    Args:
+        image_input: Puede ser:
+            - String base64 (ya convertido) → devuelve tal cual
+            - URL (http/https) → descarga y convierte
+            - Archivo binario → convierte
+    
+    Returns:
+        String en formato "data:image/{format};base64,{base64_string}"
+        o None si hay error
+    """
+    try:
+        # Caso 1: Ya es base64
+        if isinstance(image_input, str):
+            if image_input.startswith('data:image'):
+                return image_input
+            
+            # Caso 2: Es una URL
+            if image_input.startswith('http://') or image_input.startswith('https://'):
+                # Configurar headers para simular navegador
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+                response = requests.get(
+                    image_input, 
+                    timeout=15,
+                    headers=headers,
+                    verify=True
+                )
+                response.raise_for_status()
+                image_data = response.content
+                
+                # Detectar formato de imagen
+                img = Image.open(BytesIO(image_data))
+                img_format = img.format.lower()
+                
+                # Convertir a base64
+                base64_data = base64.b64encode(image_data).decode('utf-8')
+                return f"data:image/{img_format};base64,{base64_data}"
+        
+        # Caso 3: Es un archivo binario (UploadedFile, bytes, etc)
+        if hasattr(image_input, 'read'):
+            image_data = image_input.read()
+        else:
+            image_data = image_input
+        
+        # Detectar formato
+        img = Image.open(BytesIO(image_data))
+        img_format = img.format.lower()
+        
+        # Convertir a base64
+        base64_data = base64.b64encode(image_data).decode('utf-8')
+        return f"data:image/{img_format};base64,{base64_data}"
+        
+    except requests.RequestException as e:
+        # Error específico de requests (timeout, conexión, etc)
+        print(f"Error al descargar imagen desde URL: {str(e)}")
+        return None
+    except Exception as e:
+        # Otros errores (PIL, encoding, etc)
+        print(f"Error al procesar imagen: {str(e)}")
+        return None
+
+
+def validate_base64_image(value):
+    """
+    Valida que un string sea una imagen base64 válida.
+    
+    Args:
+        value: String a validar
+    
+    Returns:
+        True si es válido, False si no
+    """
+    if not value:
+        return True  # Campo vacío es válido (opcional)
+    
+    # Debe empezar con data:image/
+    if not value.startswith('data:image/'):
+        return False
+    
+    # Debe contener ;base64,
+    if ';base64,' not in value:
+        return False
+    
+    try:
+        # Extraer la parte base64
+        base64_data = value.split(';base64,')[1]
+        # Intentar decodificar
+        base64.b64decode(base64_data)
+        return True
+    except Exception:
+        return False
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -70,6 +173,19 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'password_confirm',
             'is_active'
         ]
+    
+    def validate_foto_perfil(self, value):
+        """Valida que la foto de perfil esté en formato base64."""
+        if not value:
+            return value
+        
+        # Validar que sea base64 válido
+        if not validate_base64_image(value):
+            raise serializers.ValidationError(
+                "El formato de la imagen no es válido. Debe ser una imagen en formato base64."
+            )
+        
+        return value
 
     def validate(self, attrs):
         """Valida las contraseñas en orden: primero coincidencia, luego complejidad."""
@@ -155,6 +271,19 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'foto_perfil',
             'is_active'
         ]
+    
+    def validate_foto_perfil(self, value):
+        """Valida que la foto de perfil esté en formato base64."""
+        if not value:
+            return value
+        
+        # Validar que sea base64 válido
+        if not validate_base64_image(value):
+            raise serializers.ValidationError(
+                "El formato de la imagen no es válido. Debe ser una imagen en formato base64."
+            )
+        
+        return value
 
     def validate(self, attrs):
         """Validaciones adicionales para actualización."""
@@ -548,6 +677,19 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             'foto_perfil'
         ]
         read_only_fields = ['documento_id']
+    
+    def validate_foto_perfil(self, value):
+        """Valida que la foto de perfil esté en formato base64."""
+        if not value:
+            return value
+        
+        # Validar que sea base64 válido
+        if not validate_base64_image(value):
+            raise serializers.ValidationError(
+                "El formato de la imagen no es válido. Debe ser una imagen en formato base64."
+            )
+        
+        return value
 
     def validate_email(self, value):
         """

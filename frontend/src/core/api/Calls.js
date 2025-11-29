@@ -95,4 +95,16 @@ export const callsService = {
     const response = await apiClient.post(url, { descripcion });
     return response.data;
   },
+
+  /**
+   * Obtiene la URL del proxy de grabación para una llamada
+   * Este endpoint actúa como proxy para las grabaciones de Twilio,
+   * agregando las credenciales de autenticación necesarias.
+   * 
+   * @param {number} llamadaId - ID de la llamada
+   * @returns {string} URL del endpoint proxy
+   */
+  getRecordingProxyUrl: (llamadaId) => {
+    return `${ENDPOINTS.CALLS}llamadas/${llamadaId}/recording-proxy/`;
+  },
 };

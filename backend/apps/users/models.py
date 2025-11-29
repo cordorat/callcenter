@@ -83,13 +83,12 @@ class User(AbstractUser):
         unique=True,
         help_text='Numero de documento de indentidad'
     )
-    # Foto de perfil
-    foto_perfil = models.URLField(
+    # Foto de perfil (almacenada como base64)
+    foto_perfil = models.TextField(
         'Foto de Perfil',
-        max_length=500,
         blank=True,
         null=True,
-        help_text='URL de la foto de perfil del usuario'
+        help_text='Foto de perfil del usuario en formato base64 (data:image/...)'
     )
     # Rol y estado
     rol = models.ForeignKey(
