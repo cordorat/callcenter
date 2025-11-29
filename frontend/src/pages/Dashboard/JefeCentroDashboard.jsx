@@ -123,15 +123,15 @@ export default function JefeCentroDashboard() {
               aria-label="Actualizar"
               size="large"
               sx={{
-                backgroundColor: isDark ? "#2A3B70" : "#0C155A",
+                backgroundColor: theme.palette.primary.main,
                 color: "#fff",
                 transition: "all 0.3s ease",
                 "&:hover": {
-                  backgroundColor: isDark ? "#1F2E57" : "#0A1147",
+                  backgroundColor: theme.palette.primary.dark,
                   transform: "rotate(180deg)",
                 },
                 "&.Mui-disabled": {
-                  backgroundColor: isDark ? "rgba(42, 59, 112, 0.5)" : "rgba(12, 21, 90, 0.5)",
+                  backgroundColor: theme.palette.action.disabled,
                   color: "rgba(255, 255, 255, 0.5)",
                 },
               }}
@@ -399,7 +399,7 @@ export default function JefeCentroDashboard() {
                 <BarChart
                   data={ventasData}
                   layout="vertical"
-                  margin={{ top: 5, right: 20, left: 150, bottom: 5 }}
+                  margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -413,8 +413,8 @@ export default function JefeCentroDashboard() {
                   <YAxis
                     dataKey="nombre"
                     type="category"
-                    width={140}
-                    tick={{ fontSize: 12 }}
+                    width={55}
+                    tick={{ fontSize: 14 }}
                     stroke={isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)"}
                   />
                   <RechartsTooltip

@@ -10,6 +10,7 @@ import { useTheme } from '@mui/material/styles';
 import {
   Add as AddIcon,
   Campaign as CampaignIcon,
+  Domain as DomainIcon,
 } from '@mui/icons-material';
 
 import CreateProductModal from "@/components/campaing/CreateProductModal.jsx";
@@ -76,77 +77,102 @@ export default function CampaingJefeCentro() {
     <MainLayout title="Gestión de Campañas">
       <Box sx={{ py: 4, px: { xs: 2, sm: 3, md: 4 } }}>
         
-        {/* Header con descripción y botones */}
-        <Paper 
-          elevation={0}
-          sx={{ 
-            p: 3, 
-            mb: 4,
-            borderRadius: 3,
-            backgroundColor: theme.palette.mode === 'light' 
-              ? 'rgba(66, 165, 245, 0.05)' 
-              : 'rgba(66, 165, 245, 0.1)',
-            border: `1px solid ${theme.palette.divider}`,
-          }}
-        >
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 2
-          }}>
-            <Box>
-              <Typography variant="h5" fontWeight="bold" gutterBottom>
-                Campañas del Centro
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Administra las campañas activas y crea nuevas campañas para tu centro
-              </Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={handleOpenProducto}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 3,
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: theme.shadows[4],
-                  },
-                  transition: 'all 0.2s',
-                }}
-              >
-                Nuevo Producto
-              </Button>
+        {/* Header con gradiente adaptivo */}
+        {(() => {
+          const gradientBg = theme.palette.mode === 'light'
+            ? 'linear-gradient(135deg, #2c86eeff 0%, #2a15e9ff 100%)'
+            : 'linear-gradient(135deg, #0C155A 0%, #040c47ff 100%)';
+
+          return (
+            <Box
+              sx={{
+                background: gradientBg,
+                borderRadius: 3,
+                p: 4,
+                mb: 4,
+                boxShadow: theme.palette.mode === 'light'
+                  ? '0 8px 32px rgba(102, 126, 234, 0.25)'
+                  : '0 8px 32px rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 2,
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <Box sx={{ color: 'white' }}>
+                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <DomainIcon sx={{ fontSize: 40 }} />
+                  Campañas del Centro
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.95 }}>
+                  Administra las campañas activas y crea nuevas campañas para tu centro
+                </Typography>
+              </Box>
               
-              <Button
-                variant="contained"
-                startIcon={<CampaignIcon />}
-                onClick={handleOpenCampana}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 3,
-                  boxShadow: theme.shadows[3],
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: theme.shadows[6],
-                  },
-                  transition: 'all 0.2s',
-                }}
-              >
-                Nueva Campaña
-              </Button>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<AddIcon />}
+                  onClick={handleOpenProducto}
+                  sx={{
+                    bgcolor: theme.palette.mode === 'light' ? 'white' : 'rgba(255, 255, 255, 0.1)',
+                    color: theme.palette.mode === 'light' ? 'primary.main' : 'white',
+                    fontWeight: 600,
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 2,
+                    border: theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
+                    boxShadow: theme.palette.mode === 'light'
+                      ? '0 4px 12px rgba(0,0,0,0.15)'
+                      : '0 4px 12px rgba(0,0,0,0.3)',
+                    '&:hover': {
+                      bgcolor: theme.palette.mode === 'light' ? 'grey.100' : 'rgba(255, 255, 255, 0.15)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: theme.palette.mode === 'light'
+                        ? '0 6px 20px rgba(0,0,0,0.2)'
+                        : '0 6px 20px rgba(0,0,0,0.4)',
+                    },
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  Nuevo Producto
+                </Button>
+                
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<CampaignIcon />}
+                  onClick={handleOpenCampana}
+                  sx={{
+                    bgcolor: theme.palette.mode === 'light' ? 'white' : 'rgba(255, 255, 255, 0.1)',
+                    color: theme.palette.mode === 'light' ? 'primary.main' : 'white',
+                    fontWeight: 600,
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 2,
+                    border: theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
+                    boxShadow: theme.palette.mode === 'light'
+                      ? '0 4px 12px rgba(0,0,0,0.15)'
+                      : '0 4px 12px rgba(0,0,0,0.3)',
+                    '&:hover': {
+                      bgcolor: theme.palette.mode === 'light' ? 'grey.100' : 'rgba(255, 255, 255, 0.15)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: theme.palette.mode === 'light'
+                        ? '0 6px 20px rgba(0,0,0,0.2)'
+                        : '0 6px 20px rgba(0,0,0,0.4)',
+                    },
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  Nueva Campaña
+                </Button>
+              </Box>
             </Box>
-          </Box>
-        </Paper>
+          );
+        })()}
 
         {/* Tabla de campañas con botón Editar */}
         <CampaignsComponent

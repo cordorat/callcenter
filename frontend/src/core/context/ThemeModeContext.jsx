@@ -24,7 +24,7 @@ export function ThemeModeProvider({ children }) {
           mode,
           primary: {
             main: mode === "light" ? "#0C155A" : "#4A8FE7", // Color principal para botones, links, etc.
-            secondary: mode === "light" ? "#777986" : "#A4A4A8", // Color secundario
+            secondary: mode === "light" ? "#5A6269" : "#7A8087", // Color secundario (gris más oscuro)
           },
           secondary: {
             main: mode === "light" ? "#BDBCC2" : "#A4A4A8", // Color secundario

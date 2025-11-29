@@ -38,12 +38,12 @@
   font-size: 0.9rem;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(12, 21, 90, 0.2);
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 .btn:hover {
   background: var(--primary-dark, #1a2b7a);
   box-shadow: 0 4px 12px rgba(12, 21, 90, 0.3);
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.05);
 }
 .btn:disabled { 
   opacity: .6; 
@@ -84,7 +84,6 @@
 }
 
 .update-badge::before {
-  content: "🕐";
   font-size: 14px;
 }
 

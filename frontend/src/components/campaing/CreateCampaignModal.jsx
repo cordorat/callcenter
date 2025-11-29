@@ -15,10 +15,9 @@ import {
     CircularProgress,
     Switch,
     FormControlLabel,
+    Divider,
+    Grid,
 } from '@mui/material';
-import {
-    Search as SearchIcon,
-} from '@mui/icons-material';
 import {
     createCampaign,
     searchJefesCampana,
@@ -253,9 +252,10 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
         <Dialog
             open={open}
             onClose={handleClose}
-            maxWidth="sm"
+            maxWidth="md"
             fullWidth
             PaperProps={{
+                elevation: 2,
                 sx: {
                     borderRadius: 3,
                     backdropFilter: 'blur(4px)',
@@ -264,20 +264,13 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
         >
             <DialogTitle
                 sx={{
-                    fontWeight: 700,
-                    fontSize: '1.25rem',
-                    background: (theme) =>
-                        theme.palette.mode === 'light'
-                            ? 'linear-gradient(135deg, #0C155A 0%, #1A2E7A 100%)'
-                            : 'linear-gradient(135deg, #1A2E7A 0%, #0F1F4A 100%)',
-                    color: 'white',
-                    borderRadius: '12px 12px 0 0',
+                    pb: 1,
                 }}
             >
                 Crear Nueva Campaña
             </DialogTitle>
 
-            <DialogContent dividers sx={{ py: 3 }}>
+            <DialogContent dividers sx={{ py: 2 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                     {successMessage && (
                         <Box
@@ -311,134 +304,55 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                         </Box>
                     )}
 
-                    {/* Nombre de la campaña */}
-                    <Box>
+                    {/* SECCIÓN 1: Información general */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <Typography
-                            variant="caption"
+                            variant="subtitle2"
                             sx={{
-                                fontWeight: 700,
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
                                 textTransform: 'uppercase',
                                 letterSpacing: 0.5,
                                 color: 'text.secondary',
-                                mb: 2,
-                                display: 'block',
                             }}
                         >
-                            Nombre de la Campaña
+                            Información general
                         </Typography>
+                        <Divider />
+
                         <TextField
+                            label="Nombre de la campaña"
                             fullWidth
-                            label="Ej: Campaña Navidad 2025"
                             value={nombre}
                             onChange={(e) => setNombre(e.target.value)}
                             error={!!errors.nombre}
-                            helperText={errors.nombre || `${nombre.length}/50 caracteres`}
-                            disabled={loading || !!successMessage}
+                            helperText={
+                                errors.nombre || `${nombre.length}/50 caracteres`
+                            }
                             inputProps={{ maxLength: 50 }}
-                            variant="outlined"
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: '10px',
-                                    backgroundColor: (theme) =>
-                                        theme.palette.mode === 'light'
-                                            ? '#EBF5FE'
-                                            : 'rgba(255, 255, 255, 0.05)',
-                                    '& fieldset': {
-                                        borderColor: (theme) =>
-                                            theme.palette.mode === 'light'
-                                                ? 'rgba(12, 21, 90, 0.15)'
-                                                : 'rgba(255, 255, 255, 0.15)',
-                                        borderWidth: '1.5px',
-                                    },
-                                    '&:hover fieldset': {
-                                        borderColor: (theme) =>
-                                            theme.palette.mode === 'light'
-                                                ? 'rgba(12, 21, 90, 0.3)'
-                                                : 'rgba(255, 255, 255, 0.3)',
-                                    },
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: (theme) => theme.palette.primary.main,
-                                        borderWidth: '2px',
-                                    },
-                                },
-                            }}
+                            disabled={loading || !!successMessage}
                         />
-                    </Box>
 
-                    {/* Descripción */}
-                    <Box>
-                        <Typography
-                            variant="caption"
-                            sx={{
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: 0.5,
-                                color: 'text.secondary',
-                                mb: 2,
-                                display: 'block',
-                            }}
-                        >
-                            Descripción
-                        </Typography>
                         <TextField
+                            label="Descripción"
                             fullWidth
                             multiline
-                            minRows={3}
-                            label="Describe los objetivos y características de la campaña"
+                            minRows={2}
                             value={descripcion}
                             onChange={(e) => setDescripcion(e.target.value)}
                             error={!!errors.descripcion}
-                            helperText={errors.descripcion || `${descripcion.length}/200 caracteres`}
-                            disabled={loading || !!successMessage}
+                            helperText={
+                                errors.descripcion ||
+                                `${descripcion.length}/200 caracteres`
+                            }
                             inputProps={{ maxLength: 200 }}
-                            variant="outlined"
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: '10px',
-                                    backgroundColor: (theme) =>
-                                        theme.palette.mode === 'light'
-                                            ? '#EBF5FE'
-                                            : 'rgba(255, 255, 255, 0.05)',
-                                    '& fieldset': {
-                                        borderColor: (theme) =>
-                                            theme.palette.mode === 'light'
-                                                ? 'rgba(12, 21, 90, 0.15)'
-                                                : 'rgba(255, 255, 255, 0.15)',
-                                        borderWidth: '1.5px',
-                                    },
-                                    '&:hover fieldset': {
-                                        borderColor: (theme) =>
-                                            theme.palette.mode === 'light'
-                                                ? 'rgba(12, 21, 90, 0.3)'
-                                                : 'rgba(255, 255, 255, 0.3)',
-                                    },
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: (theme) => theme.palette.primary.main,
-                                        borderWidth: '2px',
-                                    },
-                                },
-                            }}
+                            disabled={loading || !!successMessage}
                         />
-                    </Box>
 
-                    {/* Jefe de campaña */}
-                    <Box>
-                        <Typography
-                            variant="caption"
-                            sx={{
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: 0.5,
-                                color: 'text.secondary',
-                                mb: 2,
-                                display: 'block',
-                            }}
-                        >
-                            Jefe de Campaña
-                        </Typography>
+                        {/* Jefe de campaña */}
                         <Autocomplete
+                            fullWidth
                             options={jefesCampana}
-                            getOptionLabel={(option) => option.nombre_completo || ''}
                             value={jefeCampanaSeleccionado}
                             onChange={(event, newValue) => {
                                 setJefeCampanaSeleccionado(newValue);
@@ -455,199 +369,130 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                             }}
                             loading={loadingJefes}
                             disabled={loading || !!successMessage}
+                            isOptionEqualToValue={(option, value) =>
+                                Boolean(option && value) && option.id === value.id
+                            }
+                            getOptionLabel={(option) =>
+                                option
+                                    ? `${option.codigo ?? ""} - ${option.nombre ?? ""}`
+                                    : ""
+                            }
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
+                                    label="Jefe de campaña"
                                     placeholder="Buscar por nombre o código"
-                                    error={!!errors.jefe_campana}
+                                    error={Boolean(errors.jefe_campana)}
                                     helperText={errors.jefe_campana}
-                                    variant="outlined"
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            borderRadius: '10px',
-                                            backgroundColor: (theme) =>
-                                                theme.palette.mode === 'light'
-                                                    ? '#EBF5FE'
-                                                    : 'rgba(255, 255, 255, 0.05)',
-                                            '& fieldset': {
-                                                borderColor: (theme) =>
-                                                    theme.palette.mode === 'light'
-                                                        ? 'rgba(12, 21, 90, 0.15)'
-                                                        : 'rgba(255, 255, 255, 0.15)',
-                                                borderWidth: '1.5px',
-                                            },
-                                            '&:hover fieldset': {
-                                                borderColor: (theme) =>
-                                                    theme.palette.mode === 'light'
-                                                        ? 'rgba(12, 21, 90, 0.3)'
-                                                        : 'rgba(255, 255, 255, 0.3)',
-                                            },
-                                            '&.Mui-focused fieldset': {
-                                                borderColor: (theme) => theme.palette.primary.main,
-                                                borderWidth: '2px',
-                                            },
-                                        },
-                                    }}
-                                    InputProps={{
-                                        ...params.InputProps,
-                                        startAdornment: (
-                                            <>
-                                                <SearchIcon sx={{ ml: 0, mr: 0.5, color: 'text.secondary', flexShrink: 0 }} />
-                                                {params.InputProps.startAdornment}
-                                            </>
-                                        ),
-                                        endAdornment: (
-                                            <>
-                                                {loadingJefes ? <CircularProgress size={20} /> : null}
-                                                {params.InputProps.endAdornment}
-                                            </>
-                                        ),
-                                    }}
                                 />
                             )}
-                            renderOption={(props, option) => (
-                                <li {...props}>
-                                    <Box>
-                                        <Typography variant="body2">{option.nombre_completo}</Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            {option.email} • Código: {option.codigo}
-                                        </Typography>
-                                    </Box>
-                                </li>
-                            )}
-                            noOptionsText={
-                                loadingJefes
-                                    ? "Cargando..."
-                                    : searchJefes
-                                        ? "No se encontraron jefes de campaña"
-                                        : "No hay jefes disponibles"
-                            }
                         />
-                    </Box>
 
-                    {/* Fecha de inicio */}
-                    <Box>
-                        <Typography
-                            variant="caption"
+                        {/* Estado - Switch */}
+                        <Box
                             sx={{
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: 0.5,
-                                color: 'text.secondary',
-                                mb: 2,
-                                display: 'block',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                mt: 1,
                             }}
                         >
-                            Fecha de Inicio
-                        </Typography>
-                        <TextField
-                            fullWidth
-                            type="date"
-                            value={fechaInicio}
-                            onChange={(e) => setFechaInicio(e.target.value)}
-                            error={!!errors.fecha_inicio}
-                            helperText={errors.fecha_inicio}
-                            disabled={loading || !!successMessage}
-                            InputLabelProps={{ shrink: true }}
-                            variant="outlined"
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: '10px',
-                                    backgroundColor: (theme) =>
-                                        theme.palette.mode === 'light'
-                                            ? '#EBF5FE'
-                                            : 'rgba(255, 255, 255, 0.05)',
-                                    '& fieldset': {
-                                        borderColor: (theme) =>
-                                            theme.palette.mode === 'light'
-                                                ? 'rgba(12, 21, 90, 0.15)'
-                                                : 'rgba(255, 255, 255, 0.15)',
-                                        borderWidth: '1.5px',
-                                    },
-                                    '&:hover fieldset': {
-                                        borderColor: (theme) =>
-                                            theme.palette.mode === 'light'
-                                                ? 'rgba(12, 21, 90, 0.3)'
-                                                : 'rgba(255, 255, 255, 0.3)',
-                                    },
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: (theme) => theme.palette.primary.main,
-                                        borderWidth: '2px',
-                                    },
-                                },
-                            }}
-                        />
+                            <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 600, color: 'text.primary' }}
+                            >
+                                Estado de la Campaña
+                            </Typography>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={estadoActivo}
+                                        onChange={(e) => setEstadoActivo(e.target.checked)}
+                                        disabled={loading || !!successMessage}
+                                        color="primary"
+                                    />
+                                }
+                                label={
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            fontWeight: 600,
+                                            color: estadoActivo
+                                                ? 'success.main'
+                                                : 'text.secondary',
+                                        }}
+                                    >
+                                        {estadoActivo ? 'Activa' : 'Inactiva'}
+                                    </Typography>
+                                }
+                                sx={{ m: 0 }}
+                            />
+                        </Box>
                     </Box>
 
-                    {/* Fecha de fin */}
-                    <Box>
+                    {/* SECCIÓN 2: Fechas de campaña */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <Typography
-                            variant="caption"
+                            variant="subtitle2"
                             sx={{
-                                fontWeight: 700,
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
                                 textTransform: 'uppercase',
                                 letterSpacing: 0.5,
                                 color: 'text.secondary',
-                                mb: 2,
-                                display: 'block',
                             }}
                         >
-                            Fecha de Fin
+                            Fechas de campaña
                         </Typography>
-                        <TextField
-                            fullWidth
-                            type="date"
-                            value={fechaFin}
-                            onChange={(e) => setFechaFin(e.target.value)}
-                            error={!!errors.fecha_fin}
-                            helperText={errors.fecha_fin}
-                            disabled={loading || !!successMessage}
-                            InputLabelProps={{ shrink: true }}
-                            variant="outlined"
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: '10px',
-                                    backgroundColor: (theme) =>
-                                        theme.palette.mode === 'light'
-                                            ? '#EBF5FE'
-                                            : 'rgba(255, 255, 255, 0.05)',
-                                    '& fieldset': {
-                                        borderColor: (theme) =>
-                                            theme.palette.mode === 'light'
-                                                ? 'rgba(12, 21, 90, 0.15)'
-                                                : 'rgba(255, 255, 255, 0.15)',
-                                        borderWidth: '1.5px',
-                                    },
-                                    '&:hover fieldset': {
-                                        borderColor: (theme) =>
-                                            theme.palette.mode === 'light'
-                                                ? 'rgba(12, 21, 90, 0.3)'
-                                                : 'rgba(255, 255, 255, 0.3)',
-                                    },
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: (theme) => theme.palette.primary.main,
-                                        borderWidth: '2px',
-                                    },
-                                },
-                            }}
-                        />
+                        <Divider />
+
+                        <Grid container spacing={1.5} sx={{ mt: 1 }}>
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    label="Fecha inicio"
+                                    type="date"
+                                    fullWidth
+                                    value={fechaInicio}
+                                    onChange={(e) => setFechaInicio(e.target.value)}
+                                    InputLabelProps={{ shrink: true }}
+                                    error={!!errors.fecha_inicio}
+                                    helperText={errors.fecha_inicio}
+                                    disabled={loading || !!successMessage}
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    label="Fecha fin"
+                                    type="date"
+                                    fullWidth
+                                    value={fechaFin}
+                                    onChange={(e) => setFechaFin(e.target.value)}
+                                    InputLabelProps={{ shrink: true }}
+                                    error={!!errors.fecha_fin}
+                                    helperText={errors.fecha_fin}
+                                    disabled={loading || !!successMessage}
+                                />
+                            </Grid>
+                        </Grid>
                     </Box>
 
-                    {/* Productos a vender */}
-                    <Box>
+                    {/* SECCIÓN 3: Productos a vender */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <Typography
-                            variant="caption"
+                            variant="subtitle2"
                             sx={{
-                                fontWeight: 700,
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
                                 textTransform: 'uppercase',
                                 letterSpacing: 0.5,
                                 color: 'text.secondary',
-                                mb: 2,
-                                display: 'block',
                             }}
                         >
                             Productos a Vender
                         </Typography>
+                        <Divider />
+
                         <Autocomplete
                             multiple
                             options={productos}
@@ -727,57 +572,6 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                             </Typography>
                         )}
                     </Box>
-
-                    {/* Estado - Switch */}
-                    <Box
-                        sx={{
-                            p: 2,
-                            backgroundColor: (theme) =>
-                                theme.palette.mode === 'light'
-                                    ? 'rgba(12, 21, 90, 0.03)'
-                                    : 'rgba(255, 255, 255, 0.05)',
-                            borderRadius: '10px',
-                            border: '1.5px solid',
-                            borderColor: (theme) =>
-                                theme.palette.mode === 'light'
-                                    ? 'rgba(12, 21, 90, 0.1)'
-                                    : 'rgba(255, 255, 255, 0.1)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                        }}
-                    >
-                        <Typography
-                            variant="body2"
-                            sx={{ fontWeight: 600, color: 'text.primary' }}
-                        >
-                            Estado de la Campaña
-                        </Typography>
-                        <FormControlLabel
-                            control={
-                                <Switch
-                                    checked={estadoActivo}
-                                    onChange={(e) => setEstadoActivo(e.target.checked)}
-                                    disabled={loading || !!successMessage}
-                                    color="primary"
-                                />
-                            }
-                            label={
-                                <Typography
-                                    variant="body2"
-                                    sx={{
-                                        fontWeight: 600,
-                                        color: estadoActivo
-                                            ? 'success.main'
-                                            : 'text.secondary',
-                                    }}
-                                >
-                                    {estadoActivo ? 'Activa' : 'Inactiva'}
-                                </Typography>
-                            }
-                            sx={{ m: 0 }}
-                        />
-                    </Box>
                 </Box>
             </DialogContent>
 
@@ -791,37 +585,29 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                             : 'rgba(255, 255, 255, 0.02)',
                 }}
             >
-                <Button
-                    onClick={handleClose}
-                    color="inherit"
+                <Button 
+                    onClick={handleClose} 
                     disabled={loading || !!successMessage}
                     sx={{
+                        backgroundColor: (theme) => theme.palette.primary.secondary,
+                        color: 'white',
                         textTransform: 'none',
                         fontWeight: 600,
+                        '&:hover': {
+                          backgroundColor: (theme) => theme.palette.primary.secondary,
+                          opacity: 0.9
+                        }
                     }}
                 >
                     Cancelar
                 </Button>
-                <Button
-                    onClick={handleSubmit}
-                    variant="contained"
+                <Button 
+                    onClick={handleSubmit} 
+                    variant="contained" 
                     disabled={loading || !!successMessage}
-                    sx={{
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        borderRadius: '8px',
-                        background: (theme) =>
-                            theme.palette.mode === 'light'
-                                ? 'linear-gradient(135deg, #0C155A 0%, #1A2E7A 100%)'
-                                : 'linear-gradient(135deg, #1A2E7A 0%, #0F1F4A 100%)',
-                        boxShadow: '0 4px 12px rgba(12, 21, 90, 0.25)',
-                        '&:hover': {
-                            boxShadow: '0 6px 16px rgba(12, 21, 90, 0.35)',
-                            transform: 'translateY(-2px)',
-                        },
-                    }}
+                    sx={{ textTransform: 'none' }}
                 >
-                    {loading ? 'Guardando...' : 'Crear Campaña'}
+                    {loading ? "Guardando..." : "Guardar"}
                 </Button>
             </DialogActions>
         </Dialog>

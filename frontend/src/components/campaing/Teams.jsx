@@ -257,7 +257,7 @@ export default function Teams({
                             : '1px solid rgba(255, 255, 255, 0.1)',
                         }}
                       >
-                        {equipo.cantidad_agentes} {equipo.cantidad_agentes === 1 ? 'agente' : 'agentes'}
+                        {equipo.cantidad_agentes}
                       </TableCell>
 
                       {/* Miembros del equipo */}
@@ -379,8 +379,6 @@ export default function Teams({
             />
           </Box>
           </Paper>
-
-          
         </>
       )}
     </Box>

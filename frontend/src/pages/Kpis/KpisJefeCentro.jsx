@@ -1,4 +1,5 @@
 // PATH: src/pages/Kpis/KpisJefeCentro.jsx
+
 import * as React from "react";
 import MainLayout from "@/core/components/layout/MainLayout";
 import { 
@@ -10,9 +11,11 @@ import {
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import SearchIcon from '@mui/icons-material/Search';
 import { useTheme } from '@mui/material/styles';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import ButtonTooltip from "@/components/campaing/ButtonTooltip";
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 
 import "./Kpis.css";
 
@@ -36,6 +39,10 @@ import {
     IconButton,
     Stack,
     TablePagination,
+    Button,
+    Pagination,
+    TextField,
+    InputAdornment,
 } from "@mui/material";
 
 // Función helper para convertir Date a formato YYYY-MM-DD en zona horaria local
@@ -115,6 +122,10 @@ export default function KpisJefeCentro() {
     const [rowsPerPage, setRowsPerPage] = React.useState(10);
     const [totalEquipos, setTotalEquipos] = React.useState(0);
     
+    // Estado de paginación de campañas
+    const [pageCampanas, setPageCampanas] = React.useState(0);
+    const [rowsPerPageCampanas, setRowsPerPageCampanas] = React.useState(10);
+    
     // Estado de detalle de equipo
     const [equipoSeleccionado, setEquipoSeleccionado] = React.useState(null);
     const [dataEquipo, setDataEquipo] = React.useState(null);
@@ -122,6 +133,10 @@ export default function KpisJefeCentro() {
     
     // Estado para exportación
     const [exportando, setExportando] = React.useState(false);
+    
+    // Estados de búsqueda
+    const [searchEquipos, setSearchEquipos] = React.useState('');
+    const [searchCampanas, setSearchCampanas] = React.useState('');
 
     // Actualizar rango de fechas según modo
     React.useEffect(() => {
@@ -260,6 +275,22 @@ export default function KpisJefeCentro() {
         setPage(0);
     };
 
+    // Manejar cambio de página en tabla de campañas
+    const handleChangePageCampanas = (event, newPage) => {
+        setPageCampanas(newPage - 1);
+    };
+
+    // Handlers de búsqueda
+    const handleSearchEquipos = (event) => {
+        setSearchEquipos(event.target.value);
+        setPage(0); // Resetear a primera página
+    };
+
+    const handleSearchCampanas = (event) => {
+        setSearchCampanas(event.target.value);
+        setPageCampanas(0); // Resetear a primera página
+    };
+
     // Recargar equipos cuando cambia la paginación
     React.useEffect(() => {
         if (tabValue === 1 && !equipoSeleccionado) {
@@ -271,6 +302,24 @@ export default function KpisJefeCentro() {
     const campanas = data?.campanas || [];
     const totalCampanasActivas = data?.total_campanas_activas || 0;
     const centroNombre = data?.centro_nombre || "";
+
+    // Filtrar equipos por búsqueda
+    const equiposFiltrados = React.useMemo(() => {
+        if (!searchEquipos) return equipos;
+        return equipos.filter(equipo =>
+            equipo.nombre?.toLowerCase().includes(searchEquipos.toLowerCase()) ||
+            equipo.coordinador_nombre?.toLowerCase().includes(searchEquipos.toLowerCase()) ||
+            equipo.campana_nombre?.toLowerCase().includes(searchEquipos.toLowerCase())
+        );
+    }, [equipos, searchEquipos]);
+
+    // Filtrar campañas por búsqueda
+    const campanasFiltradas = React.useMemo(() => {
+        if (!searchCampanas) return campanas;
+        return campanas.filter(campana =>
+            campana.campana_nombre?.toLowerCase().includes(searchCampanas.toLowerCase())
+        );
+    }, [campanas, searchCampanas]);
 
     // Lista de campañas para el filtro
     const campanasParaFiltro = React.useMemo(() => {
@@ -363,7 +412,7 @@ export default function KpisJefeCentro() {
             );
         }
 
-        if (equipos.length === 0) {
+        if (equiposFiltrados.length === 0 && equipos.length === 0) {
             return (
                 <Alert severity="info" icon={<CampaignIcon />}>
                     No hay equipos disponibles en el centro
@@ -372,61 +421,132 @@ export default function KpisJefeCentro() {
         }
 
         return (
-            <Paper elevation={2} sx={{ width: '100%', overflow: 'hidden' }}>
-                <TableContainer>
-                    <Table>
-                        <TableHead>
-                            <TableRow sx={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
-                                <TableCell><strong>Equipo</strong></TableCell>
-                                <TableCell><strong>Coordinador</strong></TableCell>
-                                <TableCell align="center"><strong>Agentes</strong></TableCell>
-                                <TableCell><strong>Campaña</strong></TableCell>
-                                <TableCell align="center"><strong>Acciones</strong></TableCell>
+            <>
+                {/* Barra de búsqueda para equipos */}
+                <Box sx={{ mb: 4 }}>
+                    <TextField
+                        fullWidth
+                        placeholder="Buscar por nombre de equipo, coordinador o campaña..."
+                        value={searchEquipos}
+                        onChange={handleSearchEquipos}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ color: 'primary.main' }} />
+                                </InputAdornment>
+                            ),
+                        }}
+                        sx={{
+                            maxWidth: 600,
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: 3,
+                                bgcolor: 'background.paper',
+                                boxShadow: theme.palette.mode === 'light'
+                                    ? '0 2px 8px rgba(0,0,0,0.08)'
+                                    : '0 2px 8px rgba(0,0,0,0.3)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    boxShadow: theme.palette.mode === 'light'
+                                        ? '0 4px 12px rgba(0,0,0,0.12)'
+                                        : '0 4px 12px rgba(0,0,0,0.4)',
+                                },
+                                '&.Mui-focused': {
+                                    boxShadow: theme.palette.mode === 'light'
+                                        ? '0 4px 16px rgba(102, 126, 234, 0.25)'
+                                        : '0 4px 16px rgba(102, 126, 234, 0.15)',
+                                }
+                            }
+                        }}
+                    />
+                </Box>
+
+                {equiposFiltrados.length === 0 ? (
+                    <Alert severity="warning">
+                        No se encontraron equipos con ese criterio de búsqueda
+                    </Alert>
+                ) : (
+            <Paper 
+                elevation={0}
+                sx={{ 
+                    backgroundColor: theme.palette.background.paper,
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                }}
+            >
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <TableContainer>
+                        <Table>
+                            <TableHead>
+                            <TableRow sx={{ 
+                                backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)',
+                                borderBottom: `2px solid ${theme.palette.primary.main}`
+                            }}>
+                                <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Equipo</strong></TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Coordinador</strong></TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Agentes</strong></TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Campaña</strong></TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Acciones</strong></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {equipos.map((equipo) => (
+                            {equiposFiltrados.slice(page * rowsPerPage, (page + 1) * rowsPerPage).map((equipo, index) => (
                                 <TableRow
                                     key={equipo.equipo_id}
                                     hover
-                                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                    sx={{ 
+                                        backgroundColor: theme.palette.mode === 'light'
+                                            ? (index % 2 === 0 ? 'white' : '#FAFCFE')
+                                            : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
+                                        '&:hover': {
+                                            backgroundColor: theme.palette.mode === 'light' 
+                                                ? '#F8FBFF' 
+                                                : 'rgba(255, 255, 255, 0.05)',
+                                        },
+                                        transition: 'background-color 0.2s ease',
+                                        borderBottom: theme.palette.mode === 'light' 
+                                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                                            : '1px solid rgba(255, 255, 255, 0.1)',
+                                    }}
                                 >
                                     <TableCell>{equipo.nombre}</TableCell>
                                     <TableCell>{equipo.coordinador_nombre || 'Sin coordinador'}</TableCell>
                                     <TableCell align="center">
-                                        <Chip
-                                            label={equipo.total_agentes}
-                                            size="small"
-                                            color={equipo.total_agentes > 0 ? 'primary' : 'default'}
-                                        />
+                                        {equipo.total_agentes}
                                     </TableCell>
                                     <TableCell>{equipo.campana_nombre}</TableCell>
                                     <TableCell align="center">
-                                        <button
-                                            className="btn"
+                                        <Button
+                                            endIcon={<KeyboardArrowRightIcon />}
+                                            size="small"
+                                            variant="text"
                                             onClick={() => fetchEquipoDetalle(equipo)}
-                                            style={{ padding: '6px 16px', fontSize: '0.875rem' }}
-                                        >
+                                            sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px' }}
+                                            >
                                             Ver KPIs
-                                        </button>
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
-                    </Table>
-                </TableContainer>
-                <TablePagination
-                    rowsPerPageOptions={[5, 10, 25, 50]}
-                    component="div"
-                    count={totalEquipos}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    labelRowsPerPage="Equipos por página:"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-                />
+                        </Table>
+                    </TableContainer>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, backgroundColor: theme.palette.background.paper }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Mostrando {equiposFiltrados.slice(page * rowsPerPage, (page + 1) * rowsPerPage).length} de {equiposFiltrados.length} equipos
+                  </Typography>
+                  <Pagination
+                    count={Math.ceil(equiposFiltrados.length / rowsPerPage)}
+                    page={page + 1}
+                    onChange={(event, value) => handleChangePage(event, value - 1)}
+                    color="primary"
+                    shape="rounded"
+                    size="medium"
+                  />
+                </Box>
             </Paper>
+                )}
+            </>
         );
     };
 
@@ -436,33 +556,60 @@ export default function KpisJefeCentro() {
 
         return (
             <>
-                {/* Botón para volver a la lista */}
-                <Paper elevation={2} sx={{ p: 2, mb: 2, width: 'fit-content' }}>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                        <IconButton onClick={handleVolverALista} size="small">
+                <Box
+                    sx={{
+                        background: theme.palette.mode === 'light'
+                            ? 'linear-gradient(135deg, #2c86eeff 0%, #2a15e9ff 100%)'
+                            : 'linear-gradient(135deg, #0C155A 0%, #040c47ff 100%)',
+                        borderRadius: 3,
+                        p: 3,
+                        mb: 4,
+                        color: 'white',
+                        boxShadow: theme.palette.mode === 'light'
+                            ? '0 8px 32px rgba(102, 126, 234, 0.25)'
+                            : '0 8px 32px rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 2,
+                    }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <IconButton
+                            onClick={handleVolverALista}
+                            sx={{
+                                color: 'white',
+                                bgcolor: 'rgba(255, 255, 255, 0.1)',
+                                '&:hover': {
+                                    bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                },
+                            }}
+                        >
                             <ArrowBackIcon />
                         </IconButton>
-                        <Stack>
-                            <Typography variant="h6" fontWeight={700}>
+                        <Box>
+                            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
                                 {equipoSeleccionado.nombre}
                             </Typography>
+                            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                                Campaña: {equipoSeleccionado.campana_nombre}
+                            </Typography>
                             {equipoSeleccionado.coordinador_nombre && (
-                                <Typography variant="body2" color="text.secondary">
+                                <Typography variant="body2" sx={{ opacity: 0.85 }}>
                                     Coordinador: {equipoSeleccionado.coordinador_nombre}
                                 </Typography>
                             )}
-                            <Typography variant="body2" color="text.secondary">
-                                Campaña: {equipoSeleccionado.campana_nombre}
-                            </Typography>
-                        </Stack>
-                    </Stack>
-                </Paper>
+                        </Box>
+                    </Box>
+                </Box>
 
                 {loadingEquipoDetalle ? (
-                    <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
-                        <CircularProgress />
-                        <Typography sx={{ mt: 2 }}>Cargando KPIs del equipo...</Typography>
-                    </Paper>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
+                        <Box sx={{ textAlign: 'center' }}>
+                            <CircularProgress />
+                            <Typography sx={{ mt: 2 }}>Cargando KPIs del equipo...</Typography>
+                        </Box>
+                    </Box>
                 ) : (
                     <div className="kpi-grid">
                         <div className="kpi-card">
@@ -672,14 +819,27 @@ export default function KpisJefeCentro() {
 
                 {/* Filtro por campaña (solo en pestaña Campaña) */}
                 {tabValue === 0 && campanasParaFiltro.length > 0 && (
-                    <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-                        <FormControl fullWidth size="small">
+                    <div className="kpi-filters" style={{ marginBottom: '20px' }}>
+                        <FormControl fullWidth size="small" sx={{ maxWidth: "100%" }}>
                             <InputLabel id="campana-filter-label">Filtrar por Campaña</InputLabel>
                             <Select
                                 labelId="campana-filter-label"
                                 value={campanaSeleccionada}
                                 label="Filtrar por Campaña"
                                 onChange={(e) => setCampanaSeleccionada(e.target.value)}
+                                sx={{
+                                    backgroundColor: 'var(--date-bg)',
+                                    borderColor: 'var(--date-border)',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'var(--date-border)',
+                                    },
+                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'var(--date-border)',
+                                    },
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'var(--primary-main)',
+                                    },
+                                }}
                             >
                                 <MenuItem value="">
                                     <em>Todas las campañas</em>
@@ -691,7 +851,7 @@ export default function KpisJefeCentro() {
                                 ))}
                             </Select>
                         </FormControl>
-                    </Paper>
+                    </div>
                 )}
 
                 {errMsg && (
@@ -764,17 +924,28 @@ export default function KpisJefeCentro() {
                                 )}
 
                                 {/* Tabla de Campañas */}
-                                <Paper elevation={2} sx={{ width: '100%', overflow: 'hidden' }}>
-                                    <TableContainer>
-                                        <Table>
+                                <Paper 
+                                    elevation={0}
+                                    sx={{ 
+                                        backgroundColor: theme.palette.background.paper,
+                                        borderRadius: 2,
+                                        overflow: 'hidden',
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                        <TableContainer>
+                                            <Table>
                                             <TableHead>
-                                                <TableRow sx={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
-                                                    <TableCell><strong>Campaña</strong></TableCell>
-                                                    <TableCell align="center"><strong>Llamadas Activas</strong></TableCell>
-                                                    <TableCell align="center"><strong>Tiempo Promedio</strong></TableCell>
-                                                    <TableCell align="center"><strong>Llamadas del Período</strong></TableCell>
-                                                    <TableCell align="center"><strong>Ventas</strong></TableCell>
-                                                    <TableCell align="center"><strong>Tasa de Conversión</strong></TableCell>
+                                                <TableRow sx={{ 
+                                                    backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)',
+                                                    borderBottom: `2px solid ${theme.palette.primary.main}`
+                                                }}>
+                                                    <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Campaña</strong></TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Llamadas Activas</strong></TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Tiempo Promedio</strong></TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Llamadas del Período</strong></TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Ventas</strong></TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Tasa de Conversión</strong></TableCell>
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -787,11 +958,24 @@ export default function KpisJefeCentro() {
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (
-                                                    campanas.map((campana) => (
+                                                    campanasFiltradas.slice(pageCampanas * rowsPerPageCampanas, (pageCampanas + 1) * rowsPerPageCampanas).map((campana, index) => (
                                                         <TableRow
                                                             key={campana.campana_id}
                                                             hover
-                                                            sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                                            sx={{ 
+                                                                backgroundColor: theme.palette.mode === 'light'
+                                                                    ? (index % 2 === 0 ? 'white' : '#FAFCFE')
+                                                                    : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
+                                                                '&:hover': {
+                                                                    backgroundColor: theme.palette.mode === 'light' 
+                                                                        ? '#F8FBFF' 
+                                                                        : 'rgba(255, 255, 255, 0.05)',
+                                                                },
+                                                                transition: 'background-color 0.2s ease',
+                                                                borderBottom: theme.palette.mode === 'light' 
+                                                                    ? '1px solid rgba(12, 21, 90, 0.1)'
+                                                                    : '1px solid rgba(255, 255, 255, 0.1)',
+                                                            }}
                                                         >
                                                             <TableCell>
                                                                 <Typography variant="body2" fontWeight={600}>
@@ -849,8 +1033,22 @@ export default function KpisJefeCentro() {
                                                     ))
                                                 )}
                                             </TableBody>
-                                        </Table>
-                                    </TableContainer>
+                                            </Table>
+                                        </TableContainer>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, backgroundColor: theme.palette.background.paper }}>
+                                      <Typography variant="body2" color="text.secondary">
+                                        Mostrando {campanasFiltradas.slice(pageCampanas * rowsPerPageCampanas, (pageCampanas + 1) * rowsPerPageCampanas).length} de {campanasFiltradas.length} campañas
+                                      </Typography>
+                                      <Pagination
+                                        count={Math.ceil(campanasFiltradas.length / rowsPerPageCampanas)}
+                                        page={pageCampanas + 1}
+                                        onChange={handleChangePageCampanas}
+                                        color="primary"
+                                        shape="rounded"
+                                        size="medium"
+                                      />
+                                    </Box>
                                 </Paper>
                             </>
                         )}

@@ -16,14 +16,18 @@ import {
   Stack,
   IconButton,
   Tooltip,
-  Card
+  Card,
+  Pagination,
+  TextField,
+  InputAdornment
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { 
   Edit as EditIcon,
   CalendarToday as CalendarIcon,
   Person as PersonIcon,
-  Inventory as ProductIcon
+  Inventory as ProductIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { getCampaigns } from '@/core/api/campaigns';
 
@@ -37,6 +41,9 @@ export default function CampaignsComponent({
   const [campanas, setCampanas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadCampanas();
@@ -82,6 +89,21 @@ export default function CampaignsComponent({
     });
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleSearch = (event) => {
+    setSearchTerm(event.target.value);
+    setPage(1); // Resetear a primera página
+  };
+
+  // Filtrar campañas por búsqueda
+  const campanasFilteradas = campanas.filter(campana =>
+    campana.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    campana.jefe_campana_nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (loading) {
     return (
       <Stack alignItems="center" sx={{ py: 5 }}>
@@ -97,7 +119,7 @@ export default function CampaignsComponent({
     return <Alert severity="error">{error}</Alert>;
   }
 
-  if (campanas.length === 0) {
+  if (campanas.length === 0 && !searchTerm) {
     return (
       <Card sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
         <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -112,127 +134,167 @@ export default function CampaignsComponent({
 
   return (
     <Box>
-      <TableContainer 
-        component={Paper} 
+      {/* Barra de búsqueda para campañas */}
+      <Box sx={{ mb: 4 }}>
+        <TextField
+          fullWidth
+          placeholder="Buscar por nombre de campaña o jefe de campaña..."
+          value={searchTerm}
+          onChange={handleSearch}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: 'primary.main' }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            maxWidth: 600,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 3,
+              bgcolor: 'background.paper',
+              boxShadow: theme.palette.mode === 'light'
+                ? '0 2px 8px rgba(0,0,0,0.08)'
+                : '0 2px 8px rgba(0,0,0,0.3)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                boxShadow: theme.palette.mode === 'light'
+                  ? '0 4px 12px rgba(0,0,0,0.12)'
+                  : '0 4px 12px rgba(0,0,0,0.4)',
+              },
+              '&.Mui-focused': {
+                boxShadow: theme.palette.mode === 'light'
+                  ? '0 4px 16px rgba(102, 126, 234, 0.25)'
+                  : '0 4px 16px rgba(102, 126, 234, 0.15)',
+              }
+            }
+          }}
+        />
+      </Box>
+
+      {campanasFilteradas.length === 0 ? (
+        <Alert severity="warning">
+          No se encontraron campañas con ese criterio de búsqueda
+        </Alert>
+      ) : (
+      <Paper 
+        elevation={0}
         sx={{ 
-          borderRadius: 3,
-          boxShadow: theme.palette.mode === 'light' 
-            ? '0 2px 8px rgba(0,0,0,0.08)' 
-            : '0 2px 8px rgba(0,0,0,0.3)',
-          overflowX: 'hidden',
+          backgroundColor: theme.palette.background.paper,
+          borderRadius: 2,
+          overflow: 'hidden',
         }}
       >
-        <Table>
-          <TableHead>
-            <TableRow
-              sx={{
-                backgroundColor:
-                  theme.palette.mode === 'light'
-                    ? '#EBF5FE'
-                    : 'rgba(66, 165, 245, 0.1)',
-              }}
-            >
-              <TableCell
+        <TableContainer sx={{ overflowX: 'hidden' }}>
+          <Table>
+            <TableHead>
+              <TableRow
                 sx={{
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  color: theme.palette.primary.main,
+                  backgroundColor:
+                    theme.palette.mode === 'light'
+                      ? '#EBF5FE'
+                      : 'rgba(255, 255, 255, 0.05)',
                   borderBottom: `2px solid ${theme.palette.primary.main}`,
-                  py: 2.5,
                 }}
               >
-                Campaña
-              </TableCell>
-              <TableCell
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  color: theme.palette.primary.main,
-                  borderBottom: `2px solid ${theme.palette.primary.main}`,
-                  py: 2.5,
-                }}
-              >
-                Jefe de Campaña
-              </TableCell>
-              <TableCell
-                align="center"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  color: theme.palette.primary.main,
-                  borderBottom: `2px solid ${theme.palette.primary.main}`,
-                  py: 2.5,
-                }}
-              >
-                Estado
-              </TableCell>
-              <TableCell
-                align="center"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  color: theme.palette.primary.main,
-                  borderBottom: `2px solid ${theme.palette.primary.main}`,
-                  py: 2.5,
-                }}
-              >
-                Fechas
-              </TableCell>
-              <TableCell
-                align="center"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  color: theme.palette.primary.main,
-                  borderBottom: `2px solid ${theme.palette.primary.main}`,
-                  py: 2.5,
-                }}
-              >
-                Productos
-              </TableCell>
-
-              {showActions && (
+                <TableCell
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    color: theme.palette.text.primary,
+                    py: 2.5,
+                  }}
+                >
+                  Campaña
+                </TableCell>
+                <TableCell
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    color: theme.palette.text.primary,
+                    py: 2.5,
+                  }}
+                >
+                  Jefe de Campaña
+                </TableCell>
                 <TableCell
                   align="center"
                   sx={{
                     fontWeight: 700,
                     fontSize: '0.95rem',
-                    color: theme.palette.primary.main,
-                    borderBottom: `2px solid ${theme.palette.primary.main}`,
+                    color: theme.palette.text.primary,
                     py: 2.5,
-                    width: 100,
                   }}
                 >
-                  Acciones
+                  Estado
                 </TableCell>
-              )}
-            </TableRow>
-          </TableHead>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    color: theme.palette.text.primary,
+                    py: 2.5,
+                  }}
+                >
+                  Fechas
+                </TableCell>
+                <TableCell
+                  align="center"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    color: theme.palette.text.primary,
+                    py: 2.5,
+                  }}
+                >
+                  Productos
+                </TableCell>
 
-          <TableBody>
-            {campanas.map((campana, index) => (
-              <TableRow
-                key={campana.id}
-                sx={{
-                  '&:hover': {
+                {showActions && (
+                  <TableCell
+                    align="center"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.95rem',
+                      color: theme.palette.text.primary,
+                      py: 2.5,
+                      width: 100,
+                    }}
+                  >
+                    Acciones
+                  </TableCell>
+                )}
+              </TableRow>
+            </TableHead>
+
+            <TableBody>
+              {campanasFilteradas.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((campana, index) => (
+                <TableRow
+                  key={campana.id}
+                  hover
+                  sx={{
                     backgroundColor:
                       theme.palette.mode === 'light'
-                        ? '#F0F7FF'
-                        : 'rgba(66, 165, 245, 0.08)',
-                    transform: 'scale(1.001)',
-                  },
-                  backgroundColor:
-                    theme.palette.mode === 'light'
-                      ? index % 2 === 0
-                        ? 'white'
-                        : '#FAFCFE'
-                      : index % 2 === 0
-                        ? 'transparent'
-                        : 'rgba(255, 255, 255, 0.02)',
-                  transition: 'all 0.2s ease',
-                  cursor: 'default',
-                }}
-              >
+                        ? index % 2 === 0
+                          ? 'white'
+                          : '#FAFCFE'
+                        : index % 2 === 0
+                          ? 'transparent'
+                          : 'rgba(255, 255, 255, 0.02)',
+                    '&:hover': {
+                      backgroundColor:
+                        theme.palette.mode === 'light'
+                          ? '#F8FBFF'
+                          : 'rgba(255, 255, 255, 0.05)',
+                    },
+                    transition: 'background-color 0.2s ease',
+                    borderBottom: theme.palette.mode === 'light' 
+                      ? '1px solid rgba(12, 21, 90, 0.1)'
+                      : '1px solid rgba(255, 255, 255, 0.1)',
+                    cursor: 'default',
+                  }}
+                >
                 {/* Nombre y descripción */}
                 <TableCell>
                   <Box>
@@ -357,15 +419,33 @@ export default function CampaignsComponent({
                   </TableCell>
                 )}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {/* Paginación */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, backgroundColor: theme.palette.background.paper }}>
+          <Typography variant="body2" color="text.secondary">
+            Mostrando {campanasFilteradas.slice((page - 1) * rowsPerPage, page * rowsPerPage).length} de {campanasFilteradas.length} campañas
+          </Typography>
+          <Pagination
+            count={Math.ceil(campanasFilteradas.length / rowsPerPage)}
+            page={page}
+            onChange={handleChangePage}
+            color="primary"
+            shape="rounded"
+            size="medium"
+          />
+        </Box>
+      </Paper>
+      )}
 
       {/* Resumen */}
       <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="body2" color="text.secondary">
           Total: <strong>{campanas.length}</strong> {campanas.length === 1 ? 'campaña' : 'campañas'}
+          {searchTerm && ` (${campanasFilteradas.length} mostradas)`}
         </Typography>
       </Box>
     </Box>
