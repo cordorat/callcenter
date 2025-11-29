@@ -39,6 +39,7 @@ export default function ProfilePage() {
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState('');
   const fileInputRef = React.useRef(null);
 
@@ -72,6 +73,7 @@ export default function ProfilePage() {
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     setError('');
+    setFieldErrors({});
     setSuccess('');
   };
 
@@ -84,12 +86,14 @@ export default function ProfilePage() {
     });
     setEditMode(true);
     setError('');
+    setFieldErrors({});
     setSuccess('');
   };
 
   const handleCancel = () => {
     setEditMode(false);
     setError('');
+    setFieldErrors({});
     setSuccess('');
   };
 
@@ -107,6 +111,14 @@ export default function ProfilePage() {
       ...prev,
       [name]: value,
     }));
+    // Limpiar error del campo cuando el usuario escribe
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handlePhotoClick = () => {
@@ -131,6 +143,7 @@ export default function ProfilePage() {
     try {
       setLoading(true);
       setError('');
+      setFieldErrors({});
       setSuccess('');
 
       await usersService.updateProfile({
@@ -151,19 +164,13 @@ export default function ProfilePage() {
 
       if (errorData) {
         if (typeof errorData === 'object' && !errorData.message) {
-          // Formatear errores de campo específicos
-          const errorMessages = Object.entries(errorData)
-            .map(([field, messages]) => {
-              const fieldName = {
-                first_name: 'Nombre',
-                last_name: 'Apellido',
-                phone: 'Teléfono',
-                email: 'Email'
-              }[field] || field;
-              return `${fieldName}: ${Array.isArray(messages) ? messages.join(', ') : messages}`;
-            })
-            .join('\n');
-          setError(errorMessages);
+          // Guardar errores por campo
+          const errors = {};
+          Object.entries(errorData).forEach(([field, messages]) => {
+            errors[field] = Array.isArray(messages) ? messages.join(', ') : messages;
+          });
+          setFieldErrors(errors);
+          setError('profile'); // Indicador de que hay errores de campo
         } else {
           setError(errorData.message || 'Error al actualizar el perfil');
         }
@@ -180,6 +187,7 @@ export default function ProfilePage() {
     try {
       setLoading(true);
       setError('');
+      setFieldErrors({});
       setSuccess('');
 
       await usersService.changePassword({
@@ -205,18 +213,20 @@ export default function ProfilePage() {
       // Si hay errores de validación, mostrarlos
       if (errorData) {
         if (typeof errorData === 'object' && !errorData.message) {
-          // Formatear errores de campo específicos
-          const errorMessages = Object.entries(errorData)
-            .map(([field, messages]) => {
-              const fieldName = {
-                old_password: 'Contraseña actual',
-                new_password: 'Nueva contraseña',
-                new_password_confirm: 'Confirmar contraseña'
-              }[field] || field;
-              return `${fieldName}: ${Array.isArray(messages) ? messages.join(', ') : messages}`;
-            })
-            .join('\n');
-          setError(errorMessages);
+          // Mapear campos del backend a campos del frontend
+          const fieldMapping = {
+            old_password: 'current_password',
+            new_password: 'new_password',
+            new_password_confirm: 'confirm_password'
+          };
+          
+          const errors = {};
+          Object.entries(errorData).forEach(([field, messages]) => {
+            const frontendField = fieldMapping[field] || field;
+            errors[frontendField] = Array.isArray(messages) ? messages.join(', ') : messages;
+          });
+          setFieldErrors(errors);
+          setError('password'); // Indicador de que hay errores de campo
         } else {
           setError(errorData.message || 'Error al cambiar la contraseña');
         }
@@ -243,7 +253,7 @@ export default function ProfilePage() {
   return (
     <MainLayout title="Mi Perfil">
       <Box sx={{ py: 4 }}>
-        <Container maxWidth="lg">
+        <Container maxWidth="sm">
           {/* Header simple */}
           <Box sx={{ mb: 4 }}>
             <Button
@@ -342,13 +352,6 @@ export default function ProfilePage() {
             </Box>
           </Box>
 
-          {/* Alertas de error/éxito */}
-          {(error || success) && (
-            <Box sx={{ mb: 3 }}>
-              {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-              {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-            </Box>
-          )}
 
           {/* Tabs */}
           <Card
@@ -363,6 +366,7 @@ export default function ProfilePage() {
               <Tabs
                 value={tabValue}
                 onChange={handleTabChange}
+                centered
                 sx={{
                   borderBottom: `1px solid ${theme.palette.divider}`,
                   px: 3,
@@ -373,14 +377,14 @@ export default function ProfilePage() {
               </Tabs>
 
               {tabValue === 0 && (
-                <Box sx={{ p: 3 }}>
+                <Box sx={{ p: 3, display: 'flex', justifyContent: 'center' }}>
                   {editMode ? (
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+                    <Box sx={{ maxWidth: 600, width: '100%' }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, textAlign: 'center' }}>
                         Editar Información Personal
                       </Typography>
 
-                      <Grid container spacing={3}>
+                      <Grid container spacing={3} justifyContent="center">
                         <Grid item xs={12} sm={6}>
                           <TextField
                             fullWidth
@@ -436,12 +440,12 @@ export default function ProfilePage() {
                       </Box>
                     </Box>
                   ) : (
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+                    <Box sx={{ maxWidth: 600, width: '100%' }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, textAlign: 'center' }}>
                         Información Personal
                       </Typography>
 
-                      <Grid container spacing={4}>
+                      <Grid container spacing={4} justifyContent="center">
                         <Grid item xs={12} sm={6}>
                           <Box sx={{ mb: 3 }}>
                             <Typography
@@ -520,13 +524,14 @@ export default function ProfilePage() {
               )}
 
               {tabValue === 1 && (
-                <Box sx={{ p: 3 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
-                    Cambiar Contraseña
-                  </Typography>
+                <Box sx={{ p: 3, display: 'flex', justifyContent: 'center' }}>
+                  <Box sx={{ maxWidth: 600, width: '100%' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, textAlign: 'center' }}>
+                      Cambiar Contraseña
+                    </Typography>
 
-                  <Grid container spacing={3} sx={{ maxWidth: 600 }}>
-                    <Grid item xs={12}>
+                    <Grid container spacing={3} justifyContent="center">
+                      <Grid item xs={12}>
                       <TextField
                         fullWidth
                         type={showCurrentPassword ? "text" : "password"}
@@ -535,6 +540,8 @@ export default function ProfilePage() {
                         value={passwordData.current_password}
                         onChange={handlePasswordChange}
                         disabled={loading}
+                        error={!!fieldErrors.current_password}
+                        helperText={fieldErrors.current_password}
                         slotProps={{
                           input: {
                             endAdornment: (
@@ -562,7 +569,8 @@ export default function ProfilePage() {
                         value={passwordData.new_password}
                         onChange={handlePasswordChange}
                         disabled={loading}
-                        helperText="Mínimo 6 caracteres"
+                        error={!!fieldErrors.new_password}
+                        helperText={fieldErrors.new_password || "Mínimo 6 caracteres"}
                         slotProps={{
                           input: {
                             endAdornment: (
@@ -590,6 +598,8 @@ export default function ProfilePage() {
                         value={passwordData.confirm_password}
                         onChange={handlePasswordChange}
                         disabled={loading}
+                        error={!!fieldErrors.confirm_password}
+                        helperText={fieldErrors.confirm_password}
                         slotProps={{
                           input: {
                             endAdornment: (
@@ -610,21 +620,22 @@ export default function ProfilePage() {
                     </Grid>
                   </Grid>
 
-                  <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-                    <Button
-                      variant="contained"
-                      onClick={handleChangePassword}
-                      disabled={
-                        loading ||
-                        !passwordData.current_password ||
-                        !passwordData.new_password ||
-                        !passwordData.confirm_password
-                      }
-                      fullWidth
-                      size="large"
-                    >
-                      {loading ? <CircularProgress size={20} /> : 'Actualizar Contraseña'}
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
+                      <Button
+                        variant="contained"
+                        onClick={handleChangePassword}
+                        disabled={
+                          loading ||
+                          !passwordData.current_password ||
+                          !passwordData.new_password ||
+                          !passwordData.confirm_password
+                        }
+                        fullWidth
+                        size="large"
+                      >
+                        {loading ? <CircularProgress size={20} /> : 'Actualizar Contraseña'}
+                      </Button>
+                    </Box>
                   </Box>
                 </Box>
               )}

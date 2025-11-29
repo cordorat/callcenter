@@ -164,15 +164,17 @@ export default function TablaLlamadas({
                       {row.resultado_llamada?.venta_realizada === true ? "Sí" : "No"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      <Tooltip title="Ver detalles">
+                      <Tooltip title="Ver detalles" arrow>
                         <IconButton
                           size="small"
-                          color="primary"
                           onClick={() => handleOpenModal(row)}
                           sx={{
-                            "&:hover": {
-                              backgroundColor: theme.palette.primary.main + "20",
+                            bgcolor: 'action.hover',
+                            '&:hover': {
+                              bgcolor: 'primary.main',
+                              color: 'white',
                             },
+                            transition: 'all 0.2s',
                           }}
                         >
                           <VisibilityIcon fontSize="small" />

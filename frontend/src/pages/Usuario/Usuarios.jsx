@@ -22,7 +22,9 @@ import {
   Tooltip,
   Pagination,
   Dialog,
+  DialogTitle,
   DialogContent,
+  DialogActions,
   TextField,
   InputAdornment
 } from '@mui/material';
@@ -55,6 +57,9 @@ export default function Usuarios() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const pageSize = 6;
   const theme = useTheme();
@@ -171,6 +176,38 @@ export default function Usuarios() {
     setSuccessMessage('Datos actualizados correctamente');
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 3000);
+  };
+
+  const handleDeleteUser = (user) => {
+    setUserToDelete(user);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleCancelDelete = () => {
+    setOpenDeleteDialog(false);
+    setUserToDelete(null);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    try {
+      setDeleteLoading(true);
+      setError('');
+      await usersService.deleteUser(userToDelete.id);
+      setOpenDeleteDialog(false);
+      setUserToDelete(null);
+      // Refrescar listado
+      fetchUsers(1);
+      setPage(1);
+      setSuccessMessage('Usuario eliminado correctamente');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error al eliminar usuario:', err);
+      setError('No se pudo eliminar el usuario');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const getRoleColor = (role) => {
@@ -426,7 +463,7 @@ export default function Usuarios() {
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Eliminar usuario" arrow>
+                            <Tooltip title="Desactivar usuario" arrow>
                               <IconButton
                                 size="small"
                                 onClick={() => handleDeleteUser(user)}
@@ -509,6 +546,30 @@ export default function Usuarios() {
         <DialogContent sx={{ p: 3, pt: 1 }}>
           <CrearUsuario isModal={true} onUserCreated={handleUserCreated} onCancel={handleCloseModal} />
         </DialogContent>
+      </Dialog>
+
+      {/* Dialogo de confirmación para desactivar usuario */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={handleCancelDelete}
+        maxWidth="xs"
+        fullWidth
+        sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}
+      >
+        <DialogTitle>Confirmar desactivación</DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Estás seguro de que deseas desactivar al usuario{' '}
+            <strong>{userToDelete ? `${userToDelete.first_name} ${userToDelete.last_name}` : ''}</strong>
+            {userToDelete && userToDelete.documento_id ? ` (Documento: ${userToDelete.documento_id})` : ''}?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCancelDelete} disabled={deleteLoading}>Cancelar</Button>
+          <Button color="error" variant="contained" onClick={confirmDeleteUser} disabled={deleteLoading}>
+            {deleteLoading ? <CircularProgress size={18} sx={{ color: 'white' }} /> : 'Desactivar'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Modal para editar usuario */}
