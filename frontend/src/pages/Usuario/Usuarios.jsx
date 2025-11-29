@@ -121,22 +121,29 @@ export default function Usuarios() {
     setAllUsers([]);
   };
 
-  // Filtrar usuarios: usar allUsers si hay búsqueda, sino users
-  const usuariosFiltrados = (searchTerm ? allUsers : users).filter(user => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      (user.first_name && user.first_name.toLowerCase().includes(searchLower)) ||
-      (user.last_name && user.last_name.toLowerCase().includes(searchLower)) ||
-      (user.email && user.email.toLowerCase().includes(searchLower)) ||
-      (user.documento_id && user.documento_id.toLowerCase().includes(searchLower))
-    );
-  });
-
-  // Paginar los resultados filtrados
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const usuariosPaginados = usuariosFiltrados.slice(startIndex, endIndex);
-  const totalPaginasFiltradas = Math.ceil(usuariosFiltrados.length / pageSize);
+  // Cuando NO hay búsqueda, usar users del backend (con paginación)
+  // Cuando SÍ hay búsqueda, filtrar allUsers y paginar localmente
+  let usuariosMostrados = users;
+  let totalPaginasActual = totalPages;
+  
+  if (searchTerm) {
+    // Con búsqueda: filtrar allUsers
+    const usuariosFiltrados = allUsers.filter(user => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        (user.first_name && user.first_name.toLowerCase().includes(searchLower)) ||
+        (user.last_name && user.last_name.toLowerCase().includes(searchLower)) ||
+        (user.email && user.email.toLowerCase().includes(searchLower)) ||
+        (user.documento_id && user.documento_id.toLowerCase().includes(searchLower))
+      );
+    });
+    
+    // Paginar los resultados filtrados
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    usuariosMostrados = usuariosFiltrados.slice(startIndex, endIndex);
+    totalPaginasActual = Math.ceil(usuariosFiltrados.length / pageSize);
+  }
 
   const handleUserCreated = () => {
     setOpenModal(false);
@@ -319,7 +326,7 @@ export default function Usuarios() {
                 Crear Primer Usuario
               </Button>
             </Box>
-          ) : usuariosFiltrados.length === 0 ? (
+          ) : usuariosMostrados.length === 0 ? (
             <Box
               sx={{
                 display: 'flex',
@@ -355,7 +362,7 @@ export default function Usuarios() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {usuariosPaginados.map((user, index) => (
+                    {usuariosMostrados.map((user, index) => (
                       <TableRow
                         key={user.id}
                         hover
@@ -430,10 +437,18 @@ export default function Usuarios() {
               {/* Paginación */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                  Mostrando {usuariosPaginados.length} de {usuariosFiltrados.length} usuarios
+                  Mostrando {usuariosMostrados.length} de {searchTerm ? allUsers.filter(user => {
+                    const searchLower = searchTerm.toLowerCase();
+                    return (
+                      (user.first_name && user.first_name.toLowerCase().includes(searchLower)) ||
+                      (user.last_name && user.last_name.toLowerCase().includes(searchLower)) ||
+                      (user.email && user.email.toLowerCase().includes(searchLower)) ||
+                      (user.documento_id && user.documento_id.toLowerCase().includes(searchLower))
+                    );
+                  }).length : totalCount} usuarios
                 </Typography>
                 <Pagination
-                  count={totalPaginasFiltradas}
+                  count={totalPaginasActual}
                   page={page}
                   onChange={handlePageChange}
                   color="primary"
