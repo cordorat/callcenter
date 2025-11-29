@@ -16,6 +16,7 @@ import { useTheme } from '@mui/material/styles';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import ButtonTooltip from "@/components/campaing/ButtonTooltip";
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 import "./Kpis.css";
 
@@ -514,15 +515,22 @@ export default function KpisJefeCentro() {
                                     </TableCell>
                                     <TableCell>{equipo.campana_nombre}</TableCell>
                                     <TableCell align="center">
-                                        <Button
-                                            endIcon={<KeyboardArrowRightIcon />}
-                                            size="small"
-                                            variant="text"
-                                            onClick={() => fetchEquipoDetalle(equipo)}
-                                            sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px' }}
-                                            >
-                                            Ver KPIs
-                                        </Button>
+                                        <Tooltip title="Ver KPIs">
+                                            <span>
+                                                <IconButton
+                                                    onClick={() => fetchEquipoDetalle(equipo)}
+                                                    size="small"
+                                                    sx={{
+                                                        color: 'primary.main',
+                                                        '&:hover': {
+                                                            backgroundColor: 'rgba(47, 118, 230, 0.1)',
+                                                        },
+                                                    }}
+                                                >
+                                                    <BarChartIcon fontSize="small" />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
                                     </TableCell>
                                 </TableRow>
                             ))}

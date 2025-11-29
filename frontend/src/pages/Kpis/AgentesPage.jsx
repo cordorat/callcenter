@@ -35,6 +35,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import GroupIcon from '@mui/icons-material/Group';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 
 export default function AgentesPage() {
@@ -290,15 +291,22 @@ export default function AgentesPage() {
                         />
                       </TableCell>
                       <TableCell align="center" sx={{ borderBottom: theme.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)' }}>
-                        <Button
-                          endIcon={<KeyboardArrowRightIcon />}
-                          size="small"
-                          variant="text"
-                          onClick={() => navigate(`/kpis/agentes/${agente.id}`, { state: { agente } })}
-                          sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px' }}
-                        >
-                          Ver KPIs
-                        </Button>
+                        <Tooltip title="Ver KPIs">
+                          <span>
+                            <IconButton
+                              onClick={() => navigate(`/kpis/agentes/${agente.id}`, { state: { agente } })}
+                              size="small"
+                              sx={{
+                                color: 'primary.main',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(47, 118, 230, 0.1)',
+                                },
+                              }}
+                            >
+                              <BarChartIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}
