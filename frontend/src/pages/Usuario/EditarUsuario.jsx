@@ -3,18 +3,21 @@ import {
     Box,
     TextField,
     FormControl,
-    FormControlLabel,
     InputLabel,
     Select,
     MenuItem,
     Button,
     Switch,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
     IconButton,
     InputAdornment,
-    Grid,
     Typography,
     CircularProgress,
-    Alert
+    Alert,
+    FormHelperText
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { usersService } from '@/core/api/users';
@@ -42,31 +45,28 @@ export default function EditarUsuario({ user, onUserUpdated, onCancel }) {
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
 
-    // Mapeo de roles del backend al frontend
-    const rolesMap = {
+    // Mapeo de roles del backend al frontend (para display)
+    const rolesDisplayMap = {
         'ADMIN': 'ADMIN',
         'COORDINADOR': 'COORDINADOR',
         'AGENTE': 'AGENTE',
         'JEFE_CAMPANA': 'JEFE DE CAMPAÑA',
-        'JEFE DE CAMPAÑA': 'JEFE_CAMPANA',
         'JEFE_CENTRO': 'JEFE DE CENTRO',
-        'JEFE DE CENTRO': 'JEFE_CENTRO',
         'BACKOFFICE': 'BACKOFFICE'
     };
 
     // Cargar datos del usuario al montar el componente
     useEffect(() => {
         if (user) {
-            // Determinar el rol correcto
+            // Determinar el rol correcto - mantener el formato del backend
             const userRole = user.role || user.rol?.valor || '';
-            const mappedRole = rolesMap[userRole] || userRole;
-
+            
             setFormData({
                 first_name: user.first_name || "",
                 last_name: user.last_name || "",
                 email: user.email || "",
                 phone: user.phone || "",
-                role: mappedRole,
+                role: userRole,
                 is_active: user.is_active !== undefined ? user.is_active : true,
                 password: "" // Siempre vacío al inicio
             });
@@ -239,214 +239,188 @@ export default function EditarUsuario({ user, onUserUpdated, onCancel }) {
     };
 
     return (
-        <Box sx={{ p: 4 }}>
-            {/* Mensaje de éxito */}
-            {successMessage && (
-                <Alert severity="success" sx={{ mb: 3 }}>
-                    {successMessage}
-                </Alert>
-            )}
+        <Dialog
+            open={true}
+            onClose={handleCancel}
+            maxWidth="md"
+            fullWidth
+            PaperProps={{
+                elevation: 2,
+                sx: {
+                    borderRadius: 3,
+                },
+            }}
+        >
+            <DialogTitle>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Editar Usuario
+                </Typography>
+            </DialogTitle>
 
-            {/* Mensaje de error general */}
-            {errors.general && (
-                <Alert severity="error" sx={{ mb: 3 }}>
-                    {errors.general}
-                </Alert>
-            )}
+            <DialogContent dividers sx={{ py: 2 }}>
+                {/* Mensaje de éxito */}
+                {successMessage && (
+                    <Alert severity="success" sx={{ mb: 3 }}>
+                        {successMessage}
+                    </Alert>
+                )}
 
-            <Typography variant="h5" fontWeight="bold" mb={3} textAlign="center">
-                Editar Usuario
-            </Typography>
+                {/* Mensaje de error general */}
+                {errors.general && (
+                    <Alert severity="error" sx={{ mb: 3 }}>
+                        {errors.general}
+                    </Alert>
+                )}
 
-            <Box component="form" onSubmit={handleSubmit}>
-                <Grid
-                    container
-                    spacing={2}
-                    justifyContent="center"
-                    sx={{
-                        '& .MuiTextField-root, & .MuiFormControl-root': {
-                            width: '300px',
-                        },
-                        '& .MuiOutlinedInput-root': {
-                            height: '60px',
-                        },
-                        '& .MuiSelect-select': {
-                            display: 'flex',
-                            alignItems: 'center',
-                        }
-                    }}
-                >
-                    {/* Nombre */}
-                    <Grid item xs={12} md={6}>
-                        <TextField
-                            fullWidth
-                            label="Nombre *"
-                            name="first_name"
-                            value={formData.first_name}
+                {/* Nombre */}
+                <Box sx={{ mb: 3 }}>
+                    <TextField
+                        fullWidth
+                        label="Nombre *"
+                        name="first_name"
+                        value={formData.first_name}
+                        onChange={handleChange}
+                        error={!!errors.first_name}
+                        helperText={errors.first_name}
+                        disabled={loading}
+                    />
+                </Box>
+
+                {/* Apellido */}
+                <Box sx={{ mb: 3 }}>
+                    <TextField
+                        fullWidth
+                        label="Apellido *"
+                        name="last_name"
+                        value={formData.last_name}
+                        onChange={handleChange}
+                        error={!!errors.last_name}
+                        helperText={errors.last_name}
+                        disabled={loading}
+                    />
+                </Box>
+
+                {/* Email */}
+                <Box sx={{ mb: 3 }}>
+                    <TextField
+                        fullWidth
+                        label="Correo electrónico *"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        error={!!errors.email}
+                        helperText={errors.email}
+                        disabled={loading}
+                    />
+                </Box>
+
+                {/* Teléfono */}
+                <Box sx={{ mb: 3 }}>
+                    <TextField
+                        fullWidth
+                        label="Teléfono *"
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        error={!!errors.phone}
+                        helperText={errors.phone || "10 dígitos o formato internacional (+573001234567)"}
+                        disabled={loading}
+                    />
+                </Box>
+
+                {/* Rol */}
+                <Box sx={{ mb: 3 }}>
+                    <FormControl fullWidth error={!!errors.role}>
+                        <InputLabel>Rol *</InputLabel>
+                        <Select
+                            name="role"
+                            value={formData.role}
                             onChange={handleChange}
-                            variant="outlined"
-                            error={!!errors.first_name}
-                            helperText={errors.first_name}
+                            label="Rol *"
                             disabled={loading}
-                        />
-                    </Grid>
+                        >
+                            <MenuItem value="ADMIN">ADMIN</MenuItem>
+                            <MenuItem value="COORDINADOR">COORDINADOR</MenuItem>
+                            <MenuItem value="AGENTE">AGENTE</MenuItem>
+                            <MenuItem value="JEFE_CAMPANA">JEFE DE CAMPAÑA</MenuItem>
+                            <MenuItem value="JEFE_CENTRO">JEFE DE CENTRO</MenuItem>
+                            <MenuItem value="BACKOFFICE">BACKOFFICE</MenuItem>
+                        </Select>
+                        {errors.role && (
+                            <FormHelperText error>{errors.role}</FormHelperText>
+                        )}
+                    </FormControl>
+                </Box>
 
-                    {/* Apellido */}
-                    <Grid item xs={12} md={6}>
-                        <TextField
-                            fullWidth
-                            label="Apellido *"
-                            name="last_name"
-                            value={formData.last_name}
-                            onChange={handleChange}
-                            variant="outlined"
-                            error={!!errors.last_name}
-                            helperText={errors.last_name}
-                            disabled={loading}
-                        />
-                    </Grid>
-
-                    {/* Correo electrónico */}
-                    <Grid item xs={12} md={6}>
-                        <TextField
-                            fullWidth
-                            label="Correo electrónico *"
-                            name="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            variant="outlined"
-                            error={!!errors.email}
-                            helperText={errors.email}
-                            disabled={loading}
-                        />
-                    </Grid>
-
-                    {/* Teléfono */}
-                    <Grid item xs={12} md={6}>
-                        <TextField
-                            fullWidth
-                            label="Teléfono *"
-                            name="phone"
-                            type="tel"
-                            value={formData.phone}
-                            onChange={handleChange}
-                            variant="outlined"
-                            error={!!errors.phone}
-                            helperText={errors.phone || "10 dígitos o formato internacional (+573001234567)"}
-                            disabled={loading}
-                        />
-                    </Grid>
-
-                    {/* Rol */}
-                    <Grid item xs={12} md={6}>
-                        <FormControl fullWidth error={!!errors.role}>
-                            <InputLabel>Rol *</InputLabel>
-                            <Select
-                                name="role"
-                                value={formData.role}
-                                onChange={handleChange}
-                                label="Rol *"
-                                disabled={loading}
-                            >
-                                <MenuItem value="ADMIN">ADMIN</MenuItem>
-                                <MenuItem value="COORDINADOR">COORDINADOR</MenuItem>
-                                <MenuItem value="AGENTE">AGENTE</MenuItem>
-                                <MenuItem value="JEFE_CAMPANA">JEFE DE CAMPAÑA</MenuItem>
-                                <MenuItem value="JEFE_CENTRO">JEFE DE CENTRO</MenuItem>
-                                <MenuItem value="BACKOFFICE">BACKOFFICE</MenuItem>
-                            </Select>
-                            {errors.role && (
-                                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>
-                                    {errors.role}
-                                </Typography>
-                            )}
-                        </FormControl>
-                    </Grid>
-
-                    {/* Contraseña (opcional) */}
-                    <Grid item xs={12} md={6}>
-                        <TextField
-                            fullWidth
-                            label="Nueva Contraseña (opcional)"
-                            name="password"
-                            type={showPassword ? "text" : "password"}
-                            value={formData.password}
-                            onChange={handleChange}
-                            InputProps={{
+                {/* Contraseña (opcional) */}
+                <Box sx={{ mb: 3 }}>
+                    <TextField
+                        fullWidth
+                        label="Nueva Contraseña (opcional)"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={handleChange}
+                        slotProps={{
+                            input: {
                                 endAdornment: (
                                     <InputAdornment position="end">
-                                        <IconButton onClick={handleTogglePassword} edge="end">
+                                        <IconButton onClick={handleTogglePassword} edge="end" size="small">
                                             {showPassword ? <VisibilityOff /> : <Visibility />}
                                         </IconButton>
                                     </InputAdornment>
                                 ),
-                            }}
-                            variant="outlined"
-                            error={!!errors.password}
-                            helperText={errors.password || "Dejar vacío para mantener la actual"}
-                            disabled={loading}
-                        />
-                    </Grid>
-                </Grid>
+                            },
+                        }}
+                        error={!!errors.password}
+                        helperText={errors.password || "Dejar vacío para mantener la actual"}
+                        disabled={loading}
+                    />
+                </Box>
 
                 {/* Estado activo/inactivo */}
-                <Box sx={{ pt: 2, alignItems: 'center', textAlign: 'center' }}>
-                    <FormControlLabel
-                        control={
-                            <Switch
-                                name="is_active"
-                                checked={formData.is_active}
-                                onChange={handleChange}
-                                color="primary"
-                                disabled={loading}
-                            />
-                        }
-                        label={formData.is_active ? "Usuario activo" : "Usuario inactivo"}
-                        sx={{ fontSize: '0.9rem', mb: 2 }}
+                <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography>Usuario activo</Typography>
+                    <Switch
+                        name="is_active"
+                        checked={formData.is_active}
+                        onChange={handleChange}
+                        color="primary"
+                        disabled={loading}
                     />
-
-                    {/* Botones de acción */}
-                    <Box sx={{ display: 'flex', gap: 1.5, mt: 2.5, justifyContent: 'center' }}>
-                        <Grid item xs={12} md={6} textAlign="center">
-                            <Button
-                                type="button"
-                                size="large"
-                                variant="outlined"
-                                onClick={handleCancel}
-                                disabled={loading}
-                                sx={{
-                                    width: "100%",
-                                    borderRadius: 2,
-                                    py: 1.5,
-                                    fontSize: '1rem',
-                                    fontWeight: "bold",
-                                }}
-                            >
-                                Cancelar
-                            </Button>
-                        </Grid>
-                        <Grid item xs={12} md={6} textAlign="center">
-                            <Button
-                                type="submit"
-                                variant="contained"
-                                size="large"
-                                disabled={loading}
-                                sx={{
-                                    width: "100%",
-                                    borderRadius: 2,
-                                    py: 1.5,
-                                    fontSize: '1rem',
-                                    fontWeight: "bold",
-                                    backgroundColor: theme.palette.primary.main
-                                }}
-                            >
-                                {loading ? <CircularProgress size={24} color="inherit" /> : 'Guardar'}
-                            </Button>
-                        </Grid>
-                    </Box>
                 </Box>
-            </Box>
-        </Box>
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, py: 1.5 }}>
+                <Button
+                    onClick={handleCancel}
+                    disabled={loading}
+                    sx={{
+                        backgroundColor: theme.palette.primary.secondary,
+                        color: 'white',
+                        textTransform: 'none',
+                        '&:hover': {
+                            backgroundColor: theme.palette.primary.secondary,
+                            opacity: 0.9
+                        }
+                    }}
+                >
+                    Cancelar
+                </Button>
+                <Button
+                    type="submit"
+                    variant="contained"
+                    disabled={loading}
+                    sx={{
+                        textTransform: 'none',
+                    }}
+                    onClick={handleSubmit}
+                >
+                    {loading ? <CircularProgress size={20} /> : 'Guardar'}
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 }

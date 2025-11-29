@@ -13,6 +13,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import MainLayout from "@/core/components/layout/MainLayout";
 import { useAuth } from "@/core/context/AuthContext";
 import { historialJefeService } from "@/core/api/historialJefeCampana";
+import { useTheme } from '@mui/material/styles';
 
 import {
     Box,
@@ -105,36 +106,40 @@ const cardSx = (theme) => ({
 
 // ======================== Botón circular ========================
 function RefreshCircle({ onClick, loading }) {
+    const theme = useTheme();
     return (
         <Tooltip title="Actualizar">
-            <IconButton
-                onClick={onClick}
-                disabled={loading}
-                sx={(theme) => ({
-                    width: 40,
-                    height: 40,
-                    borderRadius: "50%",
-                    backgroundColor:
-                        theme.palette.mode === "light"
-                            ? theme.palette.primary.dark
-                            : theme.palette.primary.main,
-                    color: theme.palette.getContrastText(theme.palette.primary.main),
-                    boxShadow:
-                        theme.palette.mode === "light"
-                            ? "0 6px 16px rgba(12,21,90,0.35)"
-                            : "0 6px 16px rgba(0,0,0,0.7)",
-                    "&:hover": {
-                        backgroundColor:
-                            theme.palette.mode === "light"
-                                ? theme.palette.primary.main
-                                : theme.palette.primary.light,
-                        transform: "scale(1.05)",
-                    },
-                    transition: "all .15s ease",
-                })}
-            >
-                {loading ? <CircularProgress size={20} sx={{ color: "inherit" }} /> : <RefreshIcon />}
-            </IconButton>
+            <span>
+                <IconButton
+                    onClick={onClick}
+                    disabled={loading}
+                    size="large"
+                    sx={{
+                        backgroundColor: theme.palette.primary.main,
+                        color: "#fff",
+                        transition: "all 0.3s ease",
+                        '&:hover': {
+                            backgroundColor: theme.palette.primary.dark,
+                            transform: "rotate(180deg)",
+                        },
+                        '&.Mui-disabled': {
+                            backgroundColor: theme.palette.action.disabled,
+                            color: "rgba(255, 255, 255, 0.5)",
+                        },
+                    }}
+                >
+                    <RefreshIcon
+                        sx={{
+                            transition: "transform 0.6s ease",
+                            animation: loading ? "spin 1s linear infinite" : "none",
+                            "@keyframes spin": {
+                                "0%": { transform: "rotate(0deg)" },
+                                "100%": { transform: "rotate(360deg)" },
+                            },
+                        }}
+                    />
+                </IconButton>
+            </span>
         </Tooltip>
     );
 }
@@ -142,6 +147,7 @@ function RefreshCircle({ onClick, loading }) {
 // ======================== Componente principal ========================
 export default function HistorialJefeCampana() {
     const { user } = useAuth();
+    const theme = useTheme();
     const today = toYMD(new Date());
 
     // Campañas
@@ -179,8 +185,8 @@ export default function HistorialJefeCampana() {
                 const data = await historialJefeService.getMisCampanas();
                 setCampanas(data.campanas || []);
 
-                // Si solo tiene una campaña, seleccionarla automáticamente
-                if (data.campanas && data.campanas.length === 1) {
+                // Preseleccionar automáticamente la primera campaña
+                if (data.campanas && data.campanas.length > 0) {
                     setCampanaSeleccionada(data.campanas[0].id);
                 }
             } catch (e) {
@@ -196,8 +202,8 @@ export default function HistorialJefeCampana() {
 
     // ======================== Fetch Data ========================
     const fetchData = useCallback(async () => {
-        // Si tiene múltiples campañas y no ha seleccionado una, no cargar
-        if (campanas.length > 1 && !campanaSeleccionada) {
+        // No cargar si no hay campaña seleccionada
+        if (!campanaSeleccionada) {
             setRows([]);
             return;
         }
@@ -345,72 +351,90 @@ export default function HistorialJefeCampana() {
 
         // Si tiene múltiples campañas, mostrar selector
         return (
-            <Paper variant="outlined" sx={(t) => ({ ...cardSx(t), mb: 2, width: 'fit-content' })}>
-                <Box sx={{ width: 400 }}>
-                    <FormControl fullWidth>
-                        <InputLabel id="campana-label">Selecciona una campaña</InputLabel>
-                        <Select
-                            labelId="campana-label"
-                            value={campanaSeleccionada}
-                            label="Selecciona una campaña"
-                            onChange={handleCampanaChange}
-                            sx={{
-                                "& .MuiOutlinedInput-root": (t) => ({
-                                    borderRadius: "14px",
-                                    backgroundColor:
-                                        t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
-                                }),
-                            }}
-                        >
-                            <MenuItem value="" disabled>
-                                -- Selecciona una campaña --
-                            </MenuItem>
-                            {campanas.map((camp) => (
-                                <MenuItem key={camp.id} value={camp.id}>
-                                    <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
-                                        <Typography sx={{ flex: 1 }}>{camp.nombre}</Typography>
-                                        {camp.estado && (
-                                            <Chip
-                                                label={camp.estado}
-                                                size="small"
-                                                color={camp.estado === 'ACTIVA' ? 'success' : camp.estado === 'PAUSADA' ? 'warning' : 'default'}
-                                                sx={{
-                                                    height: 20,
-                                                    fontSize: '0.7rem',
-                                                    fontWeight: 600,
-                                                }}
-                                            />
-                                        )}
-                                    </Stack>
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Box>
-            </Paper>
+            <FormControl sx={{maxWidth: 400 }} fullWidth>
+                <InputLabel id="campana-select-label">Selecciona una campaña</InputLabel>
+                <Select
+                    labelId="campana-select-label"
+                    value={campanaSeleccionada}
+                    onChange={(e) => handleCampanaChange(e)}
+                    disabled={loadingCampanas}
+                    label="Selecciona una campaña"
+                    sx={{
+                    backgroundColor: 'var(--campaign-filter-bg, #F8FAFB)',
+                    height: '56px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--segmented-border, rgba(12, 21, 90, 0.12))',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-main, #0C155A)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-main, #0C155A)',
+                    },
+                    }}  
+                >
+                {campanas.map((camp) => (
+                    <MenuItem key={camp.id} value={camp.id}>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                            <Typography sx={{ flex: 1 }}>{camp.nombre}</Typography>
+                            {camp.estado && (
+                                <Chip
+                                    label={camp.estado}
+                                    size="small"
+                                    color={camp.estado === 'ACTIVA' ? 'success' : camp.estado === 'PAUSADA' ? 'warning' : 'default'}
+                                    sx={{
+                                        height: 20,
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                    }}
+                                />
+                            )}
+                        </Stack>
+                    </MenuItem>
+                ))}
+                </Select>
+            </FormControl>
         );
     };
 
     // ======================== Render ========================
+    const isDark = theme.palette.mode === 'dark';
+    const cssVariables = {
+        '--text-primary': theme.palette.text.primary,
+        '--text-secondary': theme.palette.text.secondary,
+        '--primary-main': theme.palette.primary.main,
+        '--campaign-filter-bg': isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFB',
+        '--campaign-filter-shadow': isDark 
+            ? '0 2px 8px rgba(0, 0, 0, 0.3)' 
+            : '0 2px 8px rgba(12, 21, 90, 0.06)',
+        '--segmented-border': isDark ? 'rgba(255,255,255,0.1)' : 'rgba(12, 21, 90, 0.12)',
+    };
+
     return (
         <MainLayout title="Historial de Llamadas">
-            <Box sx={{ p: { xs: 1.5, md: 2 } }}>
-                {/* Header */}
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                    <Typography variant="h5" fontWeight={800}>
-                        Historial de Llamadas
-                    </Typography>
+            <div style={{ ...cssVariables, padding: '12px 16px', paddingLeft: '16px', paddingRight: '16px', paddingTop: '12px', paddingBottom: '12px', '@media (min-width: 900px)': { padding: '16px' } }}>
+                {/* Header con selector y refresh */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '24px',
+                    gap: '16px'
+                }}>
+                    {/* Lado izquierdo: Selector de campaña */}
+                    <div style={{ flex: 1 }}>
+                        {renderSelectorCampana()}
+                    </div>
+                    
+                    {/* Lado derecho: Refresh */}
                     <RefreshCircle onClick={fetchData} loading={loading} />
-                </Stack>
-
-                {/* Selector de Campaña */}
-                {renderSelectorCampana()}
+                </div>
 
                 {/* Mostrar filtros solo si hay campaña seleccionada o solo hay una */}
                 {(campanaSeleccionada || campanas.length === 1) && (
                     <>
                         {/* Filtros */}
-                        <Paper variant="outlined" sx={(t) => cardSx(t)}>
+                        <Paper elevation={0} sx={(t) => cardSx(t)}>
                             <Grid container spacing={2}>
                                 {/* Buscar por Agente */}
                                 <Grid item xs={12} md={3}>
@@ -435,7 +459,7 @@ export default function HistorialJefeCampana() {
                                         }}
                                         sx={{
                                             "& .MuiOutlinedInput-root": (t) => ({
-                                                borderRadius: "14px",
+                                                borderRadius: "8px",
                                                 backgroundColor:
                                                     t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                                                 "& fieldset": {
@@ -476,7 +500,7 @@ export default function HistorialJefeCampana() {
                                         }}
                                         sx={{
                                             "& .MuiOutlinedInput-root": (t) => ({
-                                                borderRadius: "14px",
+                                                borderRadius: "8px",
                                                 backgroundColor:
                                                     t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                                                 "& fieldset": {
@@ -504,12 +528,19 @@ export default function HistorialJefeCampana() {
                                             label="Estado"
                                             onChange={handleEstadoChange}
                                             sx={{
-                                                "& .MuiOutlinedInput-root": (t) => ({
-                                                    borderRadius: "14px",
-                                                    backgroundColor:
-                                                        t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
-                                                }),
+                                                backgroundColor:
+                                                    isDark ? "rgba(255,255,255,0.06)" : "#F5F7FA",
                                                 height: 44,
+                                                borderRadius: "8px",
+                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(12,21,90,0.16)',
+                                                },
+                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(12,21,90,0.16)',
+                                                },
+                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(12,21,90,0.16)',
+                                                },
                                             }}
                                         >
                                             <MenuItem value="todos">Todos</MenuItem>
@@ -534,7 +565,7 @@ export default function HistorialJefeCampana() {
                                         InputLabelProps={{ shrink: true }}
                                         sx={{
                                             "& .MuiOutlinedInput-root": (t) => ({
-                                                borderRadius: "14px",
+                                                borderRadius: "8px",
                                                 backgroundColor:
                                                     t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                                                 height: 44,
@@ -558,7 +589,7 @@ export default function HistorialJefeCampana() {
                                         InputLabelProps={{ shrink: true }}
                                         sx={{
                                             "& .MuiOutlinedInput-root": (t) => ({
-                                                borderRadius: "14px",
+                                                borderRadius: "8px",
                                                 backgroundColor:
                                                     t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                                                 height: 44,
@@ -569,7 +600,7 @@ export default function HistorialJefeCampana() {
 
                                 {/* Botón Limpiar */}
                                 <Grid item xs={12} md={12} sx={{ display: "flex", justifyContent: "flex-end" }}>
-                                    <Button variant="outlined" onClick={limpiarFiltros} sx={{ fontWeight: 700 }}>
+                                    <Button variant="outlined" onClick={limpiarFiltros} sx={{ fontWeight: 700, borderRadius: "8px" }}>
                                         Limpiar Filtros
                                     </Button>
                                 </Grid>
@@ -577,7 +608,7 @@ export default function HistorialJefeCampana() {
                         </Paper>
 
                         {/* Tabla */}
-                        <Paper variant="outlined" sx={(t) => ({ ...cardSx(t), mb: 2, p: 0, overflow: "hidden" })}>
+                        <Paper elevation={0} sx={(t) => ({ ...cardSx(t), mb: 2, p: 0, overflow: "hidden" })}>
                             <TableContainer>
                                 <Table size="small">
                                     <TableHead>
@@ -981,7 +1012,7 @@ export default function HistorialJefeCampana() {
                     onClose={() => setSnack(null)}
                     message={snack}
                 />
-            </Box>
+            </div>
         </MainLayout>
     );
 }

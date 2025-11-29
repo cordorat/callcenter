@@ -42,6 +42,16 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState('');
   const fileInputRef = React.useRef(null);
 
+  // Mapeo de roles para mostrar en español
+  const rolesDisplayMap = {
+    'ADMIN': 'Administrador',
+    'COORDINADOR': 'Coordinador',
+    'AGENTE': 'Agente',
+    'JEFE_CAMPANA': 'Jefe de Campaña',
+    'JEFE_CENTRO': 'Jefe de Centro',
+    'BACKOFFICE': 'Backoffice'
+  };
+
   const [formData, setFormData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
@@ -499,7 +509,7 @@ export default function ProfilePage() {
                               Rol
                             </Typography>
                             <Typography variant="body1" sx={{ mt: 1, fontWeight: 500 }}>
-                              {user?.role === 'ADMIN' ? 'Administrador' : user?.role || 'Sin rol'}
+                              {rolesDisplayMap[user?.role] || user?.role || 'Sin rol'}
                             </Typography>
                           </Box>
                         </Grid>

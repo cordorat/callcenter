@@ -22,7 +22,9 @@ import {
   Tooltip,
   Pagination,
   Dialog,
-  DialogContent
+  DialogContent,
+  TextField,
+  InputAdornment
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -30,7 +32,8 @@ import {
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   Close as CloseIcon,
-  Person
+  Person,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { usersService } from '@/core/api/users';
 import { useTheme } from '@mui/material/styles';
@@ -41,6 +44,7 @@ import GroupIcon from '@mui/icons-material/Group';
 export default function Usuarios() {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]); // Todos los usuarios sin paginar
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -51,6 +55,7 @@ export default function Usuarios() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const pageSize = 6;
   const theme = useTheme();
 
@@ -84,9 +89,61 @@ export default function Usuarios() {
     }
   };
 
+  // Cargar todos los usuarios cuando hay búsqueda
+  const fetchAllUsers = async () => {
+    try {
+      const data = await usersService.getUsers({ page: 1, page_size: 1000 }); // Cargar muchos
+      setAllUsers(data.results || []);
+    } catch (err) {
+      console.error('Error al cargar todos los usuarios:', err);
+      setAllUsers([]);
+    }
+  };
+
   const handleCreateUser = () => setOpenModal(true);
   const handleCloseModal = () => setOpenModal(false);
   const handlePageChange = (event, value) => setPage(value);
+
+  const handleSearchChange = (event) => {
+    const newSearch = event.target.value;
+    setSearchTerm(newSearch);
+    setPage(1);
+    
+    // Si hay búsqueda, cargar todos los usuarios
+    if (newSearch && allUsers.length === 0) {
+      fetchAllUsers();
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setPage(1);
+    setAllUsers([]);
+  };
+
+  // Cuando NO hay búsqueda, usar users del backend (con paginación)
+  // Cuando SÍ hay búsqueda, filtrar allUsers y paginar localmente
+  let usuariosMostrados = users;
+  let totalPaginasActual = totalPages;
+  
+  if (searchTerm) {
+    // Con búsqueda: filtrar allUsers
+    const usuariosFiltrados = allUsers.filter(user => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        (user.first_name && user.first_name.toLowerCase().includes(searchLower)) ||
+        (user.last_name && user.last_name.toLowerCase().includes(searchLower)) ||
+        (user.email && user.email.toLowerCase().includes(searchLower)) ||
+        (user.documento_id && user.documento_id.toLowerCase().includes(searchLower))
+      );
+    });
+    
+    // Paginar los resultados filtrados
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    usuariosMostrados = usuariosFiltrados.slice(startIndex, endIndex);
+    totalPaginasActual = Math.ceil(usuariosFiltrados.length / pageSize);
+  }
 
   const handleUserCreated = () => {
     setOpenModal(false);
@@ -121,8 +178,8 @@ export default function Usuarios() {
       'ADMIN': theme.palette.error.main,
       'COORDINADOR': theme.palette.primary.main,
       'AGENTE': theme.palette.success.main,
-      'JEFE DE CAMPAÑA': theme.palette.warning.main,
-      'JEFE DE CENTRO': theme.palette.info.main,
+      'JEFE_CAMPAÑA': theme.palette.warning.main,
+      'JEFE_CENTRO': theme.palette.info.main,
       'BACKOFFICE': theme.palette.secondary.main
     };
     return colors[role] || theme.palette.text.primary;
@@ -206,6 +263,44 @@ export default function Usuarios() {
           </Alert>
         )}
 
+        {/* Buscador */}
+        <Box sx={{ mb: 4 }}>
+          <TextField
+            fullWidth
+            placeholder="Buscar por nombre, email o documento..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'primary.main' }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              maxWidth: 600,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 3,
+                bgcolor: 'background.paper',
+                boxShadow: theme.palette.mode === 'light'
+                  ? '0 2px 8px rgba(0,0,0,0.08)'
+                  : '0 2px 8px rgba(0,0,0,0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  boxShadow: theme.palette.mode === 'light'
+                    ? '0 4px 12px rgba(0,0,0,0.12)'
+                    : '0 4px 12px rgba(0,0,0,0.4)',
+                },
+                '&.Mui-focused': {
+                  boxShadow: theme.palette.mode === 'light'
+                    ? '0 4px 16px rgba(102, 126, 234, 0.25)'
+                    : '0 4px 16px rgba(102, 126, 234, 0.15)',
+                }
+              }
+            }}
+          />
+        </Box>
+
         <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', backgroundColor: theme.palette.background.paper }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
@@ -231,6 +326,26 @@ export default function Usuarios() {
                 Crear Primer Usuario
               </Button>
             </Box>
+          ) : usuariosMostrados.length === 0 ? (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: 400,
+                gap: 2,
+                backgroundColor: theme.palette.background.paper,
+                borderRadius: 2,
+              }}
+            >
+              <Typography variant="h6" color="text.secondary">
+                No se encontraron usuarios con ese criterio de búsqueda
+              </Typography>
+              <Button variant="text" onClick={handleClearSearch}>
+                Limpiar búsqueda
+              </Button>
+            </Box>
           ) : (
             <>
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -247,7 +362,7 @@ export default function Usuarios() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {users.map((user, index) => (
+                    {usuariosMostrados.map((user, index) => (
                       <TableRow
                         key={user.id}
                         hover
@@ -294,48 +409,39 @@ export default function Usuarios() {
                           />
                         </TableCell>
                         <TableCell align="center" sx={{ borderBottom: theme.palette.mode === 'light' ? '1px solid rgba(12, 21, 90, 0.1)' : '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
-                          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
-                            <Tooltip title="Ver detalles">
-                              <IconButton
-                                size="small"
-                                sx={{
-                                  transition: 'all 0.2s',
-                                  borderRadius: '50%',
-                                  bgcolor: theme.palette.mode === 'light' ? 'grey.200' : 'grey.800',
-                                  color: theme.palette.mode === 'light' ? 'grey.700' : 'grey.300',
-                                  boxShadow: theme.palette.mode === 'light' ? '0 2px 8px rgba(102,126,234,0.10)' : '0 2px 8px rgba(0,0,0,0.25)',
-                                  '&:hover': {
-                                    bgcolor: theme.palette.primary.main,
-                                    color: 'white',
-                                    transform: 'scale(1.15)',
-                                    boxShadow: theme.palette.mode === 'light' ? '0 4px 16px rgba(102,126,234,0.18)' : '0 4px 16px rgba(0,0,0,0.35)',
-                                  }
-                                }}
-                              >
-                                <VisibilityIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Editar">
+                          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                            <Tooltip title="Editar usuario" arrow>
                               <IconButton
                                 size="small"
                                 onClick={() => handleEditUser(user)}
                                 sx={{
-                                  transition: 'all 0.2s',
-                                  borderRadius: '50%',
-                                  bgcolor: theme.palette.mode === 'light' ? 'grey.200' : 'grey.800',
-                                  color: theme.palette.mode === 'light' ? 'grey.700' : 'grey.300',
-                                  boxShadow: theme.palette.mode === 'light' ? '0 2px 8px rgba(102,126,234,0.10)' : '0 2px 8px rgba(0,0,0,0.25)',
+                                  bgcolor: 'action.hover',
                                   '&:hover': {
-                                    bgcolor: theme.palette.primary.main,
+                                    bgcolor: 'primary.main',
                                     color: 'white',
-                                    transform: 'scale(1.15)',
-                                    boxShadow: theme.palette.mode === 'light' ? '0 4px 16px rgba(102,126,234,0.18)' : '0 4px 16px rgba(0,0,0,0.35)',
-                                  }
+                                  },
+                                  transition: 'all 0.2s'
                                 }}
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
-                            </Tooltip>                 
+                            </Tooltip>
+                            <Tooltip title="Eliminar usuario" arrow>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteUser(user)}
+                                sx={{
+                                  bgcolor: 'action.hover',
+                                  '&:hover': {
+                                    bgcolor: 'error.main',
+                                    color: 'white',
+                                  },
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                           </Box>
                         </TableCell>
                       </TableRow>
@@ -347,10 +453,18 @@ export default function Usuarios() {
               {/* Paginación */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                  Mostrando {users.length} de {totalCount} usuarios
+                  Mostrando {usuariosMostrados.length} de {searchTerm ? allUsers.filter(user => {
+                    const searchLower = searchTerm.toLowerCase();
+                    return (
+                      (user.first_name && user.first_name.toLowerCase().includes(searchLower)) ||
+                      (user.last_name && user.last_name.toLowerCase().includes(searchLower)) ||
+                      (user.email && user.email.toLowerCase().includes(searchLower)) ||
+                      (user.documento_id && user.documento_id.toLowerCase().includes(searchLower))
+                    );
+                  }).length : totalCount} usuarios
                 </Typography>
                 <Pagination
-                  count={totalPages}
+                  count={totalPaginasActual}
                   page={page}
                   onChange={handlePageChange}
                   color="primary"

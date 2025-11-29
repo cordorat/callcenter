@@ -8,6 +8,8 @@ import {
   Select,
   MenuItem,
   Button,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -51,7 +53,7 @@ export default function FiltrosyBusquedaBackoffice({
               sx={{
                 minWidth: 190,
                 "& .MuiOutlinedInput-root": (t) => ({
-                  borderRadius: "14px",
+                  borderRadius: "8px",
                   backgroundColor:
                     t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                   "& fieldset": {
@@ -91,7 +93,7 @@ export default function FiltrosyBusquedaBackoffice({
               sx={{
                 minWidth: 190,
                 "& .MuiOutlinedInput-root": (t) => ({
-                  borderRadius: "14px",
+                  borderRadius: "8px",
                   backgroundColor:
                     t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                   "& fieldset": {
@@ -148,7 +150,7 @@ export default function FiltrosyBusquedaBackoffice({
                 sx={{
                   minWidth: 190,
                   "& .MuiOutlinedInput-root": (t) => ({
-                    borderRadius: "14px",
+                    borderRadius: "8px",
                     backgroundColor:
                       t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                     "& fieldset": {
@@ -168,12 +170,12 @@ export default function FiltrosyBusquedaBackoffice({
             ))}
 
             <Button
-              variant="text"
+              variant="outlined"
               onClick={onClear}
               sx={{
                 fontWeight: 700,
-                color: (theme) =>
-                  theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.primary.dark,
+                borderRadius: "8px",
+                
               }}
             >
               LIMPIAR
@@ -183,13 +185,37 @@ export default function FiltrosyBusquedaBackoffice({
 
         {/* Botón Refrescar - Fuera del Paper */}
         <Box sx={{ display: "flex", alignItems: "center" }}>
-          <ButtonTooltip
-            title="Refrescar"
-            icon={<RefreshIcon />}
-            onClick={onRefresh}
-            color="primary"
-            disabled={loading}
-          />
+          <Tooltip title="Actualizar" arrow>
+            <IconButton
+              onClick={onRefresh}
+              disabled={loading}
+              size="large"
+              sx={{
+                backgroundColor: theme.palette.primary.main,
+                color: "#fff",
+                transition: "all 0.3s ease",
+                '&:hover': {
+                  backgroundColor: theme.palette.primary.dark,
+                  transform: "rotate(180deg)",
+                },
+                '&.Mui-disabled': {
+                  backgroundColor: theme.palette.action.disabled,
+                  color: "rgba(255, 255, 255, 0.5)",
+                },
+              }}
+            >
+              <RefreshIcon
+                sx={{
+                  transition: "transform 0.6s ease",
+                  animation: loading ? "spin 1s linear infinite" : "none",
+                  "@keyframes spin": {
+                    "0%": { transform: "rotate(0deg)" },
+                    "100%": { transform: "rotate(360deg)" },
+                  },
+                }}
+              />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Box>
     </Box>

@@ -270,7 +270,7 @@ function HistorialAgente() {
               }}
               sx={{
                 "& .MuiOutlinedInput-root": (t) => ({
-                  borderRadius: "14px",
+                  borderRadius: "8px",
                   backgroundColor:
                     t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                   "& fieldset": {
@@ -290,7 +290,7 @@ function HistorialAgente() {
               sx={{
                 minWidth: 190,
                 "& .MuiOutlinedInput-root": (t) => ({
-                  borderRadius: "14px",
+                  borderRadius: "8px",
                   backgroundColor:
                     t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                   "& fieldset": {
@@ -356,7 +356,7 @@ function HistorialAgente() {
                 sx={{
                   minWidth: 190,
                   "& .MuiOutlinedInput-root": (t) => ({
-                    borderRadius: "14px",
+                    borderRadius: "8px",
                     backgroundColor:
                       t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
                     "& fieldset": {
@@ -376,7 +376,7 @@ function HistorialAgente() {
             ))}
 
             <Button
-              variant="text"
+              variant="outlined"
               onClick={() => {
                 setQ("");
                 setEstado("todos");
@@ -388,8 +388,6 @@ function HistorialAgente() {
               }}
               sx={{
                 fontWeight: 700,
-                color: (theme) =>
-                  theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.primary.dark,
               }}
             >
               LIMPIAR

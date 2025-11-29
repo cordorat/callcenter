@@ -133,36 +133,38 @@ export default function AgenteDashboard() {
             Estadísticas del día
           </Typography>
           <Tooltip title="Actualizar">
-            <IconButton
-              onClick={load}
-              disabled={loading}
-              aria-label="Actualizar"
-              size="large"
-              sx={{
-                backgroundColor: theme.palette.primary.main,
-                color: "#fff",
-                transition: "all 0.3s ease",
-                '&:hover': {
-                  backgroundColor: theme.palette.primary.dark,
-                  transform: "rotate(180deg)",
-                },
-                '&.Mui-disabled': {
-                  backgroundColor: theme.palette.action.disabled,
-                  color: "rgba(255, 255, 255, 0.5)",
-                },
-              }}
-            >
-              <RefreshIcon
+            <span>
+              <IconButton
+                onClick={load}
+                disabled={loading}
+                aria-label="Actualizar"
+                size="large"
                 sx={{
-                  transition: "transform 0.6s ease",
-                  animation: loading ? "spin 1s linear infinite" : "none",
-                  "@keyframes spin": {
-                    "0%": { transform: "rotate(0deg)" },
-                    "100%": { transform: "rotate(360deg)" },
+                  backgroundColor: theme.palette.primary.main,
+                  color: "#fff",
+                  transition: "all 0.3s ease",
+                  '&:hover': {
+                    backgroundColor: theme.palette.primary.dark,
+                    transform: "rotate(180deg)",
+                  },
+                  '&.Mui-disabled': {
+                    backgroundColor: theme.palette.action.disabled,
+                    color: "rgba(255, 255, 255, 0.5)",
                   },
                 }}
-              />
-            </IconButton>
+              >
+                <RefreshIcon
+                  sx={{
+                    transition: "transform 0.6s ease",
+                    animation: loading ? "spin 1s linear infinite" : "none",
+                    "@keyframes spin": {
+                      "0%": { transform: "rotate(0deg)" },
+                      "100%": { transform: "rotate(360deg)" },
+                    },
+                  }}
+                />
+              </IconButton>
+            </span>
           </Tooltip>
         </Box>
 

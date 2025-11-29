@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/core/context/AuthContext';
+import { useThemeMode } from '@/core/context/ThemeModeContext';
 import { requestPasswordReset, validateResetToken, confirmPasswordReset } from '@/core/api/passwordReset';
 import './Login.css';
 
 const Login = () => {
   const { login } = useAuth();
+  const { mode } = useThemeMode();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -86,7 +88,7 @@ const Login = () => {
 
   const validateFront = () => {
     let ok = true;
-    if (!email.trim()) { setEmailError("El usuario es obligatorio"); ok = false; } else setEmailError("");
+    if (!email.trim()) { setEmailError("El correo es obligatorio"); ok = false; } else setEmailError("");
     if (!password) { setPasswordError("La contraseña es obligatoria"); ok = false; } else setPasswordError("");
     return ok;
   };
@@ -102,13 +104,13 @@ const Login = () => {
     const pMsg = textify(data?.password);
 
     if (status === 404 || code === "USER_NOT_FOUND") {
-      uErr = "Usuario inexistente";
+      uErr = "Correo inexistente";
     } else if (status === 401 || code === "WRONG_PASSWORD") {
       pErr = "Contraseña incorrecta";
     }
 
     if (!uErr && uMsg) {
-      if (/(no existe|inexistente|not found|unknown|does not exist)/.test(uMsg)) uErr = "Usuario inexistente";
+      if (/(no existe|inexistente|not found|unknown|does not exist)/.test(uMsg)) uErr = "Correo inexistente";
     }
     if (!pErr && pMsg) {
       if (/(incorrecta|incorrect|invalid|wrong)/.test(pMsg)) pErr = "Contraseña incorrecta";
@@ -117,14 +119,14 @@ const Login = () => {
     const general = detail || nfe || textify(data?.message) || textify(data?.error);
     if (general) {
       if (!uErr && /(usuario|username|email|user|not\s+found|does\s+not\s+exist)/.test(general)) {
-        uErr = "Usuario inexistente";
+        uErr = "Correo inexistente";
       } else if (!pErr && /(contraseñ|password|incorrect|invalid|wrong)/.test(general)) {
         pErr = "Contraseña incorrecta";
       }
     }
 
     if (!uErr && !pErr) {
-      if (status === 404) uErr = "Usuario inexistente";
+      if (status === 404) uErr = "Correo inexistente";
       else if (status === 401 || status === 400) pErr = "Contraseña incorrecta";
     }
 
@@ -281,8 +283,8 @@ const Login = () => {
   };
 
   return (
-    <div className={`login-container ${view !== 'login' ? 'recover-mode' : ''}`}>
-      <div className="login-form">
+    <div className={`login-container ${view !== 'login' ? 'recover-mode' : ''} ${mode === 'dark' ? 'dark-mode' : ''}`}>
+      <div className={`login-form sign-in ${view === 'login' ? 'active' : ''}`}>
         <h2>
           {view === 'login' && 'Iniciar sesión'}
           {view === 'request-reset' && 'Recuperar Contraseña'}
@@ -293,17 +295,17 @@ const Login = () => {
         {view === 'login' && (
           <>
             <div className="form-group">
-              <label htmlFor="username">Usuario</label>
+              <label htmlFor="username">Correo</label>
               <input
                 type="text"
                 id="username"
-                placeholder="Ingresa tu usuario"
+                placeholder="Ingresa tu correo"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
                   if (emailError) setEmailError("");
                 }}
-                onBlur={() => { if (!email.trim()) setEmailError("El usuario es obligatorio"); }}
+                onBlur={() => { if (!email.trim()) setEmailError("El correo es obligatorio"); }}
                 className={emailError ? "input has-error" : "input"}
                 aria-invalid={!!emailError}
                 aria-describedby={emailError ? "username-error" : undefined}
@@ -541,12 +543,17 @@ const Login = () => {
       </div>
 
       <div className="welcome-section">
-        <div className="semi-circle">
+        <div className="semi-circle toggle-left">
+          <h1>¿Problemas con tu contraseña?</h1>
+          <p>
+            'Te ayudaremos a recuperar tu contraseña de forma segura. Sigue las instrucciones para restablecerla.'
+          </p>
+        </div>
+
+        <div className="semi-circle toggle-right">
           <h1>¡Bienvenido!</h1>
           <p>
-            {view === 'login' && 'Accede a nuestro aplicativo CallCenter ingresando tus credenciales y disfruta de todas sus funcionalidades.'}
-            {view === 'request-reset' && 'Te ayudaremos a recuperar tu contraseña de forma segura.'}
-            {view === 'confirm-reset' && 'Estás a un paso de recuperar el acceso a tu cuenta.'}
+            Accede a nuestro aplicativo CallCenter ingresando tus credenciales y disfruta de todas sus funcionalidades.
           </p>
         </div>
       </div>

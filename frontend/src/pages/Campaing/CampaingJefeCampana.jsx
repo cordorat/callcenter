@@ -133,10 +133,13 @@ export default function CampaingJefeCampana() {
       const response = await getMisCampanasJefe();
       console.log('Response mis campañas:', response); // Debug
       console.log('Campañas recibidas:', response.campanas); // Debug detallado
-      setCampaigns(response.campanas || []);
+      const campaignsList = response.campanas || [];
+      setCampaigns(campaignsList);
       
-      // NO seleccionar automáticamente ninguna campaña
-      // El usuario debe elegir manualmente
+      // Preseleccionar automáticamente la primera campaña
+      if (campaignsList.length > 0) {
+        setSelectedCampaign(String(campaignsList[0].id));
+      }
     } catch (error) {
       console.error('Error al cargar campañas:', error);
       setSnackbar({
@@ -338,8 +341,7 @@ export default function CampaingJefeCampana() {
           {/* Lado izquierdo: Selector de campaña y meta de ventas */}
           <div className="campaign-left-controls">
             {/* Selector de campaña */}
-            <Paper elevation={2} sx={{ p: 2, minWidth: 400 }}>
-              <FormControl fullWidth>
+              <FormControl sx={{minWidth: 400 }} fullWidth>
                 <InputLabel id="campana-select-label">Selecciona una campaña</InputLabel>
                 <Select
                   labelId="campana-select-label"
@@ -347,10 +349,20 @@ export default function CampaingJefeCampana() {
                   onChange={(e) => setSelectedCampaign(e.target.value)}
                   disabled={loadingCampaigns}
                   label="Selecciona una campaña"
+                  sx={{
+                    backgroundColor: 'var(--campaign-filter-bg, #F8FAFB)',
+                    height: '56px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--segmented-border, rgba(12, 21, 90, 0.12))',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-main, #0C155A)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-main, #0C155A)',
+                    },
+                  }}  
                 >
-                  <MenuItem value="">
-                    <em style={{ fontStyle: 'normal' }}>-- Selecciona una campaña --</em>
-                  </MenuItem>
                   {campaigns.map((campaign) => {
                     const chipProps = getEstadoChipProps(campaign.estado_nombre);
                     return (
@@ -369,7 +381,6 @@ export default function CampaingJefeCampana() {
                   })}
                 </Select>
               </FormControl>
-            </Paper>
 
             {/* Meta de ventas - Solo visible si hay campaña seleccionada */}
             {selectedCampaign && (
@@ -406,7 +417,7 @@ export default function CampaingJefeCampana() {
             )}
           </div>
           
-          {/* Lado derecho: Botones de acción - Solo visible si hay campaña seleccionada */}
+          {/* Lado derecho: Botones de acción */}
           {selectedCampaign && (
           <div className="campaign-actions">
             <Tooltip
@@ -470,7 +481,7 @@ export default function CampaingJefeCampana() {
           )}
         </div>
 
-        {/* Pestañas segmentadas - Solo visible si hay campaña seleccionada */}
+        {/* Pestañas segmentadas */}
         {selectedCampaign && (
         <div 
           className="kpi-filters" 
@@ -643,31 +654,25 @@ export default function CampaingJefeCampana() {
         maxWidth="sm"
         fullWidth
         PaperProps={{
+          elevation: 2,
           sx: {
-            borderRadius: '16px',
-            padding: '8px',
-            backgroundColor: theme.palette.background.paper,
-          }
+            borderRadius: 3,
+          },
         }}
       >
-        <DialogTitle
-          sx={{
-            fontSize: '1.25rem',
-            fontWeight: 700,
-            color: theme.palette.text.primary,
-            paddingBottom: '8px',
-          }}
-        >
-          Programar Iteración de Base de Datos
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Programar Iteración de Base de Datos
+          </Typography>
         </DialogTitle>
         
-        <DialogContent sx={{ paddingTop: '16px !important' }}>
+        <DialogContent dividers sx={{ py: 2 }}>
           <Box sx={{ mb: 3 }}>
-            <Alert severity="info" sx={{ mb: 2, borderRadius: '10px' }}>
+            <Alert severity="info" sx={{ mb: 3 }}>
               Selecciona la fecha y hora en la que deseas iniciar la iteración de la base de datos.
             </Alert>
             
-            <div 
+            <Box
               className="dates" 
               style={{
                 '--text-primary': theme.palette.text.primary,
@@ -701,23 +706,21 @@ export default function CampaingJefeCampana() {
                   }}
                 />
               </label>
-            </div>
+            </Box>
           </Box>
         </DialogContent>
 
-        <DialogActions sx={{ padding: '16px 24px', gap: '12px' }}>
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
           <Button
             onClick={handleCloseIteracionModal}
             disabled={iniciandoIteracion}
             sx={{
-              color: theme.palette.text.secondary,
-              fontWeight: 600,
-              borderRadius: '8px',
-              padding: '8px 20px',
+              backgroundColor: theme.palette.primary.secondary,
+              color: 'white',
               textTransform: 'none',
-              fontSize: '0.95rem',
               '&:hover': {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(12, 21, 90, 0.05)',
+                backgroundColor: theme.palette.primary.secondary,
+                opacity: 0.9
               }
             }}
           >
@@ -728,26 +731,7 @@ export default function CampaingJefeCampana() {
             disabled={iniciandoIteracion}
             variant="contained"
             sx={{
-              backgroundColor: theme.palette.primary.main,
-              color: 'white',
-              fontWeight: 600,
-              borderRadius: '8px',
-              padding: '8px 24px',
               textTransform: 'none',
-              fontSize: '0.95rem',
-              boxShadow: isDark 
-                ? '0 2px 8px rgba(0, 0, 0, 0.5)' 
-                : '0 2px 8px rgba(12, 21, 90, 0.2)',
-              '&:hover': {
-                backgroundColor: theme.palette.primary.dark,
-                boxShadow: isDark 
-                  ? '0 4px 12px rgba(0, 0, 0, 0.7)' 
-                  : '0 4px 12px rgba(12, 21, 90, 0.3)',
-              },
-              '&:disabled': {
-                backgroundColor: theme.palette.action.disabledBackground,
-                color: theme.palette.action.disabled,
-              }
             }}
           >
             {iniciandoIteracion ? 'Programando...' : 'Programar Iteración'}

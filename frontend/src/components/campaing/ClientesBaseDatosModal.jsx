@@ -140,47 +140,38 @@ export default function ClientesBaseDatosModal({ open, onClose, baseDatosId, bas
       maxWidth="lg"
       fullWidth
       PaperProps={{
+        elevation: 2,
         sx: {
-          borderRadius: '16px',
+          borderRadius: 3,
           minHeight: '600px',
           maxHeight: '90vh',
-          backgroundColor: theme.palette.background.paper,
         }
       }}
     >
       {/* Header */}
-      <DialogTitle
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '1.5rem',
-          fontWeight: 700,
-          color: theme.palette.text.primary,
-          borderBottom: `2px solid ${theme.palette.primary.main}`,
-          pb: 2,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <PersonIcon sx={{ fontSize: '2rem', color: theme.palette.primary.main }} />
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Clientes - {baseDatosNombre || 'Base de Datos'}
-            </Typography>
-            {baseDatosInfo && (
-              <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-                Campaña: {baseDatosInfo.campana_nombre}
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <PersonIcon sx={{ fontSize: '2rem', color: theme.palette.primary.main }} />
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Clientes - {baseDatosNombre || 'Base de Datos'}
               </Typography>
-            )}
+              {baseDatosInfo && (
+                <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+                  Campaña: {baseDatosInfo.campana_nombre}
+                </Typography>
+              )}
+            </Box>
           </Box>
+          <IconButton onClick={onClose} size="small" sx={{ ml: 2 }}>
+            <CloseIcon />
+          </IconButton>
         </Box>
-        <IconButton onClick={onClose} size="small">
-          <CloseIcon />
-        </IconButton>
       </DialogTitle>
 
       {/* Content */}
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent dividers sx={{ py: 2, px: 3 }}>
         {/* Información de la base de datos */}
         {baseDatosInfo && (
           <Alert 
@@ -408,15 +399,12 @@ export default function ClientesBaseDatosModal({ open, onClose, baseDatosId, bas
       </DialogContent>
 
       {/* Footer */}
-      <DialogActions sx={{ p: 3, pt: 0 }}>
+      <DialogActions sx={{ px: 3, py: 1.5 }}>
         <Button
           onClick={onClose}
           variant="contained"
           sx={{
-            borderRadius: '8px',
             textTransform: 'none',
-            fontWeight: 600,
-            px: 4,
           }}
         >
           Cerrar

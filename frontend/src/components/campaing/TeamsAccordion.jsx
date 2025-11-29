@@ -223,7 +223,7 @@ export default function Teams({ selectedCampaign = null, campaigns = [] }) {
               <AccordionDetails sx={{ p: 0 }}>
                 <Box sx={{ px: 2, py: 1, backgroundColor: theme.palette.mode === 'light' ? '#FAFCFE' : 'rgba(255, 255, 255, 0.02)' }}>
                   <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-                    💡 Haz clic en un agente para asignarlo como coordinador
+                    Haz clic en un agente para asignarlo como coordinador
                   </Typography>
                 </Box>
                 <Divider />
@@ -302,64 +302,70 @@ export default function Teams({ selectedCampaign = null, campaigns = [] }) {
         maxWidth="sm"
         fullWidth
         PaperProps={{
+          elevation: 2,
           sx: {
-            borderRadius: '16px',
-            padding: '8px',
-          }
+            borderRadius: 3,
+          },
         }}
       >
-        <DialogTitle sx={{ fontSize: '1.25rem', fontWeight: 700 }}>
+        <DialogTitle sx={{ pb: 1 }}>
           Reemplazar Coordinador
         </DialogTitle>
-        
-        <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Ya existe un coordinador en este equipo
-          </Alert>
-          
-          {dialogData && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Coordinador actual:
-                </Typography>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  {dialogData.coordinador_anterior.full_name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {dialogData.coordinador_anterior.email}
-                </Typography>
-              </Box>
 
-              <Divider />
+        <DialogContent dividers sx={{ py: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Alert severity="warning">
+              Ya existe un coordinador en este equipo
+            </Alert>
+            
+            {dialogData && (
+              <>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
+                    Coordinador actual:
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    {dialogData.coordinador_anterior.full_name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {dialogData.coordinador_anterior.email}
+                  </Typography>
+                </Box>
 
-              <Box>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Nuevo coordinador:
-                </Typography>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  {dialogData.nuevo_coordinador.full_name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {dialogData.nuevo_coordinador.email}
-                </Typography>
-              </Box>
+                <Divider />
 
-              <Alert severity="info" sx={{ mt: 1 }}>
-                El coordinador anterior volverá a tener rol de AGENTE
-              </Alert>
-            </Box>
-          )}
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
+                    Nuevo coordinador:
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    {dialogData.nuevo_coordinador.full_name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {dialogData.nuevo_coordinador.email}
+                  </Typography>
+                </Box>
+
+                <Alert severity="info">
+                  El coordinador anterior volverá a tener rol de AGENTE
+                </Alert>
+              </>
+            )}
+          </Box>
         </DialogContent>
 
-        <DialogActions sx={{ padding: '16px 24px', gap: '12px' }}>
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
           <Button
             onClick={handleCancelarAsignacion}
             disabled={asignando}
             sx={{
-              color: theme.palette.text.secondary,
-              fontWeight: 600,
-              borderRadius: '8px',
+              backgroundColor: '#5A6269',
+              color: 'white',
+              textTransform: 'none',
+              '&:hover': {
+                backgroundColor: '#5A6269',
+                opacity: 0.9
+              }
             }}
           >
             Cancelar
@@ -368,10 +374,12 @@ export default function Teams({ selectedCampaign = null, campaigns = [] }) {
             onClick={handleConfirmarAsignacion}
             disabled={asignando}
             variant="contained"
-            sx={{
+            sx={{ 
+              textTransform: 'none',
               backgroundColor: theme.palette.primary.main,
-              fontWeight: 600,
-              borderRadius: '8px',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.dark,
+              }
             }}
           >
             {asignando ? 'Asignando...' : 'Confirmar y Reemplazar'}

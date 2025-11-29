@@ -11,10 +11,7 @@ import { useTheme } from '@mui/material/styles';
 import ButtonTooltip from "@/components/campaing/ButtonTooltip";
 import PersonIcon from '@mui/icons-material/Person';
 import SearchIcon from '@mui/icons-material/Search';
-import GroupIcon from '@mui/icons-material/Group';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
-import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 import "./Kpis.css";
 
@@ -36,11 +33,12 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    TablePagination,
     IconButton,
     TextField,
     InputAdornment,
     Button,
+    Tooltip,
+    Pagination
 } from "@mui/material";
 
 // Función helper para convertir Date a formato YYYY-MM-DD en zona horaria local
@@ -134,6 +132,7 @@ export default function KpisJefeCampana() {
     const [page, setPage] = React.useState(0);
     const [rowsPerPage, setRowsPerPage] = React.useState(10);
     const [totalEquipos, setTotalEquipos] = React.useState(0);
+    const [searchEquipos, setSearchEquipos] = React.useState('');
     
     // Estado de detalle de equipo
     const [equipoSeleccionado, setEquipoSeleccionado] = React.useState(null);
@@ -259,6 +258,10 @@ export default function KpisJefeCampana() {
 
             if (campanaSeleccionada) {
                 params.campana_id = campanaSeleccionada;
+            }
+
+            if (searchEquipos) {
+                params.search = searchEquipos;
             }
 
             const resp = await getEquiposJefeCampana(params);
@@ -418,6 +421,13 @@ export default function KpisJefeCampana() {
         }
     };
 
+    // Cambiar campaña
+    const handleCampanaChange = (value) => {
+        setCampanaSeleccionada(value);
+        setPage(0);
+        setPageAgentes(0);
+    };
+
     // Manejar cambio de página en tabla de equipos
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -445,7 +455,7 @@ export default function KpisJefeCampana() {
         if (tabValue === 1 && !equipoSeleccionado && (campanaSeleccionada || campanas.length === 1)) {
             fetchEquipos();
         }
-    }, [page, rowsPerPage]);
+    }, [page, rowsPerPage, searchEquipos]);
 
     // Recargar agentes cuando cambia la paginación o filtros
     React.useEffect(() => {
@@ -497,40 +507,49 @@ export default function KpisJefeCampana() {
 
         // Si tiene múltiples campañas, mostrar selector
         return (
-            <Paper elevation={2} sx={{ p: 2, width: 'fit-content', minWidth: 400 }}>
-                <FormControl fullWidth>
-                    <InputLabel id="campana-label">Selecciona una campaña</InputLabel>
-                    <Select
-                        labelId="campana-label"
-                        value={campanaSeleccionada}
-                        label="Selecciona una campaña"
-                        onChange={(e) => setCampanaSeleccionada(e.target.value)}
-                    >
-                        <MenuItem value="" disabled>
-                            -- Selecciona una campaña --
-                        </MenuItem>
-                        {campanas.map((camp) => (
-                            <MenuItem key={camp.id} value={camp.id}>
-                                <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
-                                    <Typography sx={{ flex: 1 }}>{camp.nombre}</Typography>
-                                    {camp.estado && (
-                                        <Chip
-                                            label={formatEstadoLabel(camp.estado)}
-                                            size="small"
-                                            color={camp.estado === 'ACTIVA' ? 'success' : camp.estado === 'PAUSADA' ? 'warning' : 'default'}
-                                            sx={{
-                                                height: 20,
-                                                fontSize: '0.7rem',
-                                                fontWeight: 600,
-                                            }}
-                                        />
-                                    )}
-                                </Stack>
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-            </Paper>
+            <FormControl sx={{maxWidth: 400 }} fullWidth>
+                <InputLabel id="campana-select-label">Selecciona una campaña</InputLabel>
+                <Select
+                    labelId="campana-select-label"
+                    value={campanaSeleccionada}
+                    onChange={(e) => handleCampanaChange(e.target.value)}
+                    disabled={loadingCampanas}
+                    label="Selecciona una campaña"
+                    sx={{
+                    backgroundColor: 'var(--campaign-filter-bg, #F8FAFB)',
+                    height: '56px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--segmented-border, rgba(12, 21, 90, 0.12))',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-main, #0C155A)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-main, #0C155A)',
+                    },
+                    }}  
+                >
+                {campanas.map((camp) => (
+                    <MenuItem key={camp.id} value={camp.id}>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                            <Typography sx={{ flex: 1 }}>{camp.nombre}</Typography>
+                            {camp.estado && (
+                                <Chip
+                                    label={camp.estado}
+                                    size="small"
+                                    color={camp.estado === 'ACTIVA' ? 'success' : camp.estado === 'PAUSADA' ? 'warning' : 'default'}
+                                    sx={{
+                                        height: 20,
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                    }}
+                                />
+                            )}
+                        </Stack>
+                    </MenuItem>
+                ))}
+                </Select>
+            </FormControl>
         );
     };
 
@@ -572,61 +591,136 @@ export default function KpisJefeCampana() {
         }
 
         return (
-            <Paper elevation={2} sx={{ width: '100%', overflow: 'hidden' }}>
+            <>
+                {/* Barra de búsqueda */}
+                <Box sx={{ mb: 3 }}>
+                    <TextField
+                        fullWidth
+                        placeholder="Buscar equipos por nombre o coordinador..."
+                        value={searchEquipos}
+                        onChange={(e) => {
+                            setSearchEquipos(e.target.value);
+                            setPage(0); // Resetear a primera página
+                        }}
+                        disabled={loadingEquipos}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ color: 'primary.main' }} />
+                                </InputAdornment>
+                            ),
+                        }}
+                        sx={{
+                            maxWidth: 600,
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: 3,
+                                bgcolor: 'background.paper',
+                                boxShadow: theme.palette.mode === 'light'
+                                    ? '0 2px 8px rgba(0,0,0,0.08)'
+                                    : '0 2px 8px rgba(0,0,0,0.3)',
+                            }
+                        }}
+                    />
+                </Box>
+            <Paper 
+                elevation={0}
+                sx={{ 
+                    backgroundColor: theme.palette.background.paper,
+                    borderRadius: 2,
+                    width: '100%', 
+                    overflow: 'hidden' 
+                }}
+            >
                 <TableContainer>
                     <Table>
                         <TableHead>
-                            <TableRow sx={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
-                                <TableCell><strong>Equipo</strong></TableCell>
-                                <TableCell><strong>Coordinador</strong></TableCell>
-                                <TableCell align="center"><strong>Agentes</strong></TableCell>
-                                <TableCell><strong>Campaña</strong></TableCell>
-                                <TableCell align="center"><strong>Acciones</strong></TableCell>
+                            <TableRow sx={{ 
+                                backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)',
+                                borderBottom: `2px solid ${theme.palette.primary.main}`
+                            }}>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Equipo</strong></TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Coordinador</strong></TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Agentes</strong></TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Campaña</strong></TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Acciones</strong></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {equipos.map((equipo) => (
+                            {equipos.map((equipo, index) => (
                                 <TableRow
                                     key={equipo.equipo_id}
                                     hover
-                                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                    sx={{ 
+                                        backgroundColor: theme.palette.mode === 'light'
+                                            ? (index % 2 === 0 ? 'white' : '#FAFCFE')
+                                            : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
+                                        '&:hover': {
+                                            backgroundColor: theme.palette.mode === 'light' 
+                                                ? '#F8FBFF' 
+                                                : 'rgba(255, 255, 255, 0.05)',
+                                        },
+                                        transition: 'background-color 0.2s ease',
+                                        borderBottom: theme.palette.mode === 'light' 
+                                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                                            : '1px solid rgba(255, 255, 255, 0.1)',
+                                    }}
                                 >
-                                    <TableCell>{equipo.nombre}</TableCell>
-                                    <TableCell>{equipo.coordinador_nombre || 'Sin coordinador'}</TableCell>
                                     <TableCell align="center">
-                                        <Chip
-                                            label={equipo.total_agentes}
-                                            size="small"
-                                            color={equipo.total_agentes > 0 ? 'primary' : 'default'}
-                                        />
+                                        <Typography variant="body2" fontWeight={600}>
+                                            {equipo.nombre}
+                                        </Typography>
                                     </TableCell>
-                                    <TableCell>{equipo.campana_nombre}</TableCell>
                                     <TableCell align="center">
-                                        <button
-                                            className="btn"
-                                            onClick={() => fetchEquipoDetalle(equipo)}
-                                            style={{ padding: '6px 16px', fontSize: '0.875rem' }}
-                                        >
-                                            Ver KPIs
-                                        </button>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {equipo.coordinador_nombre || 'Sin coordinador'}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        {equipo.total_agentes}
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Typography variant="body2" color="text.primary">
+                                            {equipo.campana_nombre}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Tooltip title="Ver KPIs" arrow>
+                                            <IconButton
+                                                onClick={() => fetchEquipoDetalle(equipo)}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'action.hover',
+                                                    '&:hover': {
+                                                        bgcolor: 'primary.main',
+                                                        color: 'white',
+                                                    },
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <BarChartIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
                                     </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                 </TableContainer>
-                <TablePagination
-                    rowsPerPageOptions={[5, 10, 25, 50]}
-                    component="div"
-                    count={totalEquipos}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    labelRowsPerPage="Equipos por página:"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-                />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, backgroundColor: theme.palette.background.paper }}>
+                    <Typography variant="body2" color="text.secondary">
+                     Mostrando {equipos.slice(page * rowsPerPage, (page + 1) * rowsPerPage).length} de {totalEquipos} equipos
+                    </Typography>
+                        <Pagination
+                            count={Math.ceil(totalEquipos / rowsPerPage)}
+                            page={page + 1}
+                            onChange={(event, value) => handleChangePage(event, value - 1)}
+                            color="primary"
+                            shape="rounded"
+                            size="medium"
+                        />
+                </Box>
             </Paper>
+            </>
         );
     };
 
@@ -637,23 +731,52 @@ export default function KpisJefeCampana() {
         return (
             <>
                 {/* Botón para volver */}
-                <Paper elevation={2} sx={{ p: 2, mb: 2, width: 'fit-content' }}>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                        <IconButton onClick={handleVolverALista} size="small">
+                <Box
+                    sx={{
+                        background: theme.palette.mode === 'light'
+                            ? 'linear-gradient(135deg, #2c86eeff 0%, #2a15e9ff 100%)'
+                            : 'linear-gradient(135deg, #0C155A 0%, #040c47ff 100%)',
+                        borderRadius: 3,
+                        p: 3,
+                        mb: 4,
+                        color: 'white',
+                        boxShadow: theme.palette.mode === 'light'
+                            ? '0 8px 32px rgba(102, 126, 234, 0.25)'
+                            : '0 8px 32px rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 2,
+                    }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <IconButton
+                            onClick={handleVolverALista}
+                            sx={{
+                                color: 'white',
+                                bgcolor: 'rgba(255, 255, 255, 0.1)',
+                                '&:hover': {
+                                    bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                },
+                            }}
+                        >
                             <ArrowBackIcon />
                         </IconButton>
                         <Stack>
-                            <Typography variant="h6" fontWeight={700}>
+                            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
                                 {equipoSeleccionado.nombre}
                             </Typography>
+                            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                                Campaña: {equipoSeleccionado.campana_nombre}
+                            </Typography>
                             {equipoSeleccionado.coordinador_nombre && (
-                                <Typography variant="body2" color="text.secondary">
+                                <Typography variant="body2" sx={{ opacity: 0.85 }}>
                                     Coordinador: {equipoSeleccionado.coordinador_nombre}
                                 </Typography>
                             )}
                         </Stack>
-                    </Stack>
-                </Paper>
+                    </Box>
+                </Box>
 
                 {loadingEquipoDetalle ? (
                     <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
@@ -714,7 +837,7 @@ export default function KpisJefeCampana() {
     const renderTablaAgentes = () => {
         if (loadingAgentes) {
             return (
-                <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+                <Paper elevation={0} sx={{ p: 4, textAlign: 'center' }}>
                     <CircularProgress />
                     <Typography sx={{ mt: 2 }}>Cargando agentes...</Typography>
                 </Paper>
@@ -730,35 +853,69 @@ export default function KpisJefeCampana() {
         }
 
         return (
-            <Paper elevation={2} sx={{ width: '100%', overflow: 'hidden' }}>
+            <Paper 
+                elevation={0}
+                sx={{ 
+                    backgroundColor: theme.palette.background.paper,
+                    borderRadius: 2,
+                    width: '100%', 
+                    overflow: 'hidden' 
+                }}
+            >
                 <TableContainer>
                     <Table>
                         <TableHead>
-                            <TableRow sx={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
-                                <TableCell><strong>Nombre</strong></TableCell>
-                                <TableCell><strong>Email</strong></TableCell>
-                                <TableCell align="center"><strong>Equipo</strong></TableCell>
-                                <TableCell align="center"><strong>Estado</strong></TableCell>
-                                <TableCell align="center"><strong>Acciones</strong></TableCell>
+                            <TableRow sx={{ 
+                                backgroundColor: theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)',
+                                borderBottom: `2px solid ${theme.palette.primary.main}`
+                            }}>
+                                <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Nombre</strong></TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Email</strong></TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Equipo</strong></TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Estado</strong></TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, color: theme.palette.text.primary }}><strong>Acciones</strong></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {agentes.map((agente) => (
+                            {agentes.map((agente, index) => (
                                 <TableRow
                                     key={agente.id}
                                     hover
-                                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                    sx={{ 
+                                        backgroundColor: theme.palette.mode === 'light'
+                                            ? (index % 2 === 0 ? 'white' : '#FAFCFE')
+                                            : (index % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)'),
+                                        '&:hover': {
+                                            backgroundColor: theme.palette.mode === 'light' 
+                                                ? '#F8FBFF' 
+                                                : 'rgba(255, 255, 255, 0.05)',
+                                        },
+                                        transition: 'background-color 0.2s ease',
+                                        borderBottom: theme.palette.mode === 'light' 
+                                            ? '1px solid rgba(12, 21, 90, 0.1)'
+                                            : '1px solid rgba(255, 255, 255, 0.1)',
+                                    }}
                                 >
-                                    <TableCell>
+                                    <TableCell align="center">
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '8px', background: 'linear-gradient(135deg, rgba(47, 118, 230, 0.12), rgba(47, 118, 230, 0.08))', color: 'primary.main', flexShrink: 0 }}>
                                                 <PersonIcon sx={{ fontSize: 16 }} />
                                             </Box>
-                                            <span>{agente.nombre_completo}</span>
+                                            <Typography variant="body2" fontWeight={600} >
+                                                {agente.nombre_completo}
+                                            </Typography>
                                         </Box>
                                     </TableCell>
-                                    <TableCell>{agente.email}</TableCell>
-                                    <TableCell align="center">{agente.equipo_nombre}</TableCell>
+                                    <TableCell align="center">
+                                        <Typography variant="body2" color="text.secondary">
+                                            {agente.email}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Typography variant="body2" color="text.primary">
+                                            {agente.equipo_nombre}
+                                        </Typography>
+                                    </TableCell>
                                     <TableCell align="center">
                                         <Chip
                                             label={agente.estado_label || 'Sin estado'}
@@ -788,32 +945,41 @@ export default function KpisJefeCampana() {
                                         />
                                     </TableCell>
                                     <TableCell align="center">
-                                        <Button
-                                            endIcon={<KeyboardArrowRightIcon />}
-                                            size="small"
-                                            variant="text"
-                                            onClick={() => fetchAgenteDetalle(agente)}
-                                            sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px' }}
-                                        >
-                                            Ver KPIs
-                                        </Button>
+                                        <Tooltip title="Ver KPIs" arrow>
+                                            <IconButton
+                                                onClick={() => fetchAgenteDetalle(agente)}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'action.hover',
+                                                    '&:hover': {
+                                                        bgcolor: 'primary.main',
+                                                        color: 'white',
+                                                    },
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <BarChartIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
                                     </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                 </TableContainer>
-                <TablePagination
-                    rowsPerPageOptions={[5, 10, 25, 50]}
-                    component="div"
-                    count={totalAgentes}
-                    rowsPerPage={rowsPerPageAgentes}
-                    page={pageAgentes}
-                    onPageChange={handleChangePageAgentes}
-                    onRowsPerPageChange={handleChangeRowsPerPageAgentes}
-                    labelRowsPerPage="Agentes por página:"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-                />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, backgroundColor: theme.palette.background.paper }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Mostrando {agentes.slice(pageAgentes * rowsPerPageAgentes, (pageAgentes + 1) * rowsPerPageAgentes).length} de {totalAgentes} agentes
+                  </Typography>
+                  <Pagination
+                    count={Math.ceil(totalAgentes / rowsPerPageAgentes)}
+                    page={pageAgentes + 1}
+                    onChange={(event, value) => handleChangePageAgentes(event, value - 1)}
+                    color="primary"
+                    shape="rounded"
+                    size="medium"
+                  />
+                </Box>
             </Paper>
         );
     };
@@ -825,24 +991,50 @@ export default function KpisJefeCampana() {
         return (
             <>
                 {/* Botón para volver */}
-                <Paper elevation={2} sx={{ p: 2, mb: 2, width: 'fit-content' }}>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                        <IconButton onClick={handleVolverAListaAgentes} size="small">
+                <Box
+                    sx={{
+                        background: theme.palette.mode === 'light'
+                            ? 'linear-gradient(135deg, #2c86eeff 0%, #2a15e9ff 100%)'
+                            : 'linear-gradient(135deg, #0C155A 0%, #040c47ff 100%)',
+                        borderRadius: 3,
+                        p: 3,
+                        mb: 4,
+                        color: 'white',
+                        boxShadow: theme.palette.mode === 'light'
+                            ? '0 8px 32px rgba(102, 126, 234, 0.25)'
+                            : '0 8px 32px rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 2,
+                    }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <IconButton
+                            onClick={handleVolverAListaAgentes}
+                            sx={{
+                                color: 'white',
+                                bgcolor: 'rgba(255, 255, 255, 0.1)',
+                                '&:hover': {
+                                    bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                },
+                            }}
+                        >
                             <ArrowBackIcon />
                         </IconButton>
                         <Stack>
-                            <Typography variant="h6" fontWeight={700}>
+                            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
                                 {agenteSeleccionado.nombre_completo}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{ opacity: 0.9 }}>
                                 {agenteSeleccionado.email}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{ opacity: 0.85 }}>
                                 Equipo: {agenteSeleccionado.equipo_nombre}
                             </Typography>
                         </Stack>
-                    </Stack>
-                </Paper>
+                    </Box>
+                </Box>
 
                 {loadingAgenteDetalle ? (
                     <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
@@ -894,6 +1086,7 @@ export default function KpisJefeCampana() {
                     '--background-paper': theme.palette.background.paper,
                     '--primary-main': theme.palette.primary.main,
                     '--primary-dark': isDark ? theme.palette.primary.dark : '#1a2b7a',
+                    '--campaign-filter-bg': isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFB',
                     '--segmented-bg': isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F4F8',
                     '--segmented-border': isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(12, 21, 90, 0.12)',
                     '--segmented-hover': isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(12, 21, 90, 0.05)',
@@ -934,24 +1127,55 @@ export default function KpisJefeCampana() {
                                     color="error"
                                 />
                             )}
-                            <button 
-                                className="btn" 
-                                onClick={() => {
-                                    if (tabValue === 0) {
-                                        fetchData();
-                                    } else if (equipoSeleccionado) {
-                                        fetchEquipoDetalle(equipoSeleccionado);
-                                    } else {
-                                        fetchEquipos();
-                                    }
-                                }} 
-                                disabled={loading || loadingEquipos || loadingEquipoDetalle}
-                            >
-                                {(loading || loadingEquipos || loadingEquipoDetalle) ? 
-                                    <RefreshIcon fontSize="small" className="spinning" /> : 
-                                    <RefreshIcon fontSize="small" />
-                                }
-                            </button>
+                            <Tooltip title="Actualizar">
+                              <span>
+                                <IconButton
+                                  onClick={() => {
+                                      if (tabValue === 0) {
+                                          fetchData();
+                                      } else if (tabValue === 1) {
+                                          if (equipoSeleccionado) {
+                                              fetchEquipoDetalle(equipoSeleccionado);
+                                          } else {
+                                              fetchEquipos();
+                                          }
+                                      } else if (tabValue === 2) {
+                                          if (agenteSeleccionado) {
+                                              fetchAgenteDetalle(agenteSeleccionado);
+                                          } else {
+                                              fetchAgentes();
+                                          }
+                                      }
+                                  }}
+                                  disabled={loading || loadingEquipos || loadingEquipoDetalle || loadingAgentes || loadingAgenteDetalle}
+                                  size="large"
+                                  sx={{
+                                    backgroundColor: theme.palette.primary.main,
+                                    color: "#fff",
+                                    transition: "all 0.3s ease",
+                                    '&:hover': {
+                                      backgroundColor: theme.palette.primary.dark,
+                                      transform: "rotate(180deg)",
+                                    },
+                                    '&.Mui-disabled': {
+                                      backgroundColor: theme.palette.action.disabled,
+                                      color: "rgba(255, 255, 255, 0.5)",
+                                    },
+                                  }}
+                                >
+                                  <RefreshIcon
+                                    sx={{
+                                      transition: "transform 0.6s ease",
+                                      animation: (loading || loadingEquipos || loadingEquipoDetalle) ? "spin 1s linear infinite" : "none",
+                                      "@keyframes spin": {
+                                        "0%": { transform: "rotate(0deg)" },
+                                        "100%": { transform: "rotate(360deg)" },
+                                      },
+                                    }}
+                                  />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                         </div>
                     )}
                 </div>
