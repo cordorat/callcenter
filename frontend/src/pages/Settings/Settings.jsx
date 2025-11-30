@@ -242,8 +242,9 @@ export default function Settings() {
               </ListItem>
             </List>
           </Paper>
-
-          {/* Sección Ayuda y soporte */}
+          
+          
+          {/* Sección Ayuda y soporte 
           <Paper
             elevation={0}
             sx={{
@@ -328,6 +329,7 @@ export default function Settings() {
               </ListItem>
             </List>
           </Paper>
+          */}
 
           {/* Sección Sesión */}
           <Paper
