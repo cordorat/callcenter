@@ -667,21 +667,22 @@ class KPIViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'], url_path='campana/overview', permission_classes=[IsJefeCampana])
     def campana_overview(self, request):
         """
-        Endpoint para Jefe de Campaña: Devuelve KPIs agregados de una campaña.
+        Endpoint para Jefe de Campaña: Devuelve KPIs agregados de campaña(s).
         Solo accesible para Jefes de Campaña y Admins.
 
-        GET /api/kpis/campana/overview/?campana_id=1
-        GET /api/kpis/campana/overview/?campana_id=1&fecha_desde=2025-10-01&fecha_hasta=2025-11-05
+        GET /api/kpis/campana/overview/  → Agrega TODAS las campañas activas del jefe
+        GET /api/kpis/campana/overview/?campana_id=1  → Solo una campaña específica
+        GET /api/kpis/campana/overview/?fecha_desde=2025-10-01&fecha_hasta=2025-11-05
 
         Query params:
-            campana_id: ID de la campaña (opcional si solo tiene una)
+            campana_id: ID de la campaña (opcional - si no se envía, agrega todas las activas)
             fecha_desde: Fecha inicio del período (YYYY-MM-DD, opcional, por defecto: hoy)
             fecha_hasta: Fecha fin del período (YYYY-MM-DD, opcional, por defecto: hoy)
 
         Response:
             {
-                "campana_id": 1,
-                "campana_nombre": "Campaña Navidad 2025",
+                "campana_id": 1 o null (si son múltiples),
+                "campana_nombre": "Campaña X" o "Todas las campañas (N)",
                 "llamadas_activas": 3,
                 "agentes_disponibles": 5,
                 "tiempo_promedio_llamada": 180.5,
@@ -695,31 +696,15 @@ class KPIViewSet(viewsets.ViewSet):
             }
         """
         # ===========================
-        # 1. OBTENER CAMPAÑA
+        # 1. OBTENER CAMPAÑA(S)
         # ===========================
         campana_id = request.query_params.get('campana_id')
+        campanas = []
+        campana_nombre_respuesta = ""
+        campana_id_respuesta = None
 
-        # Si no envía campana_id, buscar su campaña automáticamente
-        if not campana_id:
-            if request.user.is_admin():
-                return Response(
-                    {"detail": "Los administradores deben especificar campana_id"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Buscar la campaña más reciente del jefe
-            campana = Campana.objects.filter(
-                jefe_campana=request.user,
-                estado=get_estado('ESTADO_CAMPANA', 'ACTIVA')
-            ).order_by('-fecha_inicio').first()
-
-            if not campana:
-                return Response(
-                    {"detail": "No hay una campaña asignada en el momento"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-        else:
-            # Validar que el jefe tenga acceso a esta campaña
+        if campana_id:
+            # Si envía campana_id específico, usar solo esa
             campana = get_object_or_404(Campana, pk=campana_id)
 
             if not request.user.is_admin():
@@ -728,22 +713,52 @@ class KPIViewSet(viewsets.ViewSet):
                         {"detail": "No tienes permiso para ver KPIs de esta campaña"},
                         status=status.HTTP_403_FORBIDDEN
                     )
+            
+            campanas = [campana]
+            campana_nombre_respuesta = campana.nombre
+            campana_id_respuesta = campana.pk
+        else:
+            # Si no envía campana_id, agregar TODAS las campañas activas del jefe
+            if request.user.is_admin():
+                return Response(
+                    {"detail": "Los administradores deben especificar campana_id"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Buscar TODAS las campañas activas del jefe
+            campanas = list(Campana.objects.filter(
+                jefe_campana=request.user,
+                estado=get_estado('ESTADO_CAMPANA', 'ACTIVA')
+            ))
+
+            if not campanas:
+                return Response(
+                    {"detail": "No hay campañas activas asignadas en el momento"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Nombre agregado para la respuesta
+            if len(campanas) == 1:
+                campana_nombre_respuesta = campanas[0].nombre
+                campana_id_respuesta = campanas[0].pk
+            else:
+                campana_nombre_respuesta = f"Todas las campañas ({len(campanas)})"
+                campana_id_respuesta = None  # Múltiples campañas
 
         # ===========================
-        # 2. OBTENER AGENTES DE LA CAMPAÑA
+        # 2. OBTENER AGENTES DE TODAS LAS CAMPAÑAS
         # ===========================
-        # Los agentes están en equipos asignados a esta campaña
-        equipos_campana = Equipo.objects.filter(
-            campana=campana,
-            is_active=True
-        )
-
-        # Obtener IDs de agentes de todos los equipos de esta campaña
+        # Los agentes están en equipos asignados a las campañas
         agentes_ids = []
-        for equipo in equipos_campana:
-            ids_equipo = equipo.agentes_detalle.values_list(
-                'agente_id', flat=True)
-            agentes_ids.extend(ids_equipo)
+        for campana in campanas:
+            equipos_campana = Equipo.objects.filter(
+                campana=campana,
+                is_active=True
+            )
+            for equipo in equipos_campana:
+                ids_equipo = equipo.agentes_detalle.values_list(
+                    'agente_id', flat=True)
+                agentes_ids.extend(ids_equipo)
 
         # Eliminar duplicados
         agentes_ids = list(set(agentes_ids))
@@ -751,8 +766,8 @@ class KPIViewSet(viewsets.ViewSet):
         if not agentes_ids:
             # Si no hay agentes, retornar KPIs en 0
             return Response({
-                "campana_id": campana.pk,
-                "campana_nombre": campana.nombre,
+                "campana_id": campana_id_respuesta,
+                "campana_nombre": campana_nombre_respuesta,
                 "llamadas_activas": 0,
                 "agentes_disponibles": 0,
                 "tiempo_promedio_llamada": 0,
@@ -760,7 +775,8 @@ class KPIViewSet(viewsets.ViewSet):
                 "ventas_realizadas": 0,
                 "tasa_conversion": 0,
                 "fecha_consulta": timezone.now(),
-                "total_agentes": 0
+                "total_agentes": 0,
+                "total_campanas": len(campanas)
             })
 
         # Obtener objetos de agentes
@@ -774,7 +790,7 @@ class KPIViewSet(viewsets.ViewSet):
         # ===========================
         # 3. KPI 1: LLAMADAS ACTIVAS
         # ===========================
-        # Llamadas en curso (estado EN_CURSO) de esta campaña
+        # Llamadas en curso (estado EN_CURSO) de todas las campañas
         estado_en_curso = get_estado('ESTADO_LLAMADA', 'EN_CURSO')
         llamadas_activas = Llamada.objects.filter(
             agente_id__in=agentes_ids,
@@ -926,8 +942,8 @@ class KPIViewSet(viewsets.ViewSet):
         # 9. CONSTRUIR RESPUESTA
         # ===========================
         return Response({
-            "campana_id": campana.pk,
-            "campana_nombre": campana.nombre,
+            "campana_id": campana_id_respuesta,
+            "campana_nombre": campana_nombre_respuesta,
             "llamadas_activas": llamadas_activas,
             "agentes_disponibles": agentes_disponibles,
             "tiempo_promedio_llamada": round(duracion_promedio, 2),
@@ -936,6 +952,7 @@ class KPIViewSet(viewsets.ViewSet):
             "tasa_conversion": round(tasa_conversion, 2),
             "fecha_consulta": timezone.now(),
             "total_agentes": total_agentes,
+            "total_campanas": len(campanas),
             "fecha_desde": fecha_desde.isoformat(),
             "fecha_hasta": fecha_hasta.isoformat(),
             "timeline_por_hora": timeline_por_hora

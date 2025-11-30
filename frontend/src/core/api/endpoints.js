@@ -13,6 +13,9 @@ export const ENDPOINTS = {
   USER_ME: `${BASE_URL}/users/me/`,
   USER_PROFILE: `${BASE_URL}/users/profile/`,
 
+  // --- CENTROS ---
+  CENTROS: `${BASE_URL}/users/centros/`,
+
   // --- AGENT STATES ---
   AGENT_STATES_CURRENT: `${BASE_URL}/users/estados/current/`,
   AGENT_STATES_CHANGE: `${BASE_URL}/users/estados/change_state/`,

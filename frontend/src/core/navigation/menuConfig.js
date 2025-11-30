@@ -14,7 +14,8 @@ import{
   Equalizer as EqualizerIcon,
   History as HistoryIcon,
   Groups as GroupsIcon,
-  AssignmentInd as AssignmentIndIcon
+  AssignmentInd as AssignmentIndIcon,
+  Business as BusinessIcon
 } from '@mui/icons-material';
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 export const menuItems = [
@@ -40,6 +41,12 @@ export const menuItems = [
     label: 'Usuarios',
     path: '/usuarios',
     icon: PeopleIcon,
+    roles: ['ADMIN']
+  },
+  {
+    label: 'Centros',
+    path: '/centros',
+    icon: BusinessIcon,
     roles: ['ADMIN']
   },
   {

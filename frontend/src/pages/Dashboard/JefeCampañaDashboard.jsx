@@ -123,7 +123,7 @@ export default function JefeCampañaDashboard() {
               letterSpacing: "0.5px",
             }}
           >
-            Estadísticas de Campaña
+            Estadísticas de Campaña(s)
           </Typography>
           <Tooltip title="Actualizar">
             <IconButton
@@ -162,7 +162,7 @@ export default function JefeCampañaDashboard() {
         {/* Error Alert */}
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
-            No se pudieron cargar los KPIs de la campaña.
+            No se pudieron cargar los KPIs de la(s) campaña(s).
           </Alert>
         )}
 
@@ -217,7 +217,7 @@ export default function JefeCampañaDashboard() {
                       mb: 2,
                     }}
                   >
-                    Llamadas de Campaña
+                    Llamadas de Campaña(s) diarias
                   </Typography>
                   <Typography
                     variant="h3"

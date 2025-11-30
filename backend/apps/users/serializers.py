@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import User, TiposParametros
+from .models import User, TiposParametros, Centro
 from common.estados_helper import get_estado
 import re
 import base64
@@ -772,3 +772,222 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
                 )
 
         return value
+
+
+# =============================================================================
+# Serializadores para Centro
+# =============================================================================
+
+class CentroSerializer(serializers.ModelSerializer):
+    """
+    Serializador para lectura de Centros.
+    Incluye información del Jefe de Centro si existe.
+    """
+    # Información del jefe de centro (solo lectura)
+    jefe_centro_nombre = serializers.SerializerMethodField()
+    jefe_centro_email = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Centro
+        fields = [
+            'id',
+            'nombre',
+            'direccion',
+            'jefe_centro',
+            'jefe_centro_nombre',
+            'jefe_centro_email',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_jefe_centro_nombre(self, obj):
+        """Devuelve el nombre completo del jefe de centro."""
+        if obj.jefe_centro:
+            return obj.jefe_centro.full_name
+        return None
+    
+    def get_jefe_centro_email(self, obj):
+        """Devuelve el email del jefe de centro."""
+        if obj.jefe_centro:
+            return obj.jefe_centro.email
+        return None
+
+
+class CentroCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializador para crear Centros.
+    Valida que el jefe de centro tenga el rol correcto.
+    """
+    
+    class Meta:
+        model = Centro
+        fields = [
+            'nombre',
+            'direccion',
+            'jefe_centro'
+        ]
+    
+    def validate_nombre(self, value):
+        """Valida que el nombre no esté vacío y sea único."""
+        if not value or not value.strip():
+            raise serializers.ValidationError(
+                "El nombre del centro es obligatorio."
+            )
+        
+        # Verificar que no exista otro centro con el mismo nombre
+        if Centro.objects.filter(nombre__iexact=value.strip()).exists():
+            raise serializers.ValidationError(
+                "Ya existe un centro con este nombre."
+            )
+        
+        return value.strip()
+    
+    def validate_direccion(self, value):
+        """Valida que la dirección no esté vacía."""
+        if not value or not value.strip():
+            raise serializers.ValidationError(
+                "La dirección del centro es obligatoria."
+            )
+        return value.strip()
+    
+    def validate_jefe_centro(self, value):
+        """
+        Valida que el jefe de centro:
+        1. Exista en el sistema
+        2. Tenga el rol JEFE_CENTRO
+        3. Esté activo
+        4. No sea jefe de otro centro (opcional, puedes quitarlo si un jefe puede tener múltiples centros)
+        """
+        if value is None:
+            # El jefe de centro es opcional en la creación
+            return value
+        
+        # Verificar que el usuario esté activo
+        if not value.is_active:
+            raise serializers.ValidationError(
+                "El usuario seleccionado no está activo."
+            )
+        
+        # Verificar que tenga el rol correcto
+        rol_jefe_centro = get_estado('ROL_USUARIO', 'JEFE_CENTRO')
+        if value.rol != rol_jefe_centro:
+            raise serializers.ValidationError(
+                f"El usuario seleccionado no tiene el rol de Jefe de Centro. "
+                f"Rol actual: {value.get_role_display()}"
+            )
+        
+        # Verificar que no sea jefe de otro centro
+        centro_existente = Centro.objects.filter(jefe_centro=value).first()
+        if centro_existente:
+            raise serializers.ValidationError(
+                f"Este usuario ya es jefe del centro '{centro_existente.nombre}'."
+            )
+        
+        return value
+    
+    def create(self, validated_data):
+        """Crea un nuevo centro."""
+        return Centro.objects.create(**validated_data)
+
+
+class CentroUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializador para actualizar Centros.
+    Permite actualización parcial de campos.
+    """
+    
+    class Meta:
+        model = Centro
+        fields = [
+            'nombre',
+            'direccion',
+            'jefe_centro'
+        ]
+    
+    def validate_nombre(self, value):
+        """Valida que el nombre no esté vacío y sea único (excluyendo el actual)."""
+        if not value or not value.strip():
+            raise serializers.ValidationError(
+                "El nombre del centro es obligatorio."
+            )
+        
+        # Verificar que no exista otro centro con el mismo nombre (excluyendo el actual)
+        if self.instance:
+            if Centro.objects.filter(nombre__iexact=value.strip()).exclude(pk=self.instance.pk).exists():
+                raise serializers.ValidationError(
+                    "Ya existe un centro con este nombre."
+                )
+        
+        return value.strip()
+    
+    def validate_direccion(self, value):
+        """Valida que la dirección no esté vacía."""
+        if not value or not value.strip():
+            raise serializers.ValidationError(
+                "La dirección del centro es obligatoria."
+            )
+        return value.strip()
+    
+    def validate_jefe_centro(self, value):
+        """
+        Valida que el jefe de centro tenga el rol correcto.
+        Permite desasignar (value=None) o cambiar a otro jefe válido.
+        """
+        if value is None:
+            # Permitir desasignar el jefe de centro
+            return value
+        
+        # Verificar que el usuario esté activo
+        if not value.is_active:
+            raise serializers.ValidationError(
+                "El usuario seleccionado no está activo."
+            )
+        
+        # Verificar que tenga el rol correcto
+        rol_jefe_centro = get_estado('ROL_USUARIO', 'JEFE_CENTRO')
+        if value.rol != rol_jefe_centro:
+            raise serializers.ValidationError(
+                f"El usuario seleccionado no tiene el rol de Jefe de Centro. "
+                f"Rol actual: {value.get_role_display()}"
+            )
+        
+        # Verificar que no sea jefe de otro centro (excluyendo el actual)
+        if self.instance:
+            centro_existente = Centro.objects.filter(jefe_centro=value).exclude(pk=self.instance.pk).first()
+            if centro_existente:
+                raise serializers.ValidationError(
+                    f"Este usuario ya es jefe del centro '{centro_existente.nombre}'."
+                )
+        
+        return value
+    
+    def update(self, instance, validated_data):
+        """Actualiza el centro con los datos validados."""
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
+class CentroListSerializer(serializers.ModelSerializer):
+    """
+    Serializador simplificado para listar Centros.
+    Útil para dropdowns y selects en el frontend.
+    """
+    jefe_centro_nombre = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Centro
+        fields = [
+            'id',
+            'nombre',
+            'jefe_centro',
+            'jefe_centro_nombre'
+        ]
+    
+    def get_jefe_centro_nombre(self, obj):
+        """Devuelve el nombre completo del jefe de centro."""
+        if obj.jefe_centro:
+            return obj.jefe_centro.full_name
+        return None

@@ -1,0 +1,179 @@
+### ====================================================
+### Pruebas CRUD de Centros - Solo para ADMIN
+### ====================================================
+
+@baseUrl = http://localhost:8000/api
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY0NTAxODQxLCJpYXQiOjE3NjQ0NzMwNDEsImp0aSI6ImQ3OGNkMjM3ZThhODQ5ODNiOWQ2OWZmODI0NTUwYWIyIiwiZG9jdW1lbnRvX2lkIjoiMCJ9.KzBIDaxuMYeBoUlDcM7pgic-deZNwVqKVckAfWCvBBQ
+
+### ====================================================
+### 1. LOGIN como ADMIN (Obtener token primero)
+### ====================================================
+
+# @name login
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "email": "admin@callcenter.com",
+    "password": "admin123"
+}
+
+### Guardar el token del login anterior en @adminToken
+
+### ====================================================
+### 2. LISTAR todos los Centros
+### ====================================================
+
+GET {{baseUrl}}/users/centros/
+Authorization: Bearer {{adminToken}}
+
+### ====================================================
+### 3. LISTAR Centros con paginación
+### ====================================================
+
+GET {{baseUrl}}/users/centros/?page=1&page_size=5
+Authorization: Bearer {{adminToken}}
+
+### ====================================================
+### 4. BUSCAR Centros por nombre
+### ====================================================
+
+GET {{baseUrl}}/users/centros/?nombre=principal
+Authorization: Bearer {{adminToken}}
+
+### ====================================================
+### 5. LISTAR Centros sin jefe asignado
+### ====================================================
+
+GET {{baseUrl}}/users/centros/?sin_jefe=true
+Authorization: Bearer {{adminToken}}
+
+### ====================================================
+### 6. CREAR un nuevo Centro (sin jefe)
+### ====================================================
+
+POST {{baseUrl}}/users/centros/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "nombre": "Centro Norte",
+    "direccion": "Calle 100 #15-20, Bogotá"
+}
+
+### ====================================================
+### 7. CREAR un nuevo Centro (con jefe)
+### Reemplazar "12345678" con un documento_id real de un usuario JEFE_CENTRO
+### ====================================================
+
+POST {{baseUrl}}/users/centros/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "nombre": "Centro Sur",
+    "direccion": "Carrera 50 #30-45, Bogotá",
+    "jefe_centro": "12345678"
+}
+
+### ====================================================
+### 8. OBTENER un Centro específico
+### Reemplazar {id} con el ID real del centro
+### ====================================================
+
+GET {{baseUrl}}/users/centros/1/
+Authorization: Bearer {{adminToken}}
+
+### ====================================================
+### 9. ACTUALIZAR un Centro (PUT - todos los campos)
+### ====================================================
+
+PUT {{baseUrl}}/users/centros/1/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "nombre": "Centro Norte Actualizado",
+    "direccion": "Calle 100 #15-20, Edificio Torre Norte, Bogotá",
+    "jefe_centro": null
+}
+
+### ====================================================
+### 10. ACTUALIZAR parcialmente un Centro (PATCH)
+### ====================================================
+
+PATCH {{baseUrl}}/users/centros/1/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "direccion": "Nueva dirección actualizada"
+}
+
+### ====================================================
+### 11. ELIMINAR un Centro
+### ====================================================
+
+DELETE {{baseUrl}}/users/centros/1/
+Authorization: Bearer {{adminToken}}
+
+### ====================================================
+### 12. LISTAR jefes disponibles (sin centro asignado)
+### ====================================================
+
+GET {{baseUrl}}/users/centros/jefes-disponibles/
+Authorization: Bearer {{adminToken}}
+
+### ====================================================
+### 13. LISTA simple para dropdowns
+### ====================================================
+
+GET {{baseUrl}}/users/centros/simple/
+Authorization: Bearer {{adminToken}}
+
+### ====================================================
+### 14. ASIGNAR jefe a un centro
+### ====================================================
+
+POST {{baseUrl}}/users/centros/1/asignar-jefe/
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "jefe_centro": "12345678"
+}
+
+### ====================================================
+### 15. DESASIGNAR jefe de un centro
+### ====================================================
+
+POST {{baseUrl}}/users/centros/1/desasignar-jefe/
+Authorization: Bearer {{adminToken}}
+
+### ====================================================
+### PRUEBAS DE PERMISOS (debe fallar con 403)
+### ====================================================
+
+### 16. Intentar crear centro como AGENTE (debe fallar)
+### Primero hacer login como agente y usar su token
+
+# @name loginAgente
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "email": "agente@callcenter.com",
+    "password": "agente123"
+}
+
+### @agenteToken = (token del agente)
+### Este request DEBE devolver 403 Forbidden
+
+POST {{baseUrl}}/users/centros/
+Content-Type: application/json
+Authorization: Bearer @agenteToken
+
+{
+    "nombre": "Centro No Autorizado",
+    "direccion": "Dirección de prueba"
+}

@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.db import transaction
 from datetime import date, timedelta
 
-from .models import User, TiposParametros, EstadoAgenteDetalle, EstadoAgenteActual
+from .models import User, TiposParametros, EstadoAgenteDetalle, EstadoAgenteActual, Centro
 from .serializers import (
     UserSerializer,
     UserCreateSerializer,
@@ -15,7 +15,11 @@ from .serializers import (
     AdminUserUpdateSerializer,
     ChangePasswordSerializer,
     CambiarEstadoSerializer,
-    ProfileUpdateSerializer
+    ProfileUpdateSerializer,
+    CentroSerializer,
+    CentroCreateSerializer,
+    CentroUpdateSerializer,
+    CentroListSerializer
 )
 from .permissions import IsAdmin, IsAdminOrOwner
 from common.estados_helper import get_estado
@@ -518,3 +522,267 @@ class EstadoAgenteViewSet(viewsets.ViewSet):
             })
         
         return Response(resultado)
+
+
+# ===================================
+# VIEWSET DE CENTROS
+# ===================================
+
+class CentroPagination(PageNumberPagination):
+    """Paginación para listado de centros."""
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class CentroViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar Centros del Call Center.
+    
+    Solo accesible para usuarios con rol ADMIN.
+    
+    Endpoints:
+    - GET    /api/users/centros/           → Lista todos los centros
+    - POST   /api/users/centros/           → Crea un nuevo centro
+    - GET    /api/users/centros/{id}/      → Obtiene un centro específico
+    - PUT    /api/users/centros/{id}/      → Actualiza un centro completo
+    - PATCH  /api/users/centros/{id}/      → Actualiza un centro parcialmente
+    - DELETE /api/users/centros/{id}/      → Elimina un centro
+    
+    Endpoints adicionales:
+    - GET    /api/users/centros/jefes-disponibles/  → Lista usuarios con rol JEFE_CENTRO sin centro asignado
+    - GET    /api/users/centros/simple/             → Lista simplificada para dropdowns
+    """
+    queryset = Centro.objects.all()
+    permission_classes = [IsAdmin]
+    pagination_class = CentroPagination
+    
+    def get_serializer_class(self):
+        """Devuelve el serializador apropiado según la acción."""
+        if self.action == 'create':
+            return CentroCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return CentroUpdateSerializer
+        elif self.action == 'simple':
+            return CentroListSerializer
+        return CentroSerializer
+    
+    def get_queryset(self):
+        """
+        Devuelve el queryset de centros.
+        Incluye filtros opcionales por query params.
+        """
+        queryset = Centro.objects.select_related('jefe_centro').order_by('nombre')
+        
+        # Filtro por nombre (búsqueda parcial)
+        nombre = self.request.query_params.get('nombre', None)
+        if nombre:
+            queryset = queryset.filter(nombre__icontains=nombre)
+        
+        # Filtro por jefe de centro
+        jefe_centro = self.request.query_params.get('jefe_centro', None)
+        if jefe_centro:
+            queryset = queryset.filter(jefe_centro__documento_id=jefe_centro)
+        
+        # Filtro por centros sin jefe
+        sin_jefe = self.request.query_params.get('sin_jefe', None)
+        if sin_jefe and sin_jefe.lower() == 'true':
+            queryset = queryset.filter(jefe_centro__isnull=True)
+        
+        return queryset
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Crea un nuevo centro.
+        
+        Body:
+        {
+            "nombre": "Centro Principal",
+            "direccion": "Calle 123 #45-67, Bogotá",
+            "jefe_centro": "12345678"  // documento_id del usuario (opcional)
+        }
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        centro = serializer.save()
+        
+        # Devolver respuesta con el serializador de lectura
+        response_serializer = CentroSerializer(centro)
+        return Response(
+            {
+                'message': 'Centro creado exitosamente.',
+                'centro': response_serializer.data
+            },
+            status=status.HTTP_201_CREATED
+        )
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Actualiza un centro completamente o parcialmente.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        centro = serializer.save()
+        
+        # Devolver respuesta con el serializador de lectura
+        response_serializer = CentroSerializer(centro)
+        return Response(
+            {
+                'message': 'Centro actualizado exitosamente.',
+                'centro': response_serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Elimina un centro.
+        
+        NOTA: Considera implementar soft delete si hay relaciones importantes.
+        """
+        instance = self.get_object()
+        nombre_centro = instance.nombre
+        
+        # Verificar si tiene dependencias (equipos, campañas, etc.)
+        # Por ahora, eliminación directa. Ajustar según tus necesidades.
+        
+        instance.delete()
+        
+        return Response(
+            {'message': f"Centro '{nombre_centro}' eliminado exitosamente."},
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=False, methods=['get'], url_path='jefes-disponibles')
+    def jefes_disponibles(self, request):
+        """
+        Lista usuarios con rol JEFE_CENTRO que no tienen un centro asignado.
+        
+        GET /api/users/centros/jefes-disponibles/
+        
+        Útil para el dropdown de asignación de jefe al crear/editar centro.
+        """
+        rol_jefe_centro = get_estado('ROL_USUARIO', 'JEFE_CENTRO')
+        
+        # Obtener IDs de usuarios que ya son jefes de algún centro
+        jefes_asignados = Centro.objects.filter(
+            jefe_centro__isnull=False
+        ).values_list('jefe_centro__documento_id', flat=True)
+        
+        # Filtrar usuarios con rol JEFE_CENTRO que no están asignados y están activos
+        jefes_disponibles = User.objects.filter(
+            rol=rol_jefe_centro,
+            is_active=True
+        ).exclude(
+            documento_id__in=jefes_asignados
+        ).order_by('first_name', 'last_name')
+        
+        resultado = []
+        for jefe in jefes_disponibles:
+            resultado.append({
+                'documento_id': jefe.documento_id,
+                'full_name': jefe.full_name,
+                'email': jefe.email
+            })
+        
+        return Response(resultado)
+    
+    @action(detail=False, methods=['get'], url_path='simple')
+    def simple(self, request):
+        """
+        Lista simplificada de centros para dropdowns.
+        
+        GET /api/users/centros/simple/
+        
+        Devuelve solo id, nombre y jefe_centro_nombre.
+        Sin paginación para facilitar uso en selects.
+        """
+        centros = Centro.objects.select_related('jefe_centro').order_by('nombre')
+        serializer = CentroListSerializer(centros, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='asignar-jefe')
+    def asignar_jefe(self, request, pk=None):
+        """
+        Asigna un jefe de centro a un centro específico.
+        
+        POST /api/users/centros/{id}/asignar-jefe/
+        Body: {
+            "jefe_centro": "12345678"  // documento_id del usuario
+        }
+        """
+        centro = self.get_object()
+        jefe_documento_id = request.data.get('jefe_centro')
+        
+        if not jefe_documento_id:
+            return Response(
+                {'detail': 'Debe especificar el documento_id del jefe de centro.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            jefe = User.objects.get(documento_id=jefe_documento_id)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'El usuario especificado no existe.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Validar rol
+        rol_jefe_centro = get_estado('ROL_USUARIO', 'JEFE_CENTRO')
+        if jefe.rol != rol_jefe_centro:
+            return Response(
+                {'detail': f"El usuario no tiene el rol de Jefe de Centro. Rol actual: {jefe.get_role_display()}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validar que no esté asignado a otro centro
+        otro_centro = Centro.objects.filter(jefe_centro=jefe).exclude(pk=centro.pk).first()
+        if otro_centro:
+            return Response(
+                {'detail': f"Este usuario ya es jefe del centro '{otro_centro.nombre}'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Asignar
+        centro.jefe_centro = jefe
+        centro.save()
+        
+        response_serializer = CentroSerializer(centro)
+        return Response(
+            {
+                'message': f"Jefe de centro asignado exitosamente a '{centro.nombre}'.",
+                'centro': response_serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=['post'], url_path='desasignar-jefe')
+    def desasignar_jefe(self, request, pk=None):
+        """
+        Desasigna el jefe de centro de un centro específico.
+        
+        POST /api/users/centros/{id}/desasignar-jefe/
+        """
+        centro = self.get_object()
+        
+        if not centro.jefe_centro:
+            return Response(
+                {'detail': 'Este centro no tiene un jefe asignado.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        nombre_jefe_anterior = centro.jefe_centro.full_name
+        centro.jefe_centro = None
+        centro.save()
+        
+        response_serializer = CentroSerializer(centro)
+        return Response(
+            {
+                'message': f"Jefe '{nombre_jefe_anterior}' desasignado exitosamente del centro '{centro.nombre}'.",
+                'centro': response_serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
