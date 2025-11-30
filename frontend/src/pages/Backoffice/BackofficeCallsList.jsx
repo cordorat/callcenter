@@ -1,6 +1,6 @@
-import TablaLllamadasBackoffice from "@/components/backoffice/tablelist";
+import TablaLllamadasBackoffice from "@/components/backoffice/TableList";
 import FiltrosyBusquedaBackoffice from "@/components/backoffice/SearchAndFiltersBackoffice";
-import { callsService } from "@/core/api/calls";
+import { callsService } from "@/core/api/Calls";
 import MainLayout from "@/core/components/layout/MainLayout";
 import React, { useState, useCallback, useEffect } from "react";
 import { Box, Typography, useTheme } from "@mui/material";

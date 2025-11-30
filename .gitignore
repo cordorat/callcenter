@@ -1,0 +1,18 @@
+# Environment variables (NUNCA subir al repositorio)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Docker volumes (datos locales)
+postgres_data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

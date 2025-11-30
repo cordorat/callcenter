@@ -18,7 +18,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import PhoneMissedIcon from "@mui/icons-material/PhoneMissed";
-import { getKpiOverview } from "@/core/api/Kpis";
+import { getKpiOverview } from "@/core/api/kpis";
 import { callsService } from "@/core/api/Calls";
 import { useTheme } from "@mui/material/styles";
 import {

@@ -107,7 +107,7 @@ class User(AbstractUser):
     objects = UserManager()
     
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name']
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'documento_id']
     
     class Meta:
         verbose_name = 'Usuario'

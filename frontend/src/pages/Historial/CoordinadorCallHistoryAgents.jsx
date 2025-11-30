@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import { useEffect, useState, useCallback} from "react";
 import TablaLlamadas from "@/components/history/CallHistoryAgents";
 import FiltrosyBusqueda from "../../components/history/SearchAndFilters";
-import { callsService } from "@/core/api/calls";
+import { callsService } from "@/core/api/Calls";
 export default function CoordinadorCallHistoryAgents() {
   const [data, setData] = useState({ total_pages: 1 });
   const [loading, setLoading] = useState(false);

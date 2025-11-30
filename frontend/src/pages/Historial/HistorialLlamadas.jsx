@@ -9,7 +9,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useAuth } from "@/core/context/AuthContext";
 import HistorialJefeCampana from "./HistorialJefeCampana";
 import MainLayout from "@/core/components/layout/MainLayout";
-import { callsService } from "@/core/api/calls";
+import { callsService } from "@/core/api/Calls";
 
 import {
   Box,
