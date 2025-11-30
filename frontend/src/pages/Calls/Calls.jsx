@@ -32,6 +32,9 @@ const Calls = () => {
     const [AfterfullCallInfo, setAfterfullCallInfo] = React.useState(null);
     const campana_id = currentState?.campana_actual_id || null;
     
+    // Ref para preservar el número original digitado manualmente (no se sobrescribe con datos del servidor)
+    const originalDialedNumber = React.useRef(null);
+    
     const [cliente, setCliente] = React.useState({
         id: null,
         nombre: "",
@@ -125,7 +128,9 @@ const Calls = () => {
         
         const isEnFlujoLlamada = frontendState === 'AFTERCALL' || frontendState === 'CALL' || frontendState === 'EN_LLAMADA';
         
-        if (!isEnFlujoLlamada && (AfterfullCallInfo || cliente.id)) {
+        // Solo limpiar si NO estamos en flujo de llamada Y NO hay una llamada activa Y NO hay número digitado manualmente
+        // Esto evita la race condition entre la actualización de estado y la carga de datos del cliente
+        if (!isEnFlujoLlamada && !isInCall && !originalDialedNumber.current && (AfterfullCallInfo || cliente.id)) {
             setAfterfullCallInfo(null);
             setCliente({
                 id: null,
@@ -137,8 +142,10 @@ const Calls = () => {
                 ciudad: '',
             });
             setPhoneNumber('');
+            // Limpiar también el número original guardado
+            originalDialedNumber.current = null;
         }
-    }, [frontendState, fullCallInfo, AfterfullCallInfo, cliente.id]);
+    }, [frontendState, fullCallInfo, AfterfullCallInfo, cliente.id, isInCall]);
 
     
     // Obtener información completa de la llamada usando el CallSid cuando hay una llamada activa
@@ -205,11 +212,14 @@ const Calls = () => {
                                 console.log('[Calls.jsx][FETCH] 📧 email:', otrosDatos.email);
                                 console.log('[Calls.jsx][FETCH] 🏠 direccion:', otrosDatos.direccion);
                                 
-                                // Actualizar también phoneNumber sin prefijo +57 SOLO si estamos en llamada
-                                if (response.data.cliente_telefono && isInCall) {
+                                // Actualizar phoneNumber SOLO si NO hay un número digitado manualmente guardado
+                                // Esto preserva el número que el usuario digitó en llamadas manuales
+                                if (response.data.cliente_telefono && isInCall && !originalDialedNumber.current) {
                                     const cleanNumber = removePhonePrefix(response.data.cliente_telefono);
                                     console.log('[Calls.jsx][FETCH] 📞 Actualizando phoneNumber desde fullCallInfo:', cleanNumber);
                                     setPhoneNumber(cleanNumber);
+                                } else if (originalDialedNumber.current) {
+                                    console.log('[Calls.jsx][FETCH] 📞 Preservando número digitado manualmente:', originalDialedNumber.current);
                                 }
                                 
                                 setCliente(prev => ({
@@ -287,6 +297,9 @@ const Calls = () => {
             return;
         }
         
+        // Guardar el número digitado manualmente antes de hacer la llamada
+        originalDialedNumber.current = phoneNumber;
+        
         // ⭐ MODIFICADO: Pasar campana_id al makeCall para llamadas manuales
         const success = await makeCall(phoneNumber, campana_id);
         if (!success) {
@@ -296,6 +309,8 @@ const Calls = () => {
 
     const handleEndCall = () => {
         hangup();
+        // Limpiar el número original guardado al terminar la llamada
+        originalDialedNumber.current = null;
         // No limpiar el número para poder rellamar fácilmente
     }
 
