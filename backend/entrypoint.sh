@@ -15,15 +15,19 @@ while ! python -c "import psycopg2; psycopg2.connect(dbname='$DB_NAME', user='$D
 done
 echo "✅ PostgreSQL disponible"
 
-# Ejecutar migraciones
-echo "⏳ Ejecutando migraciones..."
-python manage.py migrate --noinput
-echo "✅ Migraciones completadas"
+# Ejecutar migraciones (solo si SKIP_MIGRATIONS no está definido)
+if [ "$SKIP_MIGRATIONS" != "true" ]; then
+    echo "⏳ Ejecutando migraciones..."
+    python manage.py migrate --noinput
+    echo "✅ Migraciones completadas"
 
-# Poblar datos iniciales (TiposParametros)
-echo "⏳ Poblando datos iniciales..."
-python manage.py populate_tipos_parametros
-echo "✅ Datos iniciales poblados"
+    # Poblar datos iniciales (TiposParametros)
+    echo "⏳ Poblando datos iniciales..."
+    python manage.py populate_tipos_parametros
+    echo "✅ Datos iniciales poblados"
+else
+    echo "⏠ Migraciones omitidas (SKIP_MIGRATIONS=true)"
+fi
 
 # Recopilar archivos estáticos
 echo "⏳ Recopilando archivos estáticos..."

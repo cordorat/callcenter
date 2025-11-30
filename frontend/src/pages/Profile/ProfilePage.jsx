@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '@/core/components/layout/MainLayout';
 import { useAuth } from '@/core/context/AuthContext';
@@ -42,6 +42,13 @@ export default function ProfilePage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState('');
   const fileInputRef = React.useRef(null);
+
+  // Refrescar datos del usuario al cargar la página
+  useEffect(() => {
+    refreshUser().catch(err => {
+      console.error('Error al refrescar datos del usuario:', err);
+    });
+  }, []);
 
   // Mapeo de roles para mostrar en español
   const rolesDisplayMap = {

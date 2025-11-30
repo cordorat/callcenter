@@ -6,6 +6,8 @@ services:
     image: postgres:15-alpine
     container_name: callcenter_postgres
     restart: unless-stopped
+    ports:
+      - "5432:5432"  # Exponer para acceso desde clientes externos (DBeaver, pgAdmin, etc.)
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -52,6 +54,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgres123}
       DB_HOST: postgres
       DB_PORT: 5432
+      
+      # Control de migraciones
+      SKIP_MIGRATIONS: ${SKIP_MIGRATIONS:-false}
       
       # Celery
       CELERY_BROKER_URL: redis://redis:6379/0
@@ -136,6 +141,19 @@ services:
       - backend
     ports:
       - "80:80"
+
+  # ========== NGROK (Túnel para webhooks de Twilio) ==========
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: callcenter_ngrok
+    restart: unless-stopped
+    command: http backend:8000 --log stdout
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"  # Panel de ngrok para ver la URL
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:

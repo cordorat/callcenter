@@ -240,9 +240,10 @@ def twilio_voice_request(request):
         
         # Generar TwiML para realizar la llamada
         try:
-            # URLs para callbacks
-            status_callback_url = request.build_absolute_uri('/api/webhooks/twilio/call-status/')
-            recording_callback_url = request.build_absolute_uri('/api/webhooks/twilio/recording/')
+            # URLs para callbacks - usar ngrok si está disponible
+            from common.ngrok_helper import get_webhook_url
+            status_callback_url = get_webhook_url('/webhooks/twilio/call-status/')
+            recording_callback_url = get_webhook_url('/webhooks/twilio/recording/')
             
             twiml = twilio_client.generate_twiml_for_browser_call(
                 to_number=to_number,
@@ -296,9 +297,10 @@ def twilio_incoming_call(request):
             
             if not estado_agente:
                 logger.warning("No hay agentes disponibles para llamada entrante")
-                # Buzón de voz
+                # Buzón de voz - usar ngrok si está disponible
+                from common.ngrok_helper import get_webhook_url
                 twiml = twilio_client.generate_twiml_voicemail(
-                    recording_url=request.build_absolute_uri('/api/webhooks/twilio/recording/')
+                    recording_url=get_webhook_url('/webhooks/twilio/recording/')
                 )
                 return HttpResponse(twiml, content_type='text/xml')
             
@@ -734,7 +736,8 @@ def twilio_automated_call_handler(request):
             
             # 🆕 Usar 'statusCallback' + 'statusCallbackEvent' para capturar el DialCallSid EN TIEMPO REAL
             # Esto se ejecuta cuando el agente se CONECTA, no cuando termina
-            dial_status_url = request.build_absolute_uri('/api/webhooks/twilio/dial-status/')
+            from common.ngrok_helper import get_webhook_url
+            dial_status_url = get_webhook_url('/webhooks/twilio/dial-status/')
             
             dial = Dial(
                 action=dial_status_url,  # Se ejecuta cuando el Dial termina (backup)
@@ -743,7 +746,7 @@ def twilio_automated_call_handler(request):
                 statusCallbackMethod='POST',  # Usar POST para consistencia
                 timeout=30,  # Tiempo de espera para que el agente conteste
                 record='record-from-answer',  # Grabar desde que se contesta
-                recordingStatusCallback=request.build_absolute_uri('/api/webhooks/twilio/recording/'),
+                recordingStatusCallback=get_webhook_url('/webhooks/twilio/recording/'),
                 recordingStatusCallbackMethod='POST'  # Cambiar a POST para consistencia
             )
             dial.client(client_identity)
