@@ -13,6 +13,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import SearchIcon from '@mui/icons-material/Search';
 import { useTheme } from '@mui/material/styles';
+import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import ButtonTooltip from "@/components/campaing/ButtonTooltip";
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
@@ -42,7 +43,8 @@ import {
     Pagination,
     TextField,
     InputAdornment,
-    Tooltip
+    Tooltip,
+    Stack
 } from "@mui/material";
 
 // Función helper para convertir Date a formato YYYY-MM-DD en zona horaria local
@@ -822,33 +824,33 @@ export default function KpisJefeCentro() {
                         </button>
                     </div>
 
-                    <div className="dates">
-                        <label>
-                            Desde
-                            <input
-                                type="date"
-                                value={from}
-                                max={toLocalDateString(new Date())}
-                                onChange={(e) => {
-                                    setFrom(e.target.value);
-                                    setMode("custom");
-                                }}
-                            />
-                        </label>
-                        <label>
-                            Hasta
-                            <input
-                                type="date"
-                                value={to}
-                                max={toLocalDateString(new Date())}
-                                min={from}
-                                onChange={(e) => {
-                                    setTo(e.target.value);
-                                    setMode("custom");
-                                }}
-                            />
-                        </label>
-                    </div>
+                    <Stack direction="row" spacing={1}>
+                        <TextField
+                            label="Desde"
+                            type="date"
+                            value={from}
+                            max={toLocalDateString(new Date())}
+                            onChange={(e) => {
+                                setFrom(e.target.value);
+                                setMode("custom");
+                            }}
+                            InputLabelProps={getDateInputLabelProps(theme)}
+                            sx={getDateInputSx(theme)}
+                        />
+                        <TextField
+                            label="Hasta"
+                            type="date"
+                            value={to}
+                            max={toLocalDateString(new Date())}
+                            min={from}
+                            onChange={(e) => {
+                                setTo(e.target.value);
+                                setMode("custom");
+                            }}
+                            InputLabelProps={getDateInputLabelProps(theme)}
+                            sx={getDateInputSx(theme)}
+                        />
+                    </Stack>
                 </div>
 
                 {/* Filtro por campaña (solo en pestaña Campaña) */}

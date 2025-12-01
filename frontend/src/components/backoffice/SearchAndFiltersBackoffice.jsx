@@ -14,6 +14,7 @@ import {
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { useTheme } from "@mui/material/styles";
+import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';
 import ButtonTooltip from '@/components/campaing/ButtonTooltip.jsx';
 export default function FiltrosyBusquedaBackoffice({
   estadoReportada,
@@ -140,32 +141,8 @@ export default function FiltrosyBusquedaBackoffice({
                 size="small"
                 value={value}
                 onChange={(e) => setter(e.target.value)}
-                InputLabelProps={{
-                  shrink: true,
-                  sx: (theme) => ({
-                    color: theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.primary.dark,
-                    fontWeight: 700,
-                  }),
-                }}
-                sx={{
-                  minWidth: 190,
-                  "& .MuiOutlinedInput-root": (t) => ({
-                    borderRadius: "8px",
-                    backgroundColor:
-                      t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
-                    "& fieldset": {
-                      borderColor:
-                        t.palette.mode === "light"
-                          ? "rgba(12,21,90,0.16)"
-                          : "rgba(255,255,255,0.18)",
-                      borderWidth: 2,
-                    },
-                    "&:hover fieldset": { borderColor: t.palette.primary.main },
-                    "&.Mui-focused fieldset": { borderColor: t.palette.primary.main },
-                    height: 44,
-                  }),
-                  "& input": { paddingY: 1.2 },
-                }}
+                InputLabelProps={getDateInputLabelProps(theme)}
+                sx={getDateInputSx(theme)}
               />
             ))}
 

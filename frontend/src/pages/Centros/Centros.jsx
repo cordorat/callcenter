@@ -40,6 +40,7 @@ import { centrosService } from '@/core/api/centros';
 import { useTheme } from '@mui/material/styles';
 import CrearCentro from './CrearCentro';
 import EditarCentro from './EditarCentro';
+import ConfirmDialog from '@/components/forms/ConfirmDialog';
 
 export default function Centros() {
   const [centros, setCentros] = useState([]);
@@ -530,30 +531,18 @@ export default function Centros() {
       </Dialog>
 
       {/* Dialogo de confirmación para eliminar centro */}
-      <Dialog
+      <ConfirmDialog
         open={openDeleteDialog}
         onClose={handleCancelDelete}
-        maxWidth="xs"
-        fullWidth
-        sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}
-      >
-        <DialogTitle>Confirmar eliminación</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Estás seguro de que deseas eliminar el centro{' '}
-            <strong>{centroToDelete?.nombre}</strong>?
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Esta acción no se puede deshacer.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCancelDelete} disabled={deleteLoading}>Cancelar</Button>
-          <Button color="error" variant="contained" onClick={confirmDeleteCentro} disabled={deleteLoading}>
-            {deleteLoading ? <CircularProgress size={18} sx={{ color: 'white' }} /> : 'Eliminar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={confirmDeleteCentro}
+        title="Confirmar eliminación"
+        message={`¿Estás seguro de que deseas eliminar el centro ${centroToDelete ? `"${centroToDelete.nombre}"` : ''}? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        confirmColor={theme.palette.primary.main}
+        cancelColor={theme.palette.primary.secondary}
+        loading={deleteLoading}
+      />
 
       {/* Modal para editar centro */}
       <Dialog

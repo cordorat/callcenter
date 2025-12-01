@@ -14,6 +14,7 @@ import MainLayout from "@/core/components/layout/MainLayout";
 import { useAuth } from "@/core/context/AuthContext";
 import { historialJefeService } from "@/core/api/historialJefeCampana";
 import { useTheme } from '@mui/material/styles';
+import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';
 
 import {
     Box,
@@ -562,15 +563,8 @@ export default function HistorialJefeCampana() {
                                             setFechaInicio(e.target.value);
                                             setPage(1);
                                         }}
-                                        InputLabelProps={{ shrink: true }}
-                                        sx={{
-                                            "& .MuiOutlinedInput-root": (t) => ({
-                                                borderRadius: "8px",
-                                                backgroundColor:
-                                                    t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
-                                                height: 44,
-                                            }),
-                                        }}
+                                        InputLabelProps={getDateInputLabelProps(theme)}
+                                        sx={getDateInputSx(theme)}
                                     />
                                 </Grid>
 
@@ -586,15 +580,8 @@ export default function HistorialJefeCampana() {
                                             setFechaFin(e.target.value);
                                             setPage(1);
                                         }}
-                                        InputLabelProps={{ shrink: true }}
-                                        sx={{
-                                            "& .MuiOutlinedInput-root": (t) => ({
-                                                borderRadius: "8px",
-                                                backgroundColor:
-                                                    t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
-                                                height: 44,
-                                            }),
-                                        }}
+                                        InputLabelProps={getDateInputLabelProps(theme)}
+                                        sx={getDateInputSx(theme)}
                                     />
                                 </Grid>
 
