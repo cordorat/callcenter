@@ -9,7 +9,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useAuth } from "@/core/context/AuthContext";
 import HistorialJefeCampana from "./HistorialJefeCampana";
 import MainLayout from "@/core/components/layout/MainLayout";
-import { callsService } from "@/core/api/Calls";
+import { callsService } from "@/core/api/calls";
+import { useTheme } from "@mui/material/styles";
+import { getDateInputSx, getDateInputLabelProps } from "@/core/styles/dateInputStyles";
 
 import {
   Box,
@@ -134,6 +136,7 @@ function RefreshCircle({ onClick, loading }) {
 
 // ======================== Componente principal ========================
 function HistorialAgente() {
+  const theme = useTheme();
   const { user } = useAuth();
   const today = toYMD(new Date());
 
@@ -346,32 +349,8 @@ function HistorialAgente() {
                   setPage(0);
                 }}
                 onBlur={fetchData}
-                InputLabelProps={{
-                  shrink: true,
-                  sx: (theme) => ({
-                    color: theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.primary.dark,
-                    fontWeight: 700,
-                  }),
-                }}
-                sx={{
-                  minWidth: 190,
-                  "& .MuiOutlinedInput-root": (t) => ({
-                    borderRadius: "8px",
-                    backgroundColor:
-                      t.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
-                    "& fieldset": {
-                      borderColor:
-                        t.palette.mode === "light"
-                          ? "rgba(12,21,90,0.16)"
-                          : "rgba(255,255,255,0.18)",
-                      borderWidth: 2,
-                    },
-                    "&:hover fieldset": { borderColor: t.palette.primary.main },
-                    "&.Mui-focused fieldset": { borderColor: t.palette.primary.main },
-                    height: 44,
-                  }),
-                  "& input": { paddingY: 1.2 },
-                }}
+                InputLabelProps={getDateInputLabelProps(theme)}
+                sx={getDateInputSx(theme)}
               />
             ))}
 

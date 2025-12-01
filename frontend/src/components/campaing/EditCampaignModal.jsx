@@ -1,5 +1,6 @@
 // PATH: src/components/campaing/EditCampaignModal.jsx
 import { useEffect, useState } from "react";
+import { useTheme } from "@mui/material/styles";
 import {
   Dialog,
   DialogTitle,
@@ -24,6 +25,7 @@ import {
   processCampaignError,
   getCampaignDetail,          
 } from "@/core/api/campaigns";
+import { getDateInputSx, getDateInputLabelProps } from "@/core/styles/dateInputStyles";
 
 const alphaRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+$/;
 
@@ -34,6 +36,7 @@ export default function EditCampaignModal({
   onCampaignUpdated,
   maxWidth = "md", 
 }) {
+  const theme = useTheme();
   const [formValues, setFormValues] = useState({
     jefeSeleccionado: null,
     nombre: "",
@@ -486,7 +489,8 @@ export default function EditCampaignModal({
                   fullWidth
                   value={formValues.fecha_inicio}
                   onChange={handleChangeField("fecha_inicio")}
-                  InputLabelProps={{ shrink: true }}
+                  InputLabelProps={getDateInputLabelProps(theme)}
+                  sx={getDateInputSx(theme)}
                   error={Boolean(errors.fecha_inicio)}
                   helperText={errors.fecha_inicio}
                 />
@@ -499,7 +503,8 @@ export default function EditCampaignModal({
                   fullWidth
                   value={formValues.fecha_fin}
                   onChange={handleChangeField("fecha_fin")}
-                  InputLabelProps={{ shrink: true }}
+                  InputLabelProps={getDateInputLabelProps(theme)}
+                  sx={getDateInputSx(theme)}
                   error={Boolean(errors.fecha_fin)}
                   helperText={errors.fecha_fin}
                 />

@@ -1,6 +1,7 @@
 // Path: frontend/src/components/campaing/CreateCampaignModal.jsx
 
 import { useState, useEffect } from 'react';
+import { useTheme } from '@mui/material/styles';
 import {
     Dialog,
     DialogTitle,
@@ -23,11 +24,13 @@ import {
     searchJefesCampana,
     getProductosActivos
 } from '@/core/api/campaigns';
+import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';
 
 /**
  * Modal para crear nueva campaña
  */
 const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
+    const theme = useTheme();
 
     // Estados del formulario
     const [nombre, setNombre] = useState('');
@@ -454,7 +457,8 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                                     fullWidth
                                     value={fechaInicio}
                                     onChange={(e) => setFechaInicio(e.target.value)}
-                                    InputLabelProps={{ shrink: true }}
+                                    InputLabelProps={getDateInputLabelProps(theme)}
+                                    sx={getDateInputSx(theme)}
                                     error={!!errors.fecha_inicio}
                                     helperText={errors.fecha_inicio}
                                     disabled={loading || !!successMessage}
@@ -468,7 +472,8 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                                     fullWidth
                                     value={fechaFin}
                                     onChange={(e) => setFechaFin(e.target.value)}
-                                    InputLabelProps={{ shrink: true }}
+                                    InputLabelProps={getDateInputLabelProps(theme)}
+                                    sx={getDateInputSx(theme)}
                                     error={!!errors.fecha_fin}
                                     helperText={errors.fecha_fin}
                                     disabled={loading || !!successMessage}

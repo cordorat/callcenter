@@ -1,5 +1,6 @@
 import React from 'react';
-import './DateRangeFilter.css';
+import { TextField, Stack, Alert, useTheme } from '@mui/material';
+import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';
 
 /**
  * Componente para filtrar KPIs por rango de fechas.
@@ -14,6 +15,7 @@ export default function DateRangeFilter({
   onDateChange,
   disabled = false
 }) {
+  const theme = useTheme();
   const hoy = new Date().toISOString().split('T')[0];
   const [error, setError] = React.useState('');
 
@@ -56,34 +58,29 @@ export default function DateRangeFilter({
   };
 
   return (
-    <div className="date-range-filter">
-      <div className="date-inputs">
-        <div className="date-group">
-          <label htmlFor="fecha-desde">Desde</label>
-          <input
-            id="fecha-desde"
-            type="date"
-            value={fechaDesde}
-            onChange={handleDesdeChange}
-            disabled={disabled}
-            max={hoy}
-          />
-        </div>
+    <Stack spacing={2}>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <TextField
+          label="Desde"
+          type="date"
+          value={fechaDesde}
+          onChange={handleDesdeChange}
+          disabled={disabled}
+          InputLabelProps={getDateInputLabelProps(theme)}
+          sx={getDateInputSx(theme)}
+        />
+        <TextField
+          label="Hasta"
+          type="date"
+          value={fechaHasta}
+          onChange={handleHastaChange}
+          disabled={disabled}
+          InputLabelProps={getDateInputLabelProps(theme)}
+          sx={getDateInputSx(theme)}
+        />
+      </Stack>
 
-        <div className="date-group">
-          <label htmlFor="fecha-hasta">Hasta</label>
-          <input
-            id="fecha-hasta"
-            type="date"
-            value={fechaHasta}
-            onChange={handleHastaChange}
-            disabled={disabled}
-            max={hoy}
-          />
-        </div>
-      </div>
-
-      {error && <div className="date-error">{error}</div>}
-    </div>
+      {error && <Alert severity="error">{error}</Alert>}
+    </Stack>
   );
 }

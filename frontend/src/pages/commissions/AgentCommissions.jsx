@@ -26,9 +26,9 @@ import {
   useTheme,
   Paper,
   Tooltip,
+  TextField,
 } from "@mui/material";
-
-import { getComisiones, getComisionesResumen } from "@/core/api/commissions";
+import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';import { getComisiones, getComisionesResumen } from "@/core/api/commissions";
 import "../Kpis/Kpis.css";
 // ===== Helpers de fechas =====
 const toLocalDateString = (date) => {
@@ -309,30 +309,30 @@ export default function AgentCommissions() {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
-            <div className="dates">
-              <label>
-                Desde
-                <input
-                  type="date"
-                  value={from}
-                  onChange={(e) => {
-                    setFrom(e.target.value);
-                    setMode("custom");
-                  }}
-                />
-              </label>
-              <label>
-                Hasta
-                <input
-                  type="date"
-                  value={to}
-                  onChange={(e) => {
-                    setTo(e.target.value);
-                    setMode("custom");
-                  }}
-                />
-              </label>
-            </div>
+            <Stack direction="row" spacing={1}>
+              <TextField
+                label="Desde"
+                type="date"
+                value={from}
+                onChange={(e) => {
+                  setFrom(e.target.value);
+                  setMode("custom");
+                }}
+                InputLabelProps={getDateInputLabelProps(theme)}
+                sx={getDateInputSx(theme)}
+              />
+              <TextField
+                label="Hasta"
+                type="date"
+                value={to}
+                onChange={(e) => {
+                  setTo(e.target.value);
+                  setMode("custom");
+                }}
+                InputLabelProps={getDateInputLabelProps(theme)}
+                sx={getDateInputSx(theme)}
+              />
+            </Stack>
 
             {lastUpdated && (
               <Typography

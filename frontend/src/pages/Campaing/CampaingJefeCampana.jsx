@@ -2,9 +2,10 @@
 //Pantalla para gestionar campañas
 
 import * as React from "react";
-import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Paper, InputLabel, TextField, Chip, Typography } from '@mui/material';
+import { Box, Button, Tooltip, IconButton, Select, MenuItem, FormControl, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Paper, InputLabel, TextField, Chip, Typography, Stack } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { useTheme } from '@mui/material/styles';
+import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';
 import MainLayout from '@/core/components/layout/MainLayout';
 import UploadButton from "@/components/campaing/UploadButton";
 import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
@@ -672,41 +673,30 @@ export default function CampaingJefeCampana() {
               Selecciona la fecha y hora en la que deseas iniciar la iteración de la base de datos.
             </Alert>
             
-            <Box
-              className="dates" 
-              style={{
-                '--text-primary': theme.palette.text.primary,
-                '--text-secondary': theme.palette.text.secondary,
-                '--primary-main': theme.palette.primary.main,
-                '--date-bg': isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F4F8',
-                '--date-border': isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(12, 21, 90, 0.15)',
-                '--date-focus-shadow': isDark ? '0 0 0 3px rgba(47, 118, 230, 0.3)' : '0 0 0 3px rgba(12, 21, 90, 0.1)',
-                '--date-icon-filter': isDark ? 'invert(1)' : 'none',
-              }}
-            >
-              <label>
-                Fecha
-                <input
-                  type="date"
-                  value={from.split('T')[0]}
-                  onChange={(e) => {
-                    const time = from.split('T')[1] || '00:00';
-                    setFrom(`${e.target.value}T${time}`);
-                  }}
-                />
-              </label>
-              <label>
-                Hora
-                <input
-                  type="time"
-                  value={from.split('T')[1] || '00:00'}
-                  onChange={(e) => {
-                    const date = from.split('T')[0];
-                    setFrom(`${date}T${e.target.value}`);
-                  }}
-                />
-              </label>
-            </Box>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="Fecha"
+                type="date"
+                value={from.split('T')[0]}
+                onChange={(e) => {
+                  const time = from.split('T')[1] || '00:00';
+                  setFrom(`${e.target.value}T${time}`);
+                }}
+                InputLabelProps={getDateInputLabelProps(theme)}
+                sx={getDateInputSx(theme)}
+              />
+              <TextField
+                label="Hora"
+                type="time"
+                value={from.split('T')[1] || '00:00'}
+                onChange={(e) => {
+                  const date = from.split('T')[0];
+                  setFrom(`${date}T${e.target.value}`);
+                }}
+                InputLabelProps={getDateInputLabelProps(theme)}
+                sx={getDateInputSx(theme)}
+              />
+            </Stack>
           </Box>
         </DialogContent>
 

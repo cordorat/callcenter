@@ -17,6 +17,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { useTheme } from "@mui/material/styles";
+import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';
 import ButtonTooltip from '@/components/campaing/ButtonTooltip.jsx';
 export default function FiltrosyBusqueda({
   busqueda,
@@ -38,8 +39,6 @@ export default function FiltrosyBusqueda({
     borderRadius: 3,
     borderColor:
       t.palette.mode === "light" ? "rgba(12,21,90,0.16)" : "rgba(255,255,255,0.18)",
-    backgroundColor:
-      t.palette.mode === "light" ? "#FFFFFF" : "rgba(255,255,255,0.04)",
   });
 
   return (
@@ -57,7 +56,7 @@ export default function FiltrosyBusqueda({
       </Stack>
 
       {/* Filtros */}
-      <Paper variant="outlined" sx={(t) => cardSx(t)}>
+      <Paper elevation={0} sx={(t) => cardSx(t)}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={2}
@@ -150,7 +149,6 @@ export default function FiltrosyBusqueda({
             </Select>
           </FormControl>
 
-          
           {[
             { label: "Desde", value: fechaInicio, setter: setFechaInicio },
             { label: "Hasta", value: fechaFin, setter: setFechaFin },
@@ -162,27 +160,10 @@ export default function FiltrosyBusqueda({
               size="small"
               value={value}
               onChange={(e) => setter(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{
-                minWidth: 190,
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "8px",
-                  backgroundColor:
-                    theme.palette.mode === "light" ? "#F5F7FA" : "rgba(255,255,255,0.06)",
-                  "& fieldset": {
-                    borderColor:
-                      theme.palette.mode === "light"
-                        ? "rgba(12,21,90,0.16)"
-                        : "rgba(255,255,255,0.18)",
-                    borderWidth: 2,
-                  },
-                  "&:hover fieldset": { borderColor: theme.palette.primary.main },
-                  "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
-                  height: 44,
-                },
-              }}
+              InputLabelProps={getDateInputLabelProps(theme)}
+              sx={getDateInputSx(theme)}
             />
-          ))} 
+          ))}
 
           <Button variant="outlined" onClick={onClear} sx={{ borderRadius: "8px", borderWidth: 2 }}>
             LIMPIAR

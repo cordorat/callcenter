@@ -42,6 +42,7 @@ import { useTheme } from '@mui/material/styles';
 import CrearUsuario from './CrearUsuario';
 import EditarUsuario from './EditarUsuario';
 import GroupIcon from '@mui/icons-material/Group';
+import ConfirmDialog from '@/components/forms/ConfirmDialog';
 
 export default function Usuarios() {
   const navigate = useNavigate();
@@ -549,28 +550,18 @@ export default function Usuarios() {
       </Dialog>
 
       {/* Dialogo de confirmación para desactivar usuario */}
-      <Dialog
+      <ConfirmDialog
         open={openDeleteDialog}
         onClose={handleCancelDelete}
-        maxWidth="xs"
-        fullWidth
-        sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}
-      >
-        <DialogTitle>Confirmar desactivación</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Estás seguro de que deseas desactivar al usuario{' '}
-            <strong>{userToDelete ? `${userToDelete.first_name} ${userToDelete.last_name}` : ''}</strong>
-            {userToDelete && userToDelete.documento_id ? ` (Documento: ${userToDelete.documento_id})` : ''}?
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCancelDelete} disabled={deleteLoading}>Cancelar</Button>
-          <Button color="error" variant="contained" onClick={confirmDeleteUser} disabled={deleteLoading}>
-            {deleteLoading ? <CircularProgress size={18} sx={{ color: 'white' }} /> : 'Desactivar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={confirmDeleteUser}
+        title="Confirmar desactivación"
+        message={`¿Estás seguro de que deseas desactivar al usuario ${userToDelete ? `${userToDelete.first_name} ${userToDelete.last_name}` : ''}${userToDelete && userToDelete.documento_id ? ` (Documento: ${userToDelete.documento_id})` : ''}?`}
+        confirmText="Desactivar"
+        cancelText="Cancelar"
+        confirmColor={theme.palette.primary.main}
+        cancelColor={theme.palette.primary.secondary}
+        loading={deleteLoading}
+      />
 
       {/* Modal para editar usuario */}
       <Dialog

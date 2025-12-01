@@ -12,6 +12,7 @@ import ButtonTooltip from "@/components/campaing/ButtonTooltip";
 import PersonIcon from '@mui/icons-material/Person';
 import SearchIcon from '@mui/icons-material/Search';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';
 
 import "./Kpis.css";
 
@@ -1246,30 +1247,30 @@ export default function KpisJefeCampana() {
                                     </button>
                                 </div>
 
-                                <div className="dates">
-                                    <label>
-                                        Desde
-                                        <input
-                                            type="date"
-                                            value={from}
-                                            onChange={(e) => {
-                                                setFrom(e.target.value);
-                                                setMode("custom");
-                                            }}
-                                        />
-                                    </label>
-                                    <label>
-                                        Hasta
-                                        <input
-                                            type="date"
-                                            value={to}
-                                            onChange={(e) => {
-                                                setTo(e.target.value);
-                                                setMode("custom");
-                                            }}
-                                        />
-                                    </label>
-                                </div>
+                                <Stack direction="row" spacing={1}>
+                                    <TextField
+                                        label="Desde"
+                                        type="date"
+                                        value={from}
+                                        onChange={(e) => {
+                                            setFrom(e.target.value);
+                                            setMode("custom");
+                                        }}
+                                        InputLabelProps={getDateInputLabelProps(theme)}
+                                        sx={getDateInputSx(theme)}
+                                    />
+                                    <TextField
+                                        label="Hasta"
+                                        type="date"
+                                        value={to}
+                                        onChange={(e) => {
+                                            setTo(e.target.value);
+                                            setMode("custom");
+                                        }}
+                                        InputLabelProps={getDateInputLabelProps(theme)}
+                                        sx={getDateInputSx(theme)}
+                                    />
+                                </Stack>
                             </div>
                         )}
 

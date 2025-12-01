@@ -4,7 +4,8 @@ import { getKpiOverview } from "@/core/api/kpis";
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LoopIcon from '@mui/icons-material/Loop';
 import { useTheme } from '@mui/material/styles';
-import { IconButton, Tooltip as MuiTooltip } from '@mui/material';
+import { IconButton, Tooltip as MuiTooltip, TextField, Stack } from '@mui/material';
+import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';
 
 import "./Kpis.css"; 
 
@@ -364,30 +365,30 @@ export default function Kpis() {
             </button>
           </div>
 
-          <div className="dates">
-            <label>
-              Desde
-              <input
-                type="date"
-                value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                  setMode("custom");
-                }}
-              />
-            </label>
-            <label>
-              Hasta
-              <input
-                type="date"
-                value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
-                  setMode("custom");
-                }}
-              />
-            </label>
-          </div>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              label="Desde"
+              type="date"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                setMode("custom");
+              }}
+              InputLabelProps={getDateInputLabelProps(theme)}
+              sx={getDateInputSx(theme)}
+            />
+            <TextField
+              label="Hasta"
+              type="date"
+              value={to}
+              onChange={(e) => {
+                setTo(e.target.value);
+                setMode("custom");
+              }}
+              InputLabelProps={getDateInputLabelProps(theme)}
+              sx={getDateInputSx(theme)}
+            />
+          </Stack>
         </div>
 
         {errMsg && (
