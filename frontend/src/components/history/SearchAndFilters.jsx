@@ -107,6 +107,7 @@ export default function FiltrosyBusqueda({
           <FormControl sx={{ minWidth: 190 }}>
             <InputLabel
               id="estado-label"
+              shrink={true}
               sx={{
                 px: 0.5,
                 zIndex: 1,
