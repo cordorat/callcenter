@@ -88,12 +88,25 @@ export const getProductosActivos = async () => {
     const data = response.data;
     console.log('[campaigns.js] Respuesta productos activos:', data);
 
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data.productos)) return data.productos;
-    if (Array.isArray(data.results)) return data.results;
-    if (Array.isArray(data.data)) return data.data;
+    // Normalizar respuesta con nullish coalescing
+    const productos = Array.isArray(data) 
+      ? data 
+      : Array.isArray(data?.productos) 
+        ? data.productos 
+        : Array.isArray(data?.results) 
+          ? data.results 
+          : Array.isArray(data?.data) 
+            ? data.data 
+            : [];
 
-    return [];
+    // Asegurar que cada producto tenga los campos necesarios
+    return productos.map(p => ({
+      id: p?.id ?? p?.producto_id,
+      nombre: p?.nombre ?? p?.name,
+      descripcion: p?.descripcion ?? p?.description ?? '',
+      precio: p?.precio ?? p?.price ?? 0,
+      estado: p?.estado ?? p?.is_active ?? true
+    }));
   } catch (error) {
     console.error('[campaigns.js] Error al obtener productos:', error);
     throw error;

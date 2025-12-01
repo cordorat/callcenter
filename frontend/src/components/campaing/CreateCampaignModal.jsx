@@ -113,14 +113,15 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
     const loadProductos = async () => {
         try {
             setLoadingProductos(true);
-            const response = await getProductosActivos();
+            const productosData = await getProductosActivos();
 
-            if (response.success) {
-                setProductos(response.productos || []);
-            }
+            // getProductosActivos ya normaliza la respuesta
+            setProductos(Array.isArray(productosData) ? productosData : []);
+            console.log('[CreateCampaignModal] Productos cargados:', productosData);
         } catch (err) {
             console.error('[CreateCampaignModal] Error cargando productos:', err);
             setErrors(prev => ({ ...prev, general: 'Error al cargar los productos' }));
+            setProductos([]);
         } finally {
             setLoadingProductos(false);
         }
