@@ -7,7 +7,7 @@ import { useTheme } from '@mui/material/styles';
 import { IconButton, Tooltip as MuiTooltip, TextField, Stack } from '@mui/material';
 import { getDateInputSx, getDateInputLabelProps } from '@/core/styles/dateInputStyles';
 
-import "./Kpis.css"; 
+import "./Kpis.css";
 
 import {
   CircularProgress,

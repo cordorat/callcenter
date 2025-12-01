@@ -1,5 +1,5 @@
 // PATH: src/pages/Campaing/CampaingJefeCentro.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
