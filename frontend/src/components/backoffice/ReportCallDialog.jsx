@@ -101,314 +101,255 @@ export default function ReportCallDialog({
   return (
     <>
       {/* Diálogo Principal - Crear Reporte */}
-      <Dialog open={open && !confirmationOpen} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle
-          sx={{
-            fontWeight: 700,
-            color: "text.primary",
-            fontSize: "1.2rem",
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <ReportIcon color="warning" />
-          Reportar Llamada
+      <Dialog 
+        open={open && !confirmationOpen} 
+        onClose={handleClose} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          elevation: 2,
+          sx: {
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Reportar Llamada
+          </Typography>
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 2 }}>
-          {/* Resumen de la Llamada */}
-          <Card
-            sx={{
-              mb: 3,
-              bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(12,21,90,0.02)",
-              border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(12,21,90,0.1)"}`,
-              borderRadius: 2,
-            }}
-          >
-            <Box sx={{ p: 2 }}>
+        <DialogContent dividers sx={{ py: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Resumen de la Llamada */}
+            <Box>
               <Typography
                 variant="subtitle2"
                 sx={{
-                  fontWeight: 700,
-                  mb: 1.5,
-                  color: "text.primary",
-                  fontSize: "0.9rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px",
+                  fontWeight: 600,
+                  fontSize: '0.8rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  color: 'text.secondary',
+                  mb: 1.5
                 }}
               >
                 Resumen de la Llamada
               </Typography>
-
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-                {/* Fecha */}
-                <Box>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                      fontWeight: 600,
-                      fontSize: "0.7rem",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Fecha y Hora
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 600, color: "text.primary", mt: 0.3 }}
-                  >
-                    {llamada ? formatDate(llamada.fecha_hora_inicio) : "-"}
-                  </Typography>
-                </Box>
-
-                {/* Duración */}
-                <Box>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                      fontWeight: 600,
-                      fontSize: "0.7rem",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Duración
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 600, color: "text.primary", mt: 0.3 }}
-                  >
-                    {llamada
-                      ? formatDuration(
-                          llamada.duracion_llamada_segundos || llamada.duracion_segundos || 0
-                        )
-                      : "-"}
-                  </Typography>
-                </Box>
-
-                {/* Agente */}
-                <Box sx={{ gridColumn: "1 / -1" }}>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                      fontWeight: 600,
-                      fontSize: "0.7rem",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Agente
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 600, color: "text.primary", mt: 0.3 }}
-                  >
-                    {llamada?.nombre_agente || "-"}
-                  </Typography>
+              <Box sx={{ 
+                p: 2, 
+                backgroundColor: (theme) => theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)',
+                borderRadius: '8px',
+                border: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.12)' : 'rgba(255,255,255,0.12)'
+              }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box sx={{ 
+                    p: 1.5, 
+                    backgroundColor: (theme) => theme.palette.mode === 'light' ? 'white' : 'rgba(255,255,255,0.02)',
+                    borderRadius: '6px',
+                    border: '1px solid',
+                    borderColor: (theme) => theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.08)' : 'rgba(255,255,255,0.08)'
+                  }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase' }}>
+                      Teléfono
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5, fontSize: '1rem' }}>
+                      {llamada?.cliente_telefono || '-'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ 
+                    p: 1.5, 
+                    backgroundColor: (theme) => theme.palette.mode === 'light' ? 'white' : 'rgba(255,255,255,0.02)',
+                    borderRadius: '6px',
+                    border: '1px solid',
+                    borderColor: (theme) => theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.08)' : 'rgba(255,255,255,0.08)'
+                  }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase' }}>
+                      Agente
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
+                      {llamada?.agente_nombre || '-'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ 
+                    p: 1.5, 
+                    backgroundColor: (theme) => theme.palette.mode === 'light' ? 'white' : 'rgba(255,255,255,0.02)',
+                    borderRadius: '6px',
+                    border: '1px solid',
+                    borderColor: (theme) => theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.08)' : 'rgba(255,255,255,0.08)'
+                  }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase' }}>
+                      Fecha y Hora
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
+                      {llamada ? formatDate(llamada.fecha_hora_inicio) : '-'}
+                    </Typography>
+                  </Box>
                 </Box>
               </Box>
             </Box>
-          </Card>
 
-          {/* Campo de Descripción */}
-          <Box sx={{ mb: 2 }}>
-            <Typography
-              variant="subtitle2"
-              sx={{
-                fontWeight: 600,
-                mb: 1,
-                color: "text.primary",
-                fontSize: "0.9rem",
-              }}
-            >
-              Descripción del Reporte
-              <Typography component="span" sx={{ color: "error.main" }}>
-                {" "}
-                *
-              </Typography>
-            </Typography>
-
-            <TextField
-              fullWidth
-              multiline
-              rows={5}
-              placeholder="Describe el motivo del reporte (mínimo 10 caracteres)..."
-              value={description}
-              onChange={handleDescriptionChange}
-              variant="outlined"
-              disabled={loading}
-              sx={{
-                mb: 1,
-                bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(12,21,90,0.02)",
-              }}
-            />
-
-            {/* Contador de caracteres */}
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 2,
-              }}
-            >
+            {/* Campo de Descripción */}
+            <Box>
               <Typography
-                variant="caption"
+                variant="subtitle2"
                 sx={{
-                  color:
-                    charCount < minChars
-                      ? "error.main"
-                      : charCount > maxChars
-                      ? "error.main"
-                      : "text.secondary",
                   fontWeight: 600,
+                  fontSize: '0.8rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  color: 'text.secondary',
+                  mb: 1.5
                 }}
               >
-                {charCount >= minChars && charCount <= maxChars
-                  ? `✓ ${charCount}/${maxChars} caracteres`
-                  : `${charCount}/${maxChars} caracteres`}
-              </Typography>
-              {charCount < minChars && (
-                <Typography variant="caption" sx={{ color: "error.main", fontWeight: 600 }}>
-                  Mínimo {minChars} caracteres
+                Descripción del Reporte
+                <Typography component="span" sx={{ color: 'error.main' }}>
+                  {' '}
+                  *
                 </Typography>
+              </Typography>
+
+              <TextField
+                fullWidth
+                multiline
+                rows={5}
+                placeholder="Describe el motivo del reporte (mínimo 10 caracteres)..."
+                value={description}
+                onChange={handleDescriptionChange}
+                variant="outlined"
+                disabled={loading}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: (theme) => theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)',
+                  }
+                }}
+              />
+
+              {/* Contador de caracteres */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color:
+                      charCount < minChars
+                        ? 'error.main'
+                        : charCount > maxChars
+                        ? 'error.main'
+                        : 'text.secondary',
+                    fontWeight: 600,
+                  }}
+                >
+                  {charCount >= minChars && charCount <= maxChars
+                    ? `✓ ${charCount}/${maxChars} caracteres`
+                    : `${charCount}/${maxChars} caracteres`}
+                </Typography>
+              </Box>
+
+              {/* Error */}
+              {error && (
+                <Alert severity="error" sx={{ mt: 1.5 }}>
+                  {error}
+                </Alert>
               )}
             </Box>
-
-            {/* Error */}
-            {error && (
-              <Alert severity="error" sx={{ mb: 2, fontSize: "0.85rem" }}>
-                {error}
-              </Alert>
-            )}
           </Box>
         </DialogContent>
 
-        <DialogActions sx={{ p: 2, gap: 1 }}>
+        <DialogActions sx={{ px: 3, py: 1.5, gap: 1.5 }}>
           <Button
             onClick={handleClose}
-            variant="outlined"
             disabled={loading}
-            sx={{ fontWeight: 600 }}
+            sx={{
+              backgroundColor: (theme) => theme.palette.primary.secondary,
+              color: 'white',
+              textTransform: 'none',
+              fontWeight: 600,
+              '&:hover': {
+                backgroundColor: (theme) => theme.palette.primary.secondary,
+                opacity: 0.9
+              }
+            }}
           >
             Cancelar
           </Button>
           <Button
             onClick={handleProceed}
             variant="contained"
-            color="warning"
             disabled={!isValid || loading}
-            sx={{
-              fontWeight: 600,
-              backgroundColor: isValid ? "#FF9800" : "#BDBDBD",
-            }}
+            sx={{ textTransform: 'none', fontWeight: 600 }}
           >
-            {loading ? "Procesando..." : "Confirmar Reporte"}
+            {loading ? 'Procesando...' : 'Confirmar Reporte'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Diálogo de Confirmación */}
-      <Dialog open={confirmationOpen} onClose={() => !loading && setConfirmationOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle
-          sx={{
-            fontWeight: 700,
-            color: "text.primary",
-            fontSize: "1.1rem",
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <ReportIcon color="warning" />
-          Confirmar Reporte
+      <Dialog 
+        open={confirmationOpen} 
+        onClose={() => !loading && setConfirmationOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          elevation: 2,
+          sx: {
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Confirmar Reporte
+          </Typography>
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 2 }}>
-          <Typography
-            variant="body2"
-            sx={{
-              color: "text.secondary",
-              mb: 2,
-              fontSize: "0.95rem",
-              lineHeight: 1.6,
-            }}
-          >
-            ¿Está seguro que desea reportar esta llamada?
-          </Typography>
+        <DialogContent dividers sx={{ py: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              ¿Está seguro que desea reportar esta llamada? Esta acción se registrará con fecha, hora y usuario.
+            </Typography>
 
-          <Box
-            sx={{
-              p: 2,
-              bgcolor: isDark ? "rgba(255,153,0,0.1)" : "rgba(255,153,0,0.05)",
-              border: "1px solid rgba(255,153,0,0.3)",
-              borderRadius: 1.5,
-              mb: 2,
-            }}
-          >
-            <Typography
-              variant="caption"
-              sx={{
-                color: "text.secondary",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                fontSize: "0.7rem",
-                display: "block",
-                mb: 1,
-              }}
-            >
-              Descripción del Reporte
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: "text.primary",
-                fontWeight: 500,
-                fontStyle: "italic",
-                wordBreak: "break-word",
-              }}
-            >
-              "{description}"
-            </Typography>
+            <Box sx={{ 
+              p: 2, 
+              backgroundColor: (theme) => theme.palette.mode === 'light' ? 'white' : 'rgba(255,255,255,0.02)',
+              borderRadius: '6px',
+              border: '1px solid',
+              borderColor: (theme) => theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.08)' : 'rgba(255,255,255,0.08)'
+            }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                Descripción del Reporte
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 500, fontStyle: 'italic', wordBreak: 'break-word' }}>
+                "{description}"
+              </Typography>
+            </Box>
           </Box>
-
-          <Typography
-            variant="caption"
-            sx={{
-              color: "text.secondary",
-              fontSize: "0.8rem",
-              display: "block",
-            }}
-          >
-            Se registrará la fecha, hora y usuario que realizó el reporte.
-          </Typography>
         </DialogContent>
 
-        <DialogActions sx={{ p: 2, gap: 1 }}>
+        <DialogActions sx={{ px: 3, py: 1.5, gap: 1.5 }}>
           <Button
             onClick={() => setConfirmationOpen(false)}
-            variant="outlined"
             disabled={loading}
-            sx={{ fontWeight: 600 }}
+            sx={{
+              backgroundColor: (theme) => theme.palette.primary.secondary,
+              color: 'white',
+              textTransform: 'none',
+              fontWeight: 600,
+              '&:hover': {
+                backgroundColor: (theme) => theme.palette.primary.secondary,
+                opacity: 0.9
+              }
+            }}
           >
             Volver Atrás
           </Button>
           <Button
             onClick={handleConfirmReport}
             variant="contained"
-            color="warning"
             disabled={loading}
-            sx={{
-              fontWeight: 600,
-              backgroundColor: "#FF9800",
-              "&:hover": {
-                backgroundColor: "#F57C00",
-              },
-            }}
+            sx={{ textTransform: 'none', fontWeight: 600 }}
           >
-            {loading ? "Procesando..." : "Sí, Reportar"}
+            {loading ? 'Procesando...' : 'Sí, Reportar'}
           </Button>
         </DialogActions>
       </Dialog>

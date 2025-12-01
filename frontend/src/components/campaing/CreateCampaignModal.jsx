@@ -200,7 +200,7 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                 fecha_inicio: fechaInicio,
                 fecha_fin: fechaFin,
                 estado: estadoId,
-                jefe_campana: jefeCampanaSeleccionado.documento_id,
+                jefe_campana: jefeCampanaSeleccionado?.id || jefeCampanaSeleccionado?.documento_id,
                 productos_ids: productosSeleccionados.map(p => p.id)
             };
 
@@ -328,7 +328,10 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                             label="Nombre de la campaña"
                             fullWidth
                             value={nombre}
-                            onChange={(e) => setNombre(e.target.value)}
+                            onChange={(e) => {
+                                setNombre(e.target.value);
+                                setErrors(prev => ({ ...prev, nombre: null }));
+                            }}
                             error={!!errors.nombre}
                             helperText={
                                 errors.nombre || `${nombre.length}/50 caracteres`
@@ -343,7 +346,10 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                             multiline
                             minRows={2}
                             value={descripcion}
-                            onChange={(e) => setDescripcion(e.target.value)}
+                            onChange={(e) => {
+                                setDescripcion(e.target.value);
+                                setErrors(prev => ({ ...prev, descripcion: null }));
+                            }}
                             error={!!errors.descripcion}
                             helperText={
                                 errors.descripcion ||
@@ -457,7 +463,10 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                                     type="date"
                                     fullWidth
                                     value={fechaInicio}
-                                    onChange={(e) => setFechaInicio(e.target.value)}
+                                    onChange={(e) => {
+                                        setFechaInicio(e.target.value);
+                                        setErrors(prev => ({ ...prev, fecha_inicio: null, fecha_fin: null }));
+                                    }}
                                     InputLabelProps={getDateInputLabelProps(theme)}
                                     sx={getDateInputSx(theme)}
                                     error={!!errors.fecha_inicio}
@@ -472,7 +481,10 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
                                     type="date"
                                     fullWidth
                                     value={fechaFin}
-                                    onChange={(e) => setFechaFin(e.target.value)}
+                                    onChange={(e) => {
+                                        setFechaFin(e.target.value);
+                                        setErrors(prev => ({ ...prev, fecha_fin: null }));
+                                    }}
                                     InputLabelProps={getDateInputLabelProps(theme)}
                                     sx={getDateInputSx(theme)}
                                     error={!!errors.fecha_fin}

@@ -81,7 +81,17 @@ export default function CampaignsComponent({
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
+    
+    // Si la fecha viene en formato YYYY-MM-DD (solo fecha sin hora)
+    if (dateString.length === 10 && dateString.includes('-')) {
+      const [year, month, day] = dateString.split('-');
+      return `${day}/${month}/${year}`;
+    }
+    
+    // Si la fecha incluye hora (ISO string)
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // Si no es válida, devolver como está
+    
     return date.toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
