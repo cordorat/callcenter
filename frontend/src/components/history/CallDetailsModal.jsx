@@ -1,6 +1,7 @@
 import React from "react";
 import {
   Dialog,
+  DialogTitle,
   DialogContent,
   DialogActions,
   Button,
@@ -19,17 +20,6 @@ export default function CallDetailsModal({ open, onClose, callData }) {
 
   const isVenta = callData.resultado_llamada?.venta_realizada === true;
 
-  const DetailItem = ({ label, value }) => (
-    <Box sx={{ mb: 1 }}>
-      <Typography variant="caption" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography variant="body2" fontWeight={500}>
-        {value || "N/A"}
-      </Typography>
-    </Box>
-  );
-
   return (
     <Dialog
       open={open}
@@ -37,129 +27,260 @@ export default function CallDetailsModal({ open, onClose, callData }) {
       maxWidth="sm"
       fullWidth
       PaperProps={{
+        elevation: 2,
         sx: {
-          borderRadius: 2,
-          backgroundColor: theme.palette.background.paper,
+          borderRadius: 3,
         },
       }}
     >
-      <DialogContent sx={{ mt: 1 }}>
+      <DialogTitle sx={{ pb: 1 }}>Detalle de Llamada</DialogTitle>
 
-        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-          Información del Cliente
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <DetailItem label="Nombre" value={callData.cliente_nombre} />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <DetailItem label="Teléfono" value={callData.cliente_telefono} />
-          </Grid>
-        </Grid>
-
-        <Divider sx={{ my: 2 }} />
-
-
-        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-          Información del Agente
-        </Typography>
-        <DetailItem label="Agente" value={callData.agente_nombre} />
-
-        <Divider sx={{ my: 2 }} />
-
-
-        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-          Información de la Llamada
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <DetailItem
-              label="Duración"
-              value={callData.duracion_total_formateada}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Typography variant="caption" color="text.secondary">
-              Estado de la llamada
-            </Typography>
-            <Box sx={{ mt: 0.5 }}>
-              <Chip
-                label={
-                  callData.resultado_llamada?.estado_llamada === "COMPLETADA"
-                    ? "Contestada"
-                    : "No contestada"
-                }
-                color={
-                  callData.resultado_llamada?.estado_llamada === "COMPLETADA"
-                    ? "success"
-                    : "default"
-                }
-                size="small"
-              />
-            </Box>
-          </Grid>
-          {callData.fecha_inicio && (
-            <Grid item xs={12}>
-              <DetailItem
-                label="Fecha y hora"
-                value={new Date(callData.fecha_inicio).toLocaleString("es-ES", {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
-              />
-            </Grid>
-          )}
-        </Grid>
-
-
-        {isVenta && callData.venta_info && (
-          <>
-            <Divider sx={{ my: 2 }} />
+      <DialogContent dividers sx={{ py: 2 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {/* SECCIÓN 1: Información del Cliente */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Typography
-              variant="subtitle1"
-              fontWeight={600}
-              gutterBottom
-              color="success.main"
-            >
-              Información de Venta
-            </Typography>
-            <Box
+              variant="subtitle2"
               sx={{
-                p: 2,
-                borderRadius: 2,
-                backgroundColor: "rgba(76,175,80,0.1)",
-                border: `1px solid ${theme.palette.success.main}`,
+                fontWeight: 600,
+                fontSize: "0.8rem",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                color: "text.secondary",
               }}
             >
+              Información del Cliente
+            </Typography>
+            <Divider />
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", fontWeight: 600 }}
+                  >
+                    Nombre
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {callData.cliente_nombre || "-"}
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", fontWeight: 600 }}
+                  >
+                    Teléfono
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {callData.cliente_telefono || "-"}
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </Box>
+
+          {/* SECCIÓN 2: Información del Agente */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                fontWeight: 600,
+                fontSize: "0.8rem",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                color: "text.secondary",
+              }}
+            >
+              Información del Agente
+            </Typography>
+            <Divider />
+            <Box>
+              <Typography
+                variant="caption"
+                sx={{ color: "text.secondary", fontWeight: 600 }}
+              >
+                Agente
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                {callData.agente_nombre || "-"}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* SECCIÓN 3: Información de la Llamada */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                fontWeight: 600,
+                fontSize: "0.8rem",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                color: "text.secondary",
+              }}
+            >
+              Información de la Llamada
+            </Typography>
+            <Divider />
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", fontWeight: 600 }}
+                  >
+                    Duración
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {callData.duracion_total_formateada || "-"}
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", fontWeight: 600 }}
+                  >
+                    Estado de la Llamada
+                  </Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <Chip
+                      label={
+                        callData.resultado_llamada?.estado_llamada ===
+                        "COMPLETADA"
+                          ? "Contestada"
+                          : "No contestada"
+                      }
+                      color={
+                        callData.resultado_llamada?.estado_llamada ===
+                        "COMPLETADA"
+                          ? "success"
+                          : "default"
+                      }
+                      size="small"
+                    />
+                  </Box>
+                </Box>
+              </Grid>
+              {callData.fecha_inicio && (
+                <Grid item xs={12}>
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary", fontWeight: 600 }}
+                    >
+                      Fecha y Hora
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 500, mt: 0.5 }}
+                    >
+                      {new Date(callData.fecha_inicio).toLocaleString("es-ES", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </Typography>
+                  </Box>
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+
+          {/* SECCIÓN 4: Información de Venta (si existe) */}
+          {isVenta && callData.venta_info && (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: "0.8rem",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                  color: "success.main",
+                }}
+              >
+                Información de Venta
+              </Typography>
+              <Divider />
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                  <DetailItem 
-                    label="Producto" 
-                    value={callData.venta_info.producto_nombre} 
-                  />
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary", fontWeight: 600 }}
+                    >
+                      Producto
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 500, mt: 0.5 }}
+                    >
+                      {callData.venta_info.producto_nombre || "-"}
+                    </Typography>
+                  </Box>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <DetailItem 
-                    label="Monto" 
-                    value={`$${parseFloat(callData.venta_info.monto).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} COP`} 
-                  />
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary", fontWeight: 600 }}
+                    >
+                      Monto
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 500, mt: 0.5, color: "success.main" }}
+                    >
+                      $
+                      {parseFloat(callData.venta_info.monto).toLocaleString(
+                        "es-CO",
+                        { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                      )}{" "}
+                      COP
+                    </Typography>
+                  </Box>
                 </Grid>
                 {callData.venta_info.observaciones && (
                   <Grid item xs={12}>
-                    <DetailItem 
-                      label="Observaciones" 
-                      value={callData.venta_info.observaciones} 
-                    />
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "text.secondary", fontWeight: 600 }}
+                      >
+                        Observaciones
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 500, mt: 0.5 }}
+                      >
+                        {callData.venta_info.observaciones}
+                      </Typography>
+                    </Box>
                   </Grid>
                 )}
               </Grid>
             </Box>
-          </>
-        )}
+          )}
+        </Box>
       </DialogContent>
 
-      <DialogActions sx={{ p: 2, pt: 0 }}>
-        <Button onClick={onClose} variant="contained" color="primary">
+      <DialogActions sx={{ px: 3, py: 1.5 }}>
+        <Button
+          onClick={onClose}
+          sx={{
+            backgroundColor: (theme) => theme.palette.primary.secondary,
+            color: "white",
+            textTransform: "none",
+            "&:hover": {
+              backgroundColor: (theme) => theme.palette.primary.secondary,
+              opacity: 0.9,
+            },
+          }}
+        >
           Cerrar
         </Button>
       </DialogActions>
