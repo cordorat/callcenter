@@ -114,7 +114,7 @@ export default function JefeCentroDashboard() {
               letterSpacing: "0.5px",
             }}
           >
-            Estadísticas del Centro
+            Estadísticas del día del centro
           </Typography>
           <Tooltip title="Actualizar">
             <IconButton
@@ -208,7 +208,7 @@ export default function JefeCentroDashboard() {
                   mb: 2,
                 }}
               >
-                Llamadas Totales
+                Llamadas Del Día
               </Typography>
               <Typography
                 variant="h3"
@@ -254,7 +254,7 @@ export default function JefeCentroDashboard() {
                   mb: 2,
                 }}
               >
-                Ventas Realizadas
+                Ventas Realizadas Del Día
               </Typography>
               <Typography
                 variant="h3"
@@ -362,7 +362,7 @@ export default function JefeCentroDashboard() {
           </Card>
         </Stack>
 
-        {/* Ventas por Campaña - Gráfica */}
+        {/* Ventas por Campaña*/}
         <Card
           sx={{
             width: "100%",
