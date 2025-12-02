@@ -1,6 +1,7 @@
 // PATH: frontend/src/core/components/layout/ModuleShell.jsx
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTheme } from "@mui/material/styles";
 import {
   Box,
   Drawer,
@@ -25,18 +26,60 @@ import AgentMinutes from "@/components/agentStatus/AgentMinutes";
 const expandedWidth = 240;
 const collapsedWidth = 72;
 
+// Función para generar estilos de scrollbar personalizado
+const getScrollbarStyles = (theme) => `
+  .custom-scrollbar {
+    scrollbar-color: ${theme.palette.mode === 'dark' ? '#E6E9EF' : '#0C155A'} transparent;
+    scrollbar-width: thin;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: ${theme.palette.mode === 'dark' ? '#E6E9EF' : '#0C155A'};
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: ${theme.palette.mode === 'dark' ? '#FFFFFF' : '#0A0F3E'};
+    background-clip: content-box;
+  }
+`;
+
 export default function ModuleShell({ title, items, children }) {
   const [hovered, setHovered] = useState(false);
   const [agentStatus, setAgentStatus] = useState(''); // Estado actual del agente
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading } = useAuth();
+  const theme = useTheme();
 
   const handleMouseEnter = () => setHovered(true);
   const handleMouseLeave = () => setHovered(false);
 
+  // Inyectar estilos de scrollbar personalizado globalmente en body/html
+  useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = getScrollbarStyles(theme);
+    document.head.appendChild(styleSheet);
+
+    // Aplicar a body y html
+    document.body.classList.add('custom-scrollbar');
+    document.documentElement.classList.add('custom-scrollbar');
+
+    return () => {
+      styleSheet.remove();
+      document.body.classList.remove('custom-scrollbar');
+      document.documentElement.classList.remove('custom-scrollbar');
+    };
+  }, [theme]);
+
   return (
-    <Box sx={{ display: "flex", width: "100%", height: "110vh", overflow: "hidden" }}>
+    <Box sx={{ display: "flex", width: "100%", minHeight: "100vh", overflow: "visible" }}>
       {/* Header */}
       <AppBar
         position="fixed"
@@ -267,14 +310,12 @@ export default function ModuleShell({ title, items, children }) {
           display: "flex",
           flexDirection: "column",
           minWidth: 0,
-          height: "100vh",
-          mt: 8,
-          ml: 0,
           width: "100%",
           pl: `${collapsedWidth}px`,
           pr: 3,
           py: 3,
-          overflow: "auto",
+          overflow: "visible",
+          pt: `calc(64px + 24px)`,
         }}
       >
         {children || <Outlet />}

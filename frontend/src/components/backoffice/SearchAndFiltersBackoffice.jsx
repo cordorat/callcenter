@@ -75,7 +75,7 @@ export default function FiltrosyBusquedaBackoffice({
                   fontWeight: 700,
                 })}
               >
-                <FilterAltIcon fontSize="small" sx={{ mr: 1 }} /> Estado Reportada
+              Estado Reportada
               </InputLabel>
               <Select
                 labelId="estado-reportada-label"
@@ -115,7 +115,7 @@ export default function FiltrosyBusquedaBackoffice({
                   fontWeight: 700,
                 })}
               >
-                <FilterAltIcon fontSize="small" sx={{ mr: 1 }} /> Estado Auditoría
+              Estado Auditoría
               </InputLabel>
               <Select
                 labelId="estado-auditada-label"

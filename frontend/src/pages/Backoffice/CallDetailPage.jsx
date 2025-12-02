@@ -1319,29 +1319,91 @@ export default function CallDetailPage() {
         onClose={() => setConfirmDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          elevation: 2,
+          sx: {
+            borderRadius: 3,
+          },
+        }}
       >
-        <DialogTitle sx={{ fontWeight: 700, color: "text.primary", fontSize: "1.1rem" }}>
-          Confirmar Auditoría
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Confirmar Auditoría
+          </Typography>
         </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: "text.secondary", mt: 1, fontSize: "0.95rem" }}>
-            ¿Está seguro de que desea marcar esta llamada como auditada? Esta
-            acción registrará su fecha, hora y usuario, y no podrá ser revertida.
-          </DialogContentText>
+        <DialogContent dividers sx={{ py: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              ¿Está seguro de que desea marcar esta llamada como auditada? Esta acción registrará su fecha, hora y usuario, y no podrá ser revertida.
+            </Typography>
+            {llamada && (
+              <Box sx={{ 
+                p: 2, 
+                backgroundColor: (theme) => theme.palette.mode === 'light' ? '#EBF5FE' : 'rgba(255,255,255,0.05)',
+                borderRadius: '8px',
+                border: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.12)' : 'rgba(255,255,255,0.12)'
+              }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box sx={{ 
+                    p: 1.5, 
+                    backgroundColor: (theme) => theme.palette.mode === 'light' ? 'white' : 'rgba(255,255,255,0.02)',
+                    borderRadius: '6px',
+                    border: '1px solid',
+                    borderColor: (theme) => theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.08)' : 'rgba(255,255,255,0.08)'
+                  }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase' }}>
+                      Teléfono del cliente
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5, fontSize: '1rem' }}>
+                      {llamada.cliente_telefono || 'N/A'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ 
+                    p: 1.5, 
+                    backgroundColor: (theme) => theme.palette.mode === 'light' ? 'white' : 'rgba(255,255,255,0.02)',
+                    borderRadius: '6px',
+                    border: '1px solid',
+                    borderColor: (theme) => theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.08)' : 'rgba(255,255,255,0.08)'
+                  }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase' }}>
+                      Agente
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
+                      {llamada.agente_nombre || 'N/A'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ 
+                    p: 1.5, 
+                    backgroundColor: (theme) => theme.palette.mode === 'light' ? 'white' : 'rgba(255,255,255,0.02)',
+                    borderRadius: '6px',
+                    border: '1px solid',
+                    borderColor: (theme) => theme.palette.mode === 'light' ? 'rgba(12, 21, 90, 0.08)' : 'rgba(255,255,255,0.08)'
+                  }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase' }}>
+                      Fecha de llamada
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
+                      {formatDate(llamada.fecha_hora_inicio) || 'N/A'}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            )}
+          </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3, gap: 1.5 }}>
+        <DialogActions sx={{ px: 3, py: 1.5, gap: 1.5 }}>
           <Button
             onClick={() => setConfirmDialogOpen(false)}
-            variant="outlined"
-            sx={{ 
-              fontWeight: 700,
-              px: 3,
-              py: 1.2,
-              textTransform: "none",
-              borderRadius: 2,
-              borderWidth: 2,
-              "&:hover": {
-                borderWidth: 2,
+            disabled={reportLoading}
+            sx={{
+              backgroundColor: (theme) => theme.palette.primary.secondary,
+              color: 'white',
+              textTransform: 'none',
+              fontWeight: 600,
+              '&:hover': {
+                backgroundColor: (theme) => theme.palette.primary.secondary,
+                opacity: 0.9
               }
             }}
           >
@@ -1350,23 +1412,13 @@ export default function CallDetailPage() {
           <Button
             onClick={handleConfirmAudit}
             variant="contained"
-            color="success"
-            startIcon={<CheckCircleIcon />}
+            disabled={reportLoading}
             sx={{ 
-              fontWeight: 700,
-              px: 3,
-              py: 1.2,
-              textTransform: "none",
-              borderRadius: 2,
-              background: "linear-gradient(135deg, #4CAF50 0%, #45a049 100%)",
-              boxShadow: "0 4px 12px rgba(76,175,80,0.3)",
-              "&:hover": {
-                background: "linear-gradient(135deg, #45a049 0%, #388e3c 100%)",
-                boxShadow: "0 6px 16px rgba(76,175,80,0.4)",
-              }
+              textTransform: 'none',
+              fontWeight: 600,
             }}
           >
-            Sí, Confirmar Auditoría
+            {reportLoading ? 'Guardando...' : 'Confirmar Auditoría'}
           </Button>
         </DialogActions>
       </Dialog>

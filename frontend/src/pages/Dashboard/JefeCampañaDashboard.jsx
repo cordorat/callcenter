@@ -123,7 +123,7 @@ export default function JefeCampañaDashboard() {
               letterSpacing: "0.5px",
             }}
           >
-            Estadísticas de Campaña(s)
+            Estadísticas del día de la(s) campaña(s)
           </Typography>
           <Tooltip title="Actualizar">
             <IconButton

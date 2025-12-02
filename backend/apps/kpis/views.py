@@ -335,6 +335,10 @@ class KPIViewSet(viewsets.ViewSet):
 
             # Eliminar duplicados
             agentes_ids = list(set(agentes_ids))
+            
+            """Excluir al coordinador actual de la lista de agentes
+            agentes_ids = [aid for aid in agentes_ids if aid != request.user.documento_id]
+            """
 
             # Filtrar agentes por sus documento_id
             agentes = User.objects.filter(
