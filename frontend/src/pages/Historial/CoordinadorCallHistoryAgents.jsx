@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import { useEffect, useState, useCallback} from "react";
 import TablaLlamadas from "@/components/history/CallHistoryAgents";
 import FiltrosyBusqueda from "../../components/history/SearchAndFilters";
-import { callsService } from "@/core/api/calls";
+import { callsService } from "@/core/api/Calls";
 
 // Función helper para convertir Date a formato YYYY-MM-DD
 const toYMD = (d) => {
