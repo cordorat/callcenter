@@ -214,7 +214,7 @@ export default function TablaLlamadasBackoffice({
                       {row.agente_nombre || "N/A"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
-                      {row.resultado_llamada?.venta_realizada === true ? "Venta" : "No Venta" || "N/A"}
+                      {row.es_venta === true ? "Venta" : "No Venta" || "N/A"}
                     </TableCell>
                     <TableCell align="center" sx={cellBaseSx(theme)}>
                       {getAuditoriaChip(row.estado_auditoria_valor)  || "N/A"}

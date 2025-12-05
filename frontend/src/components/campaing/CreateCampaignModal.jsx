@@ -190,9 +190,9 @@ const CreateCampaignModal = ({ open, onClose, onCampaignCreated }) => {
             setLoading(true);
             setErrors({});
 
-            // Mapear estado a ID (1 = ACTIVA, 2 = INACTIVA)
+            // Mapear estado a ID (14 = ACTIVA, 15 = INACTIVA)
             // Esto debe coincidir con los IDs de TiposParametros en tu backend
-            const estadoId = estadoActivo ? 1 : 2;
+            const estadoId = estadoActivo ? 14 : 15;
 
             const data = {
                 nombre: nombre.trim(),

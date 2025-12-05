@@ -283,22 +283,6 @@ export default function CallDetailPage() {
                     {llamada.cliente?.nombre || llamada.cliente_nombre || "N/A"}
                   </Typography>
                 </Box>
-                <Box 
-                  sx={{ 
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: 1,
-                    px: 2,
-                    py: 1,
-                    borderRadius: 2,
-                    bgcolor: isDark ? "rgba(76,175,80,0.15)" : "rgba(76,175,80,0.1)",
-                  }}
-                >
-                  <AccessTimeIcon fontSize="small" sx={{ color: "#4CAF50" }} />
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
-                    {formatDuration(llamada.duracion_segundos || 0)}
-                  </Typography>
-                </Box>
               </Box>
             </Paper>
           )}
@@ -459,12 +443,12 @@ export default function CallDetailPage() {
                         <Box sx={{ mt: 1.5 }}>
                           <Chip
                             label={
-                              llamada.fue_contestada
+                              llamada.es_venta === true
                                 ? "Venta"
                                 : "No Venta"
                             }
                             color={
-                              llamada.fue_contestada
+                              llamada.es_venta === true
                                 ? "success"
                                 : "default"
                             }
@@ -850,48 +834,50 @@ export default function CallDetailPage() {
                       </Paper>
                     </Grid>
 
-                    {/* Producto vendido */}
-                    <Grid item xs={12} sm={6}>
-                      <Paper
-                        elevation={0}
-                        sx={{
-                          p: 2.5,
-                          background: isDark
-                            ? "linear-gradient(135deg, rgba(63,81,181,0.12) 0%, rgba(63,81,181,0.04) 100%)"
-                            : "linear-gradient(135deg, rgba(63,81,181,0.08) 0%, rgba(63,81,181,0.02) 100%)",
-                          border: `1px solid ${isDark ? "rgba(63,81,181,0.25)" : "rgba(63,81,181,0.15)"}`,
-                          borderRadius: 2.5,
-                          transition: "all 0.2s ease",
-                          "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: isDark
-                              ? "0 4px 12px rgba(63,81,181,0.2)"
-                              : "0 4px 12px rgba(63,81,181,0.12)",
-                          }
-                        }}
-                      >
-                        <Typography
-                          variant="caption"
+                    {/* Producto vendido - Solo se muestra si es una venta */}
+                    {llamada.es_venta === true && (
+                      <Grid item xs={12} sm={6}>
+                        <Paper
+                          elevation={0}
                           sx={{
-                            color: "text.secondary",
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            fontSize: "0.7rem",
-                            letterSpacing: "0.5px",
+                            p: 2.5,
+                            background: isDark
+                              ? "linear-gradient(135deg, rgba(63,81,181,0.12) 0%, rgba(63,81,181,0.04) 100%)"
+                              : "linear-gradient(135deg, rgba(63,81,181,0.08) 0%, rgba(63,81,181,0.02) 100%)",
+                            border: `1px solid ${isDark ? "rgba(63,81,181,0.25)" : "rgba(63,81,181,0.15)"}`,
+                            borderRadius: 2.5,
+                            transition: "all 0.2s ease",
+                            "&:hover": {
+                              transform: "translateY(-2px)",
+                              boxShadow: isDark
+                                ? "0 4px 12px rgba(63,81,181,0.2)"
+                                : "0 4px 12px rgba(63,81,181,0.12)",
+                            }
                           }}
                         >
-                          Producto Vendido
-                        </Typography>
-                        <Typography
-                          variant="body1"
-                          sx={{ fontWeight: 600, color: "text.primary", mt: 0.5 }}
-                        >
-                          {llamada.venta?.producto?.nombre ||
-                            llamada.producto_nombre ||
-                            "-"}
-                        </Typography>
-                      </Paper>
-                    </Grid>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              fontSize: "0.7rem",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            Producto Vendido
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ fontWeight: 600, color: "text.primary", mt: 0.5 }}
+                          >
+                            {llamada.venta_info?.producto_nombre ||
+                              llamada.venta?.producto?.nombre ||
+                              "-"}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    )}
                   </Grid>
                 </CardContent>
               </Card>

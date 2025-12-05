@@ -12,10 +12,17 @@ export default defineConfig({
   },
   server: {
     host: true,
+    port: 3000,
     allowedHosts: [
       "gwenn-infundibular-irreclaimably.ngrok-free.dev",
+      "desprogramadores.dev",
       "localhost",
       "127.0.0.1",
     ],
+    watch: {
+      // Necesario para hot reload en Docker
+      usePolling: true,
+    },
   },
 });
+''

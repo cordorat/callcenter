@@ -20,23 +20,34 @@ CACHE_TTL = 60  # segundos
 
 def get_ngrok_url() -> str:
     """
-    Obtiene la URL pública de ngrok consultando su API local.
+    Obtiene la URL pública para webhooks.
     
-    En Docker, ngrok expone su API en el puerto 4040.
-    La URL se cachea por 60 segundos para evitar llamadas excesivas.
+    En producción (DEBUG=False o SITE_URL configurado con dominio real),
+    usa directamente SITE_URL sin intentar conectar a ngrok.
+    
+    En desarrollo, intenta obtener la URL de ngrok dinámicamente.
     
     Returns:
-        URL pública de ngrok (ej: https://abc123.ngrok.io)
-        o SITE_URL del settings si ngrok no está disponible
+        URL pública para webhooks
     """
     global _ngrok_url_cache
     
-    # Verificar cache
+    # Obtener SITE_URL de settings
+    site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+    is_debug = getattr(settings, 'DEBUG', True)
+    
+    # En producción o si SITE_URL tiene un dominio real (no localhost/ngrok),
+    # usar directamente SITE_URL sin consultar ngrok
+    if not is_debug or (site_url and 'localhost' not in site_url and 'ngrok' not in site_url):
+        logger.info(f"✅ Usando SITE_URL de producción: {site_url}")
+        return site_url
+    
+    # Verificar cache (solo para desarrollo con ngrok)
     current_time = time.time()
     if _ngrok_url_cache['url'] and (current_time - _ngrok_url_cache['timestamp']) < CACHE_TTL:
         return _ngrok_url_cache['url']
     
-    # Intentar obtener URL de ngrok
+    # Intentar obtener URL de ngrok (solo en desarrollo)
     ngrok_api_urls = [
         'http://ngrok:4040/api/tunnels',  # Nombre del servicio en Docker
         'http://localhost:4040/api/tunnels',  # Fallback para desarrollo local
@@ -76,7 +87,6 @@ def get_ngrok_url() -> str:
             continue
     
     # Fallback a SITE_URL del settings
-    site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
     logger.warning(f"⚠️ ngrok no disponible, usando SITE_URL: {site_url}")
     return site_url
 

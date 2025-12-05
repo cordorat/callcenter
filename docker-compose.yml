@@ -72,6 +72,18 @@ services:
       
       # AssemblyAI
       ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY}
+
+      SITE_URL: ${SITE_URL:-https://desprogramadores.dev}
+
+      # Email Configuration
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-True}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-noreply@callcenter.com}
+      FRONTEND_URL: ${FRONTEND_URL:-https://desprogramadores.dev}
     volumes:
       - backend_static:/app/staticfiles
       - backend_media:/app/media
@@ -110,6 +122,7 @@ services:
       TWILIO_API_KEY: ${TWILIO_API_KEY}
       TWILIO_API_SECRET: ${TWILIO_API_SECRET}
       ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY}
+      SITE_URL: ${SITE_URL:-https://desprogramadores.dev}
 
   # ========== CELERY BEAT (Tareas programadas) ==========
   celery-beat:
@@ -138,13 +151,13 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: http://18.116.63.37:8000/api
+        VITE_API_URL: https://desprogramadores.dev/api
     container_name: callcenter_frontend
     restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "3000:80"
 
   # ========== NGROK (Túnel para webhooks de Twilio) ==========
   ngrok:

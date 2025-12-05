@@ -1,0 +1,178 @@
+# docker-compose.dev.yml - Configuración para DESARROLLO con hot reload
+# Uso: docker-compose -f docker-compose.dev.yml up -d
+
+version: '3.8'
+
+services:
+  # ========== BASE DE DATOS POSTGRESQL ==========
+  postgres:
+    image: postgres:15-alpine
+    container_name: callcenter_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${DB_NAME:-callcenter}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========== REDIS (Broker para Celery) ==========
+  redis:
+    image: redis:7-alpine
+    container_name: callcenter_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========== BACKEND DJANGO ==========
+  backend:
+    build: ./backend
+    container_name: callcenter_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-change-this-in-production}
+      DEBUG: "True"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,*}
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: ${DB_NAME:-callcenter}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres123}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      SKIP_MIGRATIONS: ${SKIP_MIGRATIONS:-false}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
+      TWILIO_TWIML_APP_SID: ${TWILIO_TWIML_APP_SID:-}
+      TWILIO_API_KEY: ${TWILIO_API_KEY}
+      TWILIO_API_SECRET: ${TWILIO_API_SECRET}
+      ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY}
+      SITE_URL: ${SITE_URL:-https://desprogramadores.dev}
+      # Email Configuration
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-True}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-noreply@callcenter.com}
+      FRONTEND_URL: ${FRONTEND_URL:-https://desprogramadores.dev} 
+    volumes:
+      - backend_static:/app/staticfiles
+      - backend_media:/app/media
+    ports:
+      - "8000:8000"
+
+  # ========== CELERY WORKER ==========
+  celery-worker:
+    build: ./backend
+    container_name: callcenter_celery_worker
+    restart: unless-stopped
+    entrypoint: []
+    command: celery -A callcenter worker -l info -P eventlet
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-change-this-in-production}
+      DEBUG: "True"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: ${DB_NAME:-callcenter}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres123}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
+      TWILIO_TWIML_APP_SID: ${TWILIO_TWIML_APP_SID:-}
+      TWILIO_API_KEY: ${TWILIO_API_KEY}
+      TWILIO_API_SECRET: ${TWILIO_API_SECRET}
+      ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY}
+      SITE_URL: ${SITE_URL:-https://desprogramadores.dev}
+
+  # ========== CELERY BEAT ==========
+  celery-beat:
+    build: ./backend
+    container_name: callcenter_celery_beat
+    restart: unless-stopped
+    entrypoint: []
+    command: celery -A callcenter beat -l info
+    depends_on:
+      - redis
+      - celery-worker
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-change-this-in-production}
+      DEBUG: "True"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: ${DB_NAME:-callcenter}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres123}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+
+  # ========== FRONTEND REACT - DESARROLLO CON HOT RELOAD ==========
+  frontend:
+    image: node:20-alpine
+    container_name: callcenter_frontend_dev
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    volumes:
+      # Monta todo el código fuente para hot reload
+      - ./frontend:/app
+      # Evita sobrescribir node_modules del contenedor
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=https://desprogramadores.dev/api
+      - CHOKIDAR_USEPOLLING=true  # Necesario para hot reload en Docker
+
+  # ========== NGROK ==========
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: callcenter_ngrok
+    restart: unless-stopped
+    command: http backend:8000 --log stdout
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    name: callcenter_postgres_data
+  backend_static:
+    name: callcenter_static
+  backend_media:
+    name: callcenter_media

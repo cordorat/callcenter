@@ -46,6 +46,9 @@ urlpatterns = [
     path("api/webhooks/", include('webhooks.urls')),
     path("api/kpis/", include('apps.kpis.urls')),
     
+    # Webhooks de Twilio (sin prefijo /api/ para compatibilidad)
+    path("webhooks/", include('webhooks.urls')),
+    
     # Comisiones directamente en /api/comisiones/
     path("api/", include(comisiones_router.urls)),
 ]

@@ -57,13 +57,14 @@ if ! docker-compose up -d; then
 fi
 echo "       [OK] Servicios iniciados"
 
-# Esperar a que la base de datos esté lista
-echo "[5/6] Ejecutando migraciones de base de datos..."
-sleep 10
-
-# Ejecutar migraciones
-docker-compose exec -T backend python manage.py migrate --noinput > /dev/null 2>&1
-echo "       [OK] Migraciones ejecutadas"
+# Ejecutar migraciones (solo si SKIP_MIGRATIONS no está definido)
+echo "[5/6] Migraciones de base de datos..."
+if [ -z "$SKIP_MIGRATIONS" ]; then
+    docker-compose exec -T backend python manage.py migrate --noinput > /dev/null 2>&1
+    echo "       [OK] Migraciones ejecutadas"
+else
+    echo "       [SKIP] Migraciones omitidas (SKIP_MIGRATIONS=true)"
+fi
 
 # Poblar datos iniciales
 echo "[6/6] Poblando datos iniciales del sistema..."
